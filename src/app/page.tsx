@@ -3,50 +3,114 @@ import Image from 'next/image';
 import { getProducts, getCategories, transformProduct, transformCategory } from '@/lib/woocommerce';
 import { Truck, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react';
 
-// Hero Banner Component
-function HeroSection() {
+// Types for homepage banners
+interface HomepageBanner {
+  mediaType: 'image' | 'video';
+  image: string;
+  mobileImage: string;
+  video: string;
+  mobileVideo: string;
+  videoPoster: string;
+  videoAutoplay: boolean;
+  videoLoop: boolean;
+  videoMuted: boolean;
+  title: string;
+  subtitle: string;
+  buttonText: string;
+  buttonLink: string;
+  textColor: 'white' | 'black';
+}
+
+// Fetch homepage data from WordPress
+async function getHomepageData(): Promise<{ banners: HomepageBanner[] } | null> {
+  try {
+    const res = await fetch('https://bellano.co.il/wp-json/bellano/v1/homepage', {
+      next: { revalidate: 300 } // Cache for 5 minutes
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+// Hero Banner Component - Now supports video!
+async function HeroSection() {
+  const homepageData = await getHomepageData();
+  const banner = homepageData?.banners?.[0]; // Get first banner
+  
+  // Default values if no banner from WordPress
+  const mediaType = banner?.mediaType || 'image';
+  const imageUrl = banner?.image || 'https://bellano.co.il/wp-content/uploads/2024/06/banner-main.jpg';
+  const videoUrl = banner?.video || '';
+  const videoPoster = banner?.videoPoster || imageUrl;
+  const title = banner?.title || 'עיצוב שמדבר';
+  const subtitle = banner?.subtitle || 'רהיטי מעצבים לבית שלכם';
+  const buttonText = banner?.buttonText || 'DISCOVER';
+  const buttonLink = banner?.buttonLink || '/categories';
+  const textColor = banner?.textColor || 'white';
+  
+  const textColorClass = textColor === 'white' ? 'text-white' : 'text-black';
+  const textColorMuted = textColor === 'white' ? 'text-white/90' : 'text-black/80';
+  const overlayClass = textColor === 'white' ? 'bg-black/30' : 'bg-white/30';
+
   return (
     <section className="relative h-[70vh] md:h-[85vh] overflow-hidden">
-      {/* Background Image */}
+      {/* Background - Video or Image */}
       <div className="absolute inset-0 bg-[#f5f5f0]">
-        <Image
-          src="https://bellano.co.il/wp-content/uploads/2024/06/banner-main.jpg"
-          alt="בלאנו רהיטי מעצבים"
-          fill
-          className="object-cover"
-          priority
-        />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/30" />
+        {mediaType === 'video' && videoUrl ? (
+          <>
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={videoPoster}
+              className="absolute inset-0 w-full h-full object-cover"
+            >
+              <source src={videoUrl} type="video/mp4" />
+            </video>
+          </>
+        ) : (
+          <Image
+            src={imageUrl}
+            alt="בלאנו רהיטי מעצבים"
+            fill
+            className="object-cover"
+            priority
+          />
+        )}
+        {/* Overlay */}
+        <div className={`absolute inset-0 ${overlayClass}`} />
       </div>
       
       {/* Content */}
       <div className="relative h-full flex items-center justify-center text-center">
         <div className="max-w-3xl px-6">
-          <p className="font-english text-white/90 text-sm md:text-base tracking-[0.3em] uppercase mb-4">
+          <p className={`font-english ${textColorMuted} text-sm md:text-base tracking-[0.3em] uppercase mb-4`}>
             BELLANO FURNITURE
           </p>
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            עיצוב שמדבר
+          <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold ${textColorClass} mb-6 leading-tight`}>
+            {title}
             <br />
             <span className="font-english">Quality & Style</span>
           </h1>
-          <p className="text-white/80 text-lg md:text-xl mb-8">
-            רהיטי מעצבים לבית שלכם
+          <p className={`${textColorMuted} text-lg md:text-xl mb-8`}>
+            {subtitle}
           </p>
           <Link
-            href="/categories"
-            className="inline-block bg-white text-black px-8 py-4 text-sm font-medium tracking-wider hover:bg-black hover:text-white transition-all duration-300"
+            href={buttonLink}
+            className={`inline-block ${textColor === 'white' ? 'bg-white text-black hover:bg-black hover:text-white' : 'bg-black text-white hover:bg-white hover:text-black'} px-8 py-4 text-sm font-medium tracking-wider transition-all duration-300`}
           >
-            DISCOVER
+            {buttonText}
           </Link>
         </div>
       </div>
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-        <div className="w-6 h-10 border-2 border-white/50 rounded-full flex justify-center pt-2">
-          <div className="w-1 h-2 bg-white/50 rounded-full" />
+        <div className={`w-6 h-10 border-2 ${textColor === 'white' ? 'border-white/50' : 'border-black/50'} rounded-full flex justify-center pt-2`}>
+          <div className={`w-1 h-2 ${textColor === 'white' ? 'bg-white/50' : 'bg-black/50'} rounded-full`} />
         </div>
       </div>
     </section>
