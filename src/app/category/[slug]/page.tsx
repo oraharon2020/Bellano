@@ -6,14 +6,25 @@ interface CategoryPageProps {
 }
 
 // Generate static pages for all categories at build time
+// Falls back to on-demand rendering if API unavailable during build
 export async function generateStaticParams() {
+  // Skip during build if no API keys
+  if (!process.env.WOOCOMMERCE_CONSUMER_KEY) {
+    console.log('Skipping static generation - no API keys');
+    return [];
+  }
+  
   try {
     const categories = await getCategories({ per_page: 50 });
     return categories.map((cat) => ({ slug: cat.slug }));
-  } catch {
+  } catch (error) {
+    console.error('Failed to generate category params:', error);
     return [];
   }
 }
+
+// Allow dynamic rendering for pages not generated at build time
+export const dynamicParams = true;
 
 // Revalidate every 5 minutes
 export const revalidate = 300;
