@@ -286,14 +286,15 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
           {/* Image Gallery */}
           <div>
             {/* Main Image */}
-            <div className="relative aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden mb-3 md:mb-4">
+            <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 md:mb-4 bg-gray-50">
               {allImages[selectedImage]?.sourceUrl && (
                 <Image
                   src={allImages[selectedImage].sourceUrl}
                   alt={allImages[selectedImage].altText || product.name}
                   fill
-                  className="object-contain"
+                  className="object-contain p-2"
                   priority
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
               )}
               {hasDiscount && discountPercentage > 0 && (
@@ -303,46 +304,46 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
               )}
             </div>
 
-            {/* Thumbnails Slider */}
+            {/* Thumbnails Slider - RTL */}
             {allImages.length > 1 && (
-              <div className="relative group">
-                {/* Left Arrow */}
-                <button
-                  onClick={() => {
-                    if (thumbnailsRef.current) {
-                      thumbnailsRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-                    }
-                  }}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                
-                {/* Right Arrow */}
+              <div className="relative group" dir="rtl">
+                {/* Right Arrow (scrolls right in RTL = shows previous) */}
                 <button
                   onClick={() => {
                     if (thumbnailsRef.current) {
                       thumbnailsRef.current.scrollBy({ left: -200, behavior: 'smooth' });
                     }
                   }}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity -mr-1"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+                
+                {/* Left Arrow (scrolls left in RTL = shows next) */}
+                <button
+                  onClick={() => {
+                    if (thumbnailsRef.current) {
+                      thumbnailsRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity -ml-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
 
                 {/* Thumbnails Container */}
                 <div 
                   ref={thumbnailsRef}
-                  className="flex gap-2 overflow-x-auto scrollbar-hide px-1 py-1 scroll-smooth"
+                  className="flex gap-2 overflow-x-auto scrollbar-hide px-2 py-2 scroll-smooth"
                   style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                 >
                   {allImages.map((img, index) => (
                     <button
                       key={index}
                       onClick={() => setSelectedImage(index)}
-                      className={`relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-xl overflow-hidden transition-all ${
+                      className={`relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-lg overflow-hidden transition-all bg-gray-50 ${
                         selectedImage === index 
-                          ? 'ring-2 ring-black ring-offset-2' 
+                          ? 'ring-2 ring-black ring-offset-1' 
                           : 'hover:ring-2 hover:ring-gray-300 hover:ring-offset-1'
                       }`}
                     >
@@ -351,7 +352,8 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
                           src={img.sourceUrl}
                           alt={img.altText || ''}
                           fill
-                          className="object-cover"
+                          className="object-contain p-1"
+                          sizes="80px"
                         />
                       )}
                     </button>
