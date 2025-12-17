@@ -9,17 +9,41 @@
 
 if (!defined('ABSPATH')) exit;
 
-// Add submenu under Bellano Homepage
+// Add submenu under Bellano Homepage (with lower priority to load after main plugin)
 add_action('admin_menu', function() {
-    add_submenu_page(
-        'bellano-homepage',
-        'ניקוי קאש',
-        'ניקוי קאש',
-        'manage_options',
-        'bellano-cache',
-        'bellano_cache_settings_page'
-    );
-});
+    // Check if parent menu exists
+    global $menu;
+    $parent_exists = false;
+    foreach ($menu as $item) {
+        if (isset($item[2]) && $item[2] === 'bellano-homepage') {
+            $parent_exists = true;
+            break;
+        }
+    }
+    
+    if ($parent_exists) {
+        // Add as submenu under Bellano Homepage
+        add_submenu_page(
+            'bellano-homepage',
+            'ניקוי קאש',
+            'ניקוי קאש',
+            'manage_options',
+            'bellano-cache',
+            'bellano_cache_settings_page'
+        );
+    } else {
+        // Add as standalone menu if parent doesn't exist
+        add_menu_page(
+            'ניקוי קאש',
+            'ניקוי קאש',
+            'manage_options',
+            'bellano-cache',
+            'bellano_cache_settings_page',
+            'dashicons-update',
+            31
+        );
+    }
+}, 20); // Priority 20 to run after bellano-homepage plugin (default is 10)
 
 // Register settings
 add_action('admin_init', function() {
