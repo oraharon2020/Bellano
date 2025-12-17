@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Truck, ShieldCheck, CreditCard, Headphones } from 'lucide-react';
 import { CachedCategoryGrid, CachedProductGrid } from '@/components/home/CachedGrids';
+import { HeroBanner } from '@/components/home/HeroBanner';
 
 const features = [
   {
@@ -29,31 +30,8 @@ const features = [
 export default function HomePage() {
   return (
     <div className="flex flex-col">
-      {/* Hero Section */}
-      <section className="relative h-[60vh] md:h-[70vh] bg-gradient-to-b from-primary/5 to-background">
-        <div className="container mx-auto px-4 h-full flex items-center">
-          <div className="max-w-2xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
-              רהיטי מעצבים
-              <br />
-              <span className="text-primary">לבית שלכם</span>
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8">
-              מבחר רחב של רהיטים איכותיים בעיצוב מודרני.
-              <br />
-              משלוח חינם עד הבית!
-            </p>
-            <div className="flex flex-wrap gap-4">
-              <Button size="lg" asChild>
-                <Link href="/categories">לכל המוצרים</Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild>
-                <Link href="/about">קראו עלינו</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Hero Banner - Edit in /src/config/banners.ts */}
+      <HeroBanner />
 
       {/* Features */}
       <section className="py-8 bg-muted/50">
