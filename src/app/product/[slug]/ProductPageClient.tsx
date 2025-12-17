@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown } from 'lucide-react';
+import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -118,6 +118,7 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+  const thumbnailsRef = useRef<HTMLDivElement>(null);
 
   const { addItem } = useCartStore();
 
@@ -285,7 +286,7 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
           {/* Image Gallery */}
           <div>
             {/* Main Image */}
-            <div className="relative aspect-square md:aspect-[4/3] bg-gray-50 rounded-lg overflow-hidden mb-3 md:mb-4">
+            <div className="relative aspect-square md:aspect-[4/3] rounded-2xl overflow-hidden mb-3 md:mb-4">
               {allImages[selectedImage]?.sourceUrl && (
                 <Image
                   src={allImages[selectedImage].sourceUrl}
@@ -302,29 +303,60 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
               )}
             </div>
 
-            {/* Thumbnails */}
+            {/* Thumbnails Slider */}
             {allImages.length > 1 && (
-              <div className="flex gap-2 overflow-x-auto">
-                {allImages.map((img, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setSelectedImage(index)}
-                    className={`relative w-16 h-16 flex-shrink-0 rounded border overflow-hidden transition ${
-                      selectedImage === index 
-                        ? 'border-black' 
-                        : 'border-gray-200 hover:border-gray-400'
-                    }`}
-                  >
-                    {img.sourceUrl && (
-                      <Image
-                        src={img.sourceUrl}
-                        alt={img.altText || ''}
-                        fill
-                        className="object-cover"
-                      />
-                    )}
-                  </button>
-                ))}
+              <div className="relative group">
+                {/* Left Arrow */}
+                <button
+                  onClick={() => {
+                    if (thumbnailsRef.current) {
+                      thumbnailsRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                
+                {/* Right Arrow */}
+                <button
+                  onClick={() => {
+                    if (thumbnailsRef.current) {
+                      thumbnailsRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                    }
+                  }}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 hover:bg-white rounded-full shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+
+                {/* Thumbnails Container */}
+                <div 
+                  ref={thumbnailsRef}
+                  className="flex gap-2 overflow-x-auto scrollbar-hide px-1 py-1 scroll-smooth"
+                  style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                >
+                  {allImages.map((img, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setSelectedImage(index)}
+                      className={`relative w-16 h-16 md:w-20 md:h-20 flex-shrink-0 rounded-xl overflow-hidden transition-all ${
+                        selectedImage === index 
+                          ? 'ring-2 ring-black ring-offset-2' 
+                          : 'hover:ring-2 hover:ring-gray-300 hover:ring-offset-1'
+                      }`}
+                    >
+                      {img.sourceUrl && (
+                        <Image
+                          src={img.sourceUrl}
+                          alt={img.altText || ''}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
