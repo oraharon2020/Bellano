@@ -4,27 +4,67 @@ import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { banners, bannerSettings } from '@/config/banners';
+import { banners as fallbackBanners, bannerSettings as fallbackSettings, Banner } from '@/config/banners';
+
+interface HomepageData {
+  banners: Banner[];
+  settings: typeof fallbackSettings;
+}
 
 export function HeroBanner() {
+  const [data, setData] = useState<HomepageData>({ 
+    banners: fallbackBanners, 
+    settings: fallbackSettings 
+  });
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch banners from WordPress
+  useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il'}/wp-json/bellano/v1/homepage`,
+          { next: { revalidate: 60 } } // Cache for 1 minute
+        );
+        
+        if (res.ok) {
+          const wpData = await res.json();
+          if (wpData.banners && wpData.banners.length > 0) {
+            setData({
+              banners: wpData.banners,
+              settings: { ...fallbackSettings, ...wpData.settings }
+            });
+          }
+        }
+      } catch (error) {
+        console.log('Using fallback banners');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBanners();
+  }, []);
+
+  const { banners, settings } = data;
 
   const nextSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev + 1) % banners.length);
-  }, []);
+  }, [banners.length]);
 
   const prevSlide = useCallback(() => {
     setCurrentSlide((prev) => (prev - 1 + banners.length) % banners.length);
-  }, []);
+  }, [banners.length]);
 
   // Auto play
   useEffect(() => {
-    if (!bannerSettings.autoPlay || isHovered || banners.length <= 1) return;
+    if (!settings.autoPlay || isHovered || banners.length <= 1) return;
 
-    const interval = setInterval(nextSlide, bannerSettings.autoPlayInterval);
+    const interval = setInterval(nextSlide, settings.autoPlayInterval);
     return () => clearInterval(interval);
-  }, [isHovered, nextSlide]);
+  }, [isHovered, nextSlide, settings.autoPlay, settings.autoPlayInterval, banners.length]);
 
   if (banners.length === 0) return null;
 
@@ -34,7 +74,7 @@ export function HeroBanner() {
     <section
       className="relative w-full overflow-hidden"
       style={{ 
-        height: bannerSettings.height.mobile,
+        height: settings.height.mobile,
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -42,7 +82,7 @@ export function HeroBanner() {
       <style jsx>{`
         @media (min-width: 768px) {
           section {
-            height: ${bannerSettings.height.desktop} !important;
+            height: ${settings.height.desktop} !important;
           }
         }
       `}</style>
@@ -106,7 +146,7 @@ export function HeroBanner() {
       </div>
 
       {/* Navigation Arrows */}
-      {bannerSettings.showArrows && banners.length > 1 && (
+      {settings.showArrows && banners.length > 1 && (
         <>
           <button
             onClick={prevSlide}
@@ -126,7 +166,7 @@ export function HeroBanner() {
       )}
 
       {/* Dots Navigation */}
-      {bannerSettings.showDots && banners.length > 1 && (
+      {settings.showDots && banners.length > 1 && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-2">
           {banners.map((_, index) => (
             <button
