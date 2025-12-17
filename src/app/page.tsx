@@ -42,7 +42,9 @@ async function HeroSection() {
   // Default values if no banner from WordPress
   const mediaType = banner?.mediaType || 'image';
   const imageUrl = banner?.image || 'https://bellano.co.il/wp-content/uploads/2024/06/banner-main.jpg';
+  const mobileImageUrl = banner?.mobileImage || imageUrl;
   const videoUrl = banner?.video || '';
+  const mobileVideoUrl = banner?.mobileVideo || videoUrl; // Fallback to main video
   const videoPoster = banner?.videoPoster || imageUrl;
   const title = banner?.title || 'עיצוב שמדבר';
   const subtitle = banner?.subtitle || 'רהיטי מעצבים לבית שלכם';
@@ -60,25 +62,48 @@ async function HeroSection() {
       <div className="absolute inset-0 bg-[#f5f5f0]">
         {mediaType === 'video' && videoUrl ? (
           <>
+            {/* Desktop Video */}
             <video
               autoPlay
               muted
               loop
               playsInline
               poster={videoPoster}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full object-cover hidden md:block"
             >
               <source src={videoUrl} type="video/mp4" />
             </video>
+            {/* Mobile Video */}
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={videoPoster}
+              className="absolute inset-0 w-full h-full object-cover md:hidden"
+            >
+              <source src={mobileVideoUrl} type="video/mp4" />
+            </video>
           </>
         ) : (
-          <Image
-            src={imageUrl}
-            alt="בלאנו רהיטי מעצבים"
-            fill
-            className="object-cover"
-            priority
-          />
+          <>
+            {/* Desktop Image */}
+            <Image
+              src={imageUrl}
+              alt="בלאנו רהיטי מעצבים"
+              fill
+              className="object-cover hidden md:block"
+              priority
+            />
+            {/* Mobile Image */}
+            <Image
+              src={mobileImageUrl}
+              alt="בלאנו רהיטי מעצבים"
+              fill
+              className="object-cover md:hidden"
+              priority
+            />
+          </>
         )}
         {/* Overlay */}
         <div className={`absolute inset-0 ${overlayClass}`} />
