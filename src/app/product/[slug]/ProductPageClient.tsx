@@ -344,18 +344,24 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
                   {allImages.map((img, index) => (
                     <div
                       key={index}
-                      onClick={() => {
-                        console.log('Thumbnail clicked:', index);
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
                         setSelectedImage(index);
+                      }}
+                      onMouseDown={(e) => {
+                        // Prevent drag/scroll from triggering
+                        e.stopPropagation();
                       }}
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
                           setSelectedImage(index);
                         }
                       }}
-                      className={`relative aspect-square w-16 md:w-20 flex-shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer ${
+                      className={`relative aspect-square w-16 md:w-20 flex-shrink-0 rounded-xl overflow-hidden transition-all cursor-pointer select-none ${
                         selectedImage === index 
                           ? 'ring-2 ring-black ring-offset-1' 
                           : 'hover:ring-2 hover:ring-gray-300 hover:ring-offset-1'
@@ -366,8 +372,9 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
                           src={img.sourceUrl}
                           alt={img.altText || ''}
                           fill
-                          className="object-contain pointer-events-none"
+                          className="object-contain pointer-events-none select-none"
                           sizes="80px"
+                          draggable={false}
                         />
                       )}
                     </div>
