@@ -46,9 +46,9 @@ async function HeroSection() {
   const videoUrl = banner?.video || '';
   const mobileVideoUrl = banner?.mobileVideo || videoUrl; // Fallback to main video
   const videoPoster = banner?.videoPoster || imageUrl;
-  const title = banner?.title || 'עיצוב שמדבר';
-  const subtitle = banner?.subtitle || 'רהיטי מעצבים לבית שלכם';
-  const buttonText = banner?.buttonText || 'DISCOVER';
+  const title = banner?.title || '';
+  const subtitle = banner?.subtitle || '';
+  const buttonText = banner?.buttonText || '';
   const buttonLink = banner?.buttonLink || '/categories';
   const textColor = banner?.textColor || 'white';
   
@@ -62,7 +62,7 @@ async function HeroSection() {
   const overlayClass = textColor === 'white' ? 'bg-black/30' : 'bg-white/30';
 
   return (
-    <section className="relative h-[70vh] md:h-[85vh] overflow-hidden">
+    <section className="relative h-[85vh] md:h-[85vh] overflow-hidden">
       {/* Background - Video or Image */}
       <div className="absolute inset-0 bg-[#f5f5f0]">
         {/* Desktop: Show video if available, otherwise image */}
@@ -113,28 +113,31 @@ async function HeroSection() {
         <div className={`absolute inset-0 ${overlayClass}`} />
       </div>
       
-      {/* Content */}
-      <div className="relative h-full flex items-center justify-center text-center">
-        <div className="max-w-3xl px-6">
-          <p className={`font-english ${textColorMuted} text-sm md:text-base tracking-[0.3em] uppercase mb-4`}>
-            BELLANO FURNITURE
-          </p>
-          <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold ${textColorClass} mb-6 leading-tight`}>
-            {title}
-            <br />
-            <span className="font-english">Quality & Style</span>
-          </h1>
-          <p className={`${textColorMuted} text-lg md:text-xl mb-8`}>
-            {subtitle}
-          </p>
-          <Link
-            href={buttonLink}
-            className={`inline-block ${textColor === 'white' ? 'bg-white text-black hover:bg-black hover:text-white' : 'bg-black text-white hover:bg-white hover:text-black'} px-8 py-4 text-sm font-medium tracking-wider transition-all duration-300`}
-          >
-            {buttonText}
-          </Link>
+      {/* Content - Only show if there's any text */}
+      {(title || subtitle || buttonText) && (
+        <div className="relative h-full flex items-center justify-center text-center">
+          <div className="max-w-3xl px-6">
+            {title && (
+              <h1 className={`text-4xl md:text-6xl lg:text-7xl font-bold ${textColorClass} mb-6 leading-tight`}>
+                {title}
+              </h1>
+            )}
+            {subtitle && (
+              <p className={`${textColorMuted} text-lg md:text-xl mb-8`}>
+                {subtitle}
+              </p>
+            )}
+            {buttonText && buttonLink && (
+              <Link
+                href={buttonLink}
+                className={`inline-block ${textColor === 'white' ? 'bg-white text-black hover:bg-black hover:text-white' : 'bg-black text-white hover:bg-white hover:text-black'} px-8 py-4 text-sm font-medium tracking-wider transition-all duration-300`}
+              >
+                {buttonText}
+              </Link>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Scroll indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
