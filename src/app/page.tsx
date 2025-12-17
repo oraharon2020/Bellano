@@ -52,6 +52,11 @@ async function HeroSection() {
   const buttonLink = banner?.buttonLink || '/categories';
   const textColor = banner?.textColor || 'white';
   
+  // Check if we have any video (desktop or mobile)
+  const hasDesktopVideo = mediaType === 'video' && videoUrl;
+  const hasMobileVideo = mediaType === 'video' && mobileVideoUrl;
+  const hasAnyVideo = hasDesktopVideo || hasMobileVideo;
+  
   const textColorClass = textColor === 'white' ? 'text-white' : 'text-black';
   const textColorMuted = textColor === 'white' ? 'text-white/90' : 'text-black/80';
   const overlayClass = textColor === 'white' ? 'bg-black/30' : 'bg-white/30';
@@ -60,51 +65,50 @@ async function HeroSection() {
     <section className="relative h-[70vh] md:h-[85vh] overflow-hidden">
       {/* Background - Video or Image */}
       <div className="absolute inset-0 bg-[#f5f5f0]">
-        {mediaType === 'video' && videoUrl ? (
-          <>
-            {/* Desktop Video */}
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster={videoPoster}
-              className="absolute inset-0 w-full h-full object-cover hidden md:block"
-            >
-              <source src={videoUrl} type="video/mp4" />
-            </video>
-            {/* Mobile Video */}
-            <video
-              autoPlay
-              muted
-              loop
-              playsInline
-              poster={videoPoster}
-              className="absolute inset-0 w-full h-full object-cover md:hidden"
-            >
-              <source src={mobileVideoUrl} type="video/mp4" />
-            </video>
-          </>
+        {/* Desktop: Show video if available, otherwise image */}
+        {hasDesktopVideo ? (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={videoPoster || imageUrl}
+            className="absolute inset-0 w-full h-full object-cover hidden md:block"
+          >
+            <source src={videoUrl} type="video/mp4" />
+          </video>
         ) : (
-          <>
-            {/* Desktop Image */}
-            <Image
-              src={imageUrl}
-              alt="בלאנו רהיטי מעצבים"
-              fill
-              className="object-cover hidden md:block"
-              priority
-            />
-            {/* Mobile Image */}
-            <Image
-              src={mobileImageUrl}
-              alt="בלאנו רהיטי מעצבים"
-              fill
-              className="object-cover md:hidden"
-              priority
-            />
-          </>
+          <Image
+            src={imageUrl}
+            alt="בלאנו רהיטי מעצבים"
+            fill
+            className="object-cover hidden md:block"
+            priority
+          />
         )}
+        
+        {/* Mobile: Show video if available, otherwise image */}
+        {hasMobileVideo ? (
+          <video
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster={videoPoster || mobileImageUrl}
+            className="absolute inset-0 w-full h-full object-cover md:hidden"
+          >
+            <source src={mobileVideoUrl} type="video/mp4" />
+          </video>
+        ) : (
+          <Image
+            src={mobileImageUrl}
+            alt="בלאנו רהיטי מעצבים"
+            fill
+            className="object-cover md:hidden"
+            priority
+          />
+        )}
+        
         {/* Overlay */}
         <div className={`absolute inset-0 ${overlayClass}`} />
       </div>
