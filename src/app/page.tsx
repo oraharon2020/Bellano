@@ -1,12 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { CategoryGrid } from '@/components/products';
-import { ProductGrid } from '@/components/products';
 import { Truck, ShieldCheck, CreditCard, Headphones } from 'lucide-react';
-import { getCategories, getProducts, transformCategory, transformProduct } from '@/lib/woocommerce';
-
-// Revalidate homepage every 5 minutes
-export const revalidate = 300;
+import { CachedCategoryGrid, CachedProductGrid } from '@/components/home/CachedGrids';
 
 const features = [
   {
@@ -31,22 +26,7 @@ const features = [
   },
 ];
 
-export default async function HomePage() {
-  let categories: any[] = [];
-  let products: any[] = [];
-
-  try {
-    const [wooCategories, wooProducts] = await Promise.all([
-      getCategories({ per_page: 10, hide_empty: true }),
-      getProducts({ per_page: 8 }),
-    ]);
-    
-    categories = wooCategories.map(transformCategory);
-    products = wooProducts.map((p) => transformProduct(p));
-  } catch (error) {
-    console.error('Error fetching data:', error);
-  }
-
+export default function HomePage() {
   return (
     <div className="flex flex-col">
       {/* Hero Section */}
@@ -90,34 +70,24 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Categories */}
-      {categories.length > 0 && (
-        <section className="py-12 md:py-16">
-          <div className="container mx-auto px-4">
-            <CategoryGrid 
-              categories={categories} 
-              title="הקולקציות הנבחרות שלנו" 
-            />
-          </div>
-        </section>
-      )}
+      {/* Categories - Client side with browser cache */}
+      <section className="py-12 md:py-16">
+        <div className="container mx-auto px-4">
+          <CachedCategoryGrid />
+        </div>
+      </section>
 
-      {/* Best Sellers */}
-      {products.length > 0 && (
-        <section className="py-12 md:py-16 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <ProductGrid 
-              products={products} 
-              title="המוצרים הנמכרים שלנו" 
-            />
-            <div className="text-center mt-8">
-              <Button variant="outline" size="lg" asChild>
-                <Link href="/categories">לכל המוצרים</Link>
-              </Button>
-            </div>
+      {/* Best Sellers - Client side with browser cache */}
+      <section className="py-12 md:py-16 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <CachedProductGrid />
+          <div className="text-center mt-8">
+            <Button variant="outline" size="lg" asChild>
+              <Link href="/categories">לכל המוצרים</Link>
+            </Button>
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Style Comparison Section */}
       <section className="py-12 md:py-16">
