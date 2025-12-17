@@ -112,7 +112,7 @@ async function CategoriesSection() {
 // Best Sellers Section
 async function BestSellersSection() {
   const wooProducts = await getProducts({ per_page: 8, orderby: 'popularity' });
-  const products = wooProducts.map(transformProduct);
+  const products = wooProducts.map((product) => transformProduct(product));
 
   return (
     <section className="py-16 md:py-24 bg-[#f8f8f6]">
