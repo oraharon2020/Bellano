@@ -253,8 +253,8 @@ async function CategoriesSection() {
               href={`/category/${category.slug}`}
               className="group relative"
             >
-              {/* Card Container */}
-              <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-500">
+              {/* Card Container - Square with one sharp corner */}
+              <div className="relative aspect-square overflow-hidden rounded-2xl rounded-bl-none bg-white shadow-sm hover:shadow-xl transition-all duration-500">
                 {/* Background Image */}
                 {category.image && (
                   <Image
@@ -346,8 +346,8 @@ async function BestSellersSection() {
                 href={`/product/${product.slug}`}
                 className="group flex-shrink-0 w-[70vw] md:w-auto"
               >
-                {/* Image Container */}
-                <div className="relative aspect-[3/4] overflow-hidden bg-[#f5f5f0] mb-4">
+                {/* Image Container - Square with one sharp corner */}
+                <div className="relative aspect-square overflow-hidden bg-[#f5f5f0] mb-4 rounded-2xl rounded-tr-none">
                   {product.image && (
                     <Image
                       src={product.image.sourceUrl}
@@ -358,7 +358,7 @@ async function BestSellersSection() {
                     />
                   )}
                   {product.onSale && (
-                    <span className="absolute top-4 right-4 bg-black text-white text-[10px] font-english tracking-wider px-3 py-1.5">
+                    <span className="absolute top-4 right-4 bg-black text-white text-[10px] font-english tracking-wider px-3 py-1.5 rounded-lg rounded-tr-none">
                       SALE
                     </span>
                   )}
@@ -393,17 +393,22 @@ async function BestSellersSection() {
   );
 }
 
-// Custom Furniture Section - NEW!
+// Custom Furniture Section
+// To change image: Replace /public/images/homepage/custom-furniture.jpg
 function CustomFurnitureSection() {
+  // Image loaded from: public/images/homepage/custom-furniture.jpg
+  // Just replace that file to change the image!
+  const customFurnitureImage = "/images/homepage/custom-furniture.jpg";
+  
   return (
     <section className="py-20 md:py-28 bg-[#f8f7f5]">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Image Side */}
           <div className="relative">
-            <div className="aspect-[4/3] relative overflow-hidden">
+            <div className="aspect-[4/3] relative overflow-hidden rounded-2xl rounded-br-none">
               <Image
-                src="https://bellano.co.il/wp-content/uploads/2024/06/custom-furniture.jpg"
+                src={customFurnitureImage}
                 alt="התאמה אישית"
                 fill
                 className="object-cover"
@@ -574,16 +579,22 @@ function NewsletterSection() {
   );
 }
 
-// Instagram Section - NEW!
+// Instagram Section
+// To update images: Replace files in /public/images/instagram/
+// Files: 1.jpg, 2.jpg, 3.jpg, 4.jpg, 5.jpg, 6.jpg
 function InstagramSection() {
+  // Images loaded from: public/images/instagram/1.jpg through 6.jpg
+  // Just replace those files to change the images!
   const instagramImages = [
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-1.jpg',
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-2.jpg',
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-3.jpg',
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-4.jpg',
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-5.jpg',
-    'https://bellano.co.il/wp-content/uploads/2024/06/insta-6.jpg',
+    '/images/instagram/1.jpg',
+    '/images/instagram/2.jpg',
+    '/images/instagram/3.jpg',
+    '/images/instagram/4.jpg',
+    '/images/instagram/5.jpg',
+    '/images/instagram/6.jpg',
   ];
+  
+  const instagramHandle = 'bellano.decor';
 
   return (
     <section className="py-16 md:py-20">
@@ -591,14 +602,14 @@ function InstagramSection() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <div>
             <p className="font-english text-gray-400 text-xs tracking-[0.3em] uppercase mb-3">
-              @BELLANO.CO.IL
+              @{instagramHandle.toUpperCase()}
             </p>
             <h2 className="text-3xl md:text-4xl font-light">
               עקבו <span className="font-bold">אחרינו</span>
             </h2>
           </div>
           <a 
-            href="https://instagram.com/bellano.co.il" 
+            href={`https://instagram.com/${instagramHandle}`}
             target="_blank"
             rel="noopener noreferrer"
             className="mt-4 md:mt-0 inline-flex items-center gap-2 text-sm text-gray-600 hover:text-black transition-colors group"
@@ -617,7 +628,7 @@ function InstagramSection() {
         {instagramImages.map((img, index) => (
           <a
             key={index}
-            href="https://instagram.com/bellano.co.il"
+            href={`https://instagram.com/${instagramHandle}`}
             target="_blank"
             rel="noopener noreferrer"
             className="relative aspect-square overflow-hidden group bg-[#f5f5f0]"
