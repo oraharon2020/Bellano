@@ -512,7 +512,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             <AdminProductFields
               basePrice={parseFloat(product.price?.replace(/[^\d.]/g, '') || '0')}
               variationPrice={selectedVariation ? parseFloat(selectedVariation.price || '0') : undefined}
-              productImage={product.image?.src || product.galleryImages?.[0]?.src}
+              productImage={product.image?.sourceUrl || product.galleryImages?.[0]?.sourceUrl}
               productName={product.name}
               onPriceChange={(newPrice, data) => {
                 setAdminPrice(newPrice);
