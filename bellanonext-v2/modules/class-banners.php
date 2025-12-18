@@ -146,8 +146,9 @@ class Bellano_Banners {
                                 <option value="english" <?php selected($banner['titleFont'] ?? '', 'english'); ?>>אנגלית (Amandine)</option>
                             </select>
                             <select name="bellano_banners[<?php echo $index; ?>][titleWeight]">
-                                <option value="normal" <?php selected($banner['titleWeight'] ?? '', 'normal'); ?>>רגיל</option>
-                                <option value="bold" <?php selected($banner['titleWeight'] ?? 'bold', 'bold'); ?>>בולט</option>
+                                <option value="light" <?php selected($banner['titleWeight'] ?? '', 'light'); ?>>דק (300)</option>
+                                <option value="normal" <?php selected($banner['titleWeight'] ?? '', 'normal'); ?>>רגיל (400)</option>
+                                <option value="bold" <?php selected($banner['titleWeight'] ?? 'bold', 'bold'); ?>>בולט (700)</option>
                             </select>
                         </td>
                     </tr>
@@ -159,6 +160,11 @@ class Bellano_Banners {
                                 <option value="hebrew" <?php selected($banner['subtitleFont'] ?? 'hebrew', 'hebrew'); ?>>עברית</option>
                                 <option value="english" <?php selected($banner['subtitleFont'] ?? '', 'english'); ?>>אנגלית</option>
                             </select>
+                            <select name="bellano_banners[<?php echo $index; ?>][subtitleWeight]">
+                                <option value="light" <?php selected($banner['subtitleWeight'] ?? '', 'light'); ?>>דק (300)</option>
+                                <option value="normal" <?php selected($banner['subtitleWeight'] ?? 'normal', 'normal'); ?>>רגיל (400)</option>
+                                <option value="bold" <?php selected($banner['subtitleWeight'] ?? '', 'bold'); ?>>בולט (700)</option>
+                            </select>
                         </td>
                     </tr>
                     <tr>
@@ -166,6 +172,15 @@ class Bellano_Banners {
                         <td>
                             <input type="text" name="bellano_banners[<?php echo $index; ?>][buttonText]" value="<?php echo esc_attr($banner['buttonText'] ?? ''); ?>" placeholder="טקסט" style="width: 150px;">
                             <input type="text" name="bellano_banners[<?php echo $index; ?>][buttonLink]" value="<?php echo esc_attr($banner['buttonLink'] ?? ''); ?>" placeholder="קישור" style="width: 200px;">
+                            <select name="bellano_banners[<?php echo $index; ?>][buttonFont]">
+                                <option value="hebrew" <?php selected($banner['buttonFont'] ?? 'hebrew', 'hebrew'); ?>>עברית</option>
+                                <option value="english" <?php selected($banner['buttonFont'] ?? '', 'english'); ?>>אנגלית</option>
+                            </select>
+                            <select name="bellano_banners[<?php echo $index; ?>][buttonWeight]">
+                                <option value="light" <?php selected($banner['buttonWeight'] ?? '', 'light'); ?>>דק (300)</option>
+                                <option value="normal" <?php selected($banner['buttonWeight'] ?? 'normal', 'normal'); ?>>רגיל (400)</option>
+                                <option value="bold" <?php selected($banner['buttonWeight'] ?? '', 'bold'); ?>>בולט (700)</option>
+                            </select>
                         </td>
                     </tr>
                     <tr>
