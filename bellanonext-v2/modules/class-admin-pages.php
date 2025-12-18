@@ -21,7 +21,7 @@ class Bellano_Admin_Pages {
     }
     
     public function render_admin_page() {
-        $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'banners';
+        $active_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'homepage';
         $plugin = Bellano_Settings::get_instance();
         ?>
         <div class="wrap bellano-admin" dir="rtl">
@@ -30,6 +30,9 @@ class Bellano_Admin_Pages {
             <?php $this->render_styles(); ?>
             
             <nav class="bellano-tabs">
+                <a href="?page=bellano-settings&tab=homepage" class="<?php echo $active_tab === 'homepage' ? 'active' : ''; ?>">
+                    🏠 עריכת דף בית
+                </a>
                 <a href="?page=bellano-settings&tab=banners" class="<?php echo $active_tab === 'banners' ? 'active' : ''; ?>">
                     🖼️ באנרים
                 </a>
@@ -49,6 +52,9 @@ class Bellano_Admin_Pages {
             
             <?php
             switch ($active_tab) {
+                case 'homepage':
+                    $this->render_homepage_tab();
+                    break;
                 case 'faq':
                     $plugin->faq->render_tab();
                     break;
@@ -66,6 +72,190 @@ class Bellano_Admin_Pages {
             }
             ?>
         </div>
+        <?php
+    }
+    
+    /**
+     * Render Homepage Edit Tab
+     */
+    public function render_homepage_tab() {
+        $featured_ids = get_option('bellano_featured_categories', array());
+        
+        // Get all product categories
+        $categories = get_terms(array(
+            'taxonomy' => 'product_cat',
+            'hide_empty' => false,
+            'parent' => 0,
+        ));
+        ?>
+        <div class="bellano-card">
+            <h2>🏷️ קטגוריות מומלצות</h2>
+            <p class="description">בחרו עד 8 קטגוריות שיוצגו בסקציית "מה אתם מחפשים?" בעמוד הבית. גררו לשינוי הסדר.</p>
+            
+            <div class="categories-container" style="display: flex; gap: 30px; margin-top: 20px;">
+                <!-- Available Categories -->
+                <div class="available-categories" style="flex: 1;">
+                    <h4 style="margin-bottom: 10px;">קטגוריות זמינות</h4>
+                    <div id="available-list" style="background: #f9f9f9; padding: 15px; border-radius: 8px; min-height: 200px; border: 2px dashed #ddd;">
+                        <?php foreach ($categories as $cat): 
+                            if (in_array($cat->term_id, $featured_ids)) continue;
+                            $thumbnail_id = get_term_meta($cat->term_id, 'thumbnail_id', true);
+                            $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
+                        ?>
+                        <div class="category-item" data-id="<?php echo esc_attr($cat->term_id); ?>" 
+                             style="background: white; padding: 10px 12px; margin-bottom: 6px; border-radius: 6px; cursor: move; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e5e5;">
+                            <?php if ($image_url): ?>
+                            <img src="<?php echo esc_url($image_url); ?>" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;">
+                            <?php else: ?>
+                            <div style="width: 36px; height: 36px; background: #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px;">📷</div>
+                            <?php endif; ?>
+                            <span style="flex: 1; font-weight: 500;"><?php echo esc_html($cat->name); ?></span>
+                            <span style="color: #999; font-size: 11px;"><?php echo $cat->count; ?> מוצרים</span>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+                
+                <!-- Featured Categories -->
+                <div class="featured-categories" style="flex: 1;">
+                    <h4 style="margin-bottom: 10px;">✓ קטגוריות נבחרות (עד 8)</h4>
+                    <div id="featured-list" style="background: #e8f5e9; padding: 15px; border-radius: 8px; min-height: 200px; border: 2px dashed #4CAF50;">
+                        <?php foreach ($featured_ids as $cat_id): 
+                            $cat = get_term($cat_id, 'product_cat');
+                            if (!$cat || is_wp_error($cat)) continue;
+                            $thumbnail_id = get_term_meta($cat->term_id, 'thumbnail_id', true);
+                            $image_url = $thumbnail_id ? wp_get_attachment_image_url($thumbnail_id, 'thumbnail') : '';
+                        ?>
+                        <div class="category-item" data-id="<?php echo esc_attr($cat->term_id); ?>" 
+                             style="background: white; padding: 10px 12px; margin-bottom: 6px; border-radius: 6px; cursor: move; display: flex; align-items: center; gap: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #4CAF50;">
+                            <?php if ($image_url): ?>
+                            <img src="<?php echo esc_url($image_url); ?>" style="width: 36px; height: 36px; object-fit: cover; border-radius: 4px;">
+                            <?php else: ?>
+                            <div style="width: 36px; height: 36px; background: #ddd; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #999; font-size: 12px;">📷</div>
+                            <?php endif; ?>
+                            <span style="flex: 1; font-weight: 500;"><?php echo esc_html($cat->name); ?></span>
+                            <span style="color: #999; font-size: 11px;"><?php echo $cat->count; ?> מוצרים</span>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; align-items: center; gap: 15px;">
+                <button type="button" id="save-featured-categories" class="button button-primary">
+                    💾 שמור קטגוריות
+                </button>
+                <span id="save-status"></span>
+            </div>
+        </div>
+        
+        <!-- Preview -->
+        <div class="bellano-card">
+            <h2>👁️ תצוגה מקדימה</h2>
+            <p class="description">כך הקטגוריות יוצגו בעמוד הבית (2 בשורה במובייל, 4 בשורה בדסקטופ)</p>
+            <div id="preview-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 15px; max-width: 800px;">
+                <!-- Will be populated by JS -->
+            </div>
+        </div>
+        
+        <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+        <script>
+        jQuery(document).ready(function($) {
+            // Initialize Sortable for both lists
+            new Sortable(document.getElementById('available-list'), {
+                group: 'categories',
+                animation: 150,
+                ghostClass: 'sortable-ghost'
+            });
+            
+            new Sortable(document.getElementById('featured-list'), {
+                group: 'categories',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onAdd: function(evt) {
+                    var items = evt.to.querySelectorAll('.category-item');
+                    if (items.length > 8) {
+                        evt.from.appendChild(evt.item);
+                        alert('ניתן לבחור עד 8 קטגוריות');
+                    }
+                    updatePreview();
+                },
+                onSort: function() {
+                    updatePreview();
+                },
+                onRemove: function() {
+                    updatePreview();
+                }
+            });
+            
+            function updatePreview() {
+                var items = $('#featured-list .category-item');
+                var preview = $('#preview-grid');
+                preview.empty();
+                
+                items.each(function() {
+                    var img = $(this).find('img').attr('src') || '';
+                    var name = $(this).find('span').first().text();
+                    
+                    var bgStyle = img ? 
+                        'background: linear-gradient(to top, rgba(0,0,0,0.7), transparent), url(' + img + ') center/cover;' : 
+                        'background: linear-gradient(to top, rgba(0,0,0,0.7), #ccc);';
+                    
+                    preview.append(
+                        '<div style="aspect-ratio: 3/4; ' + bgStyle + ' border-radius: 8px; display: flex; align-items: flex-end; padding: 10px;">' +
+                        '<span style="color: white; font-weight: bold; font-size: 13px;">' + name + '</span>' +
+                        '</div>'
+                    );
+                });
+                
+                if (items.length === 0) {
+                    preview.html('<p style="grid-column: 1/-1; color: #999; text-align: center;">גררו קטגוריות לרשימה הנבחרת כדי לראות תצוגה מקדימה</p>');
+                }
+            }
+            
+            updatePreview();
+            
+            $('#save-featured-categories').on('click', function() {
+                var button = $(this);
+                var status = $('#save-status');
+                
+                button.prop('disabled', true).html('⏳ שומר...');
+                
+                var categories = [];
+                $('#featured-list .category-item').each(function() {
+                    categories.push($(this).data('id'));
+                });
+                
+                $.ajax({
+                    url: ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: 'bellano_save_featured_categories',
+                        nonce: '<?php echo wp_create_nonce('bellano_featured_categories'); ?>',
+                        categories: categories
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            status.html('<span style="color: #4CAF50;">✓ ' + response.data + '</span>');
+                        } else {
+                            status.html('<span style="color: #f44336;">✗ ' + response.data + '</span>');
+                        }
+                        button.prop('disabled', false).html('💾 שמור קטגוריות');
+                        setTimeout(function() { status.html(''); }, 3000);
+                    },
+                    error: function() {
+                        status.html('<span style="color: #f44336;">✗ שגיאה בשמירה</span>');
+                        button.prop('disabled', false).html('💾 שמור קטגוריות');
+                    }
+                });
+            });
+        });
+        </script>
+        
+        <style>
+            .sortable-ghost { opacity: 0.4; background: #c8ebfb !important; }
+            .category-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important; }
+        </style>
         <?php
     }
     
