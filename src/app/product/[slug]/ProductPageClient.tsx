@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -94,6 +94,11 @@ interface ProductAttribute {
   options: string[];
 }
 
+interface FAQItem {
+  question: string;
+  answer: string;
+}
+
 interface ProductPageClientProps {
   product: {
     id: string;
@@ -113,11 +118,13 @@ interface ProductPageClientProps {
     };
   };
   variations?: WooVariation[];
+  faqs?: FAQItem[];
 }
 
-export function ProductPageClient({ product, variations = [] }: ProductPageClientProps) {
+export function ProductPageClient({ product, variations = [], faqs = [] }: ProductPageClientProps) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
   const thumbnailsRef = useRef<HTMLDivElement>(null);
 
@@ -582,6 +589,43 @@ export function ProductPageClient({ product, variations = [] }: ProductPageClien
             )}
           </div>
         </div>
+
+        {/* FAQ Section */}
+        {faqs && faqs.length > 0 && (
+          <div className="mt-8 md:mt-12 border-t pt-6 md:pt-8">
+            <div className="flex items-center gap-2 mb-6">
+              <HelpCircle className="w-5 h-5 text-gray-400" />
+              <h2 className="text-lg font-medium">שאלות נפוצות</h2>
+            </div>
+            
+            <div className="space-y-3 max-w-3xl">
+              {faqs.map((faq, index) => (
+                <div 
+                  key={index}
+                  className="border border-gray-200 rounded-lg overflow-hidden"
+                >
+                  <button
+                    className="w-full flex items-center justify-between p-4 text-right hover:bg-gray-50 transition-colors"
+                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  >
+                    <span className="font-medium text-sm">{faq.question}</span>
+                    <ChevronDown 
+                      className={`w-4 h-4 text-gray-400 transition-transform ${
+                        openFaq === index ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  
+                  {openFaq === index && (
+                    <div className="px-4 pb-4 text-sm text-gray-600 leading-relaxed border-t border-gray-100 pt-3">
+                      {faq.answer}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

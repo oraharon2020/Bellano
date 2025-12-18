@@ -6,6 +6,50 @@ interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
 
+// Default FAQs template (fallback if API fails)
+const defaultFaqs = [
+  {
+    question: 'מה זמן האספקה?',
+    answer: 'זמן האספקה הוא בין 14-21 ימי עסקים, בהתאם לזמינות במלאי וסוג המוצר.'
+  },
+  {
+    question: 'מה האחריות על המוצר?',
+    answer: 'אחריות של שנה מיום הקנייה על פגמים במבנה ובייצור. האחריות אינה כוללת בלאי טבעי או נזק שנגרם משימוש לא נכון.'
+  },
+  {
+    question: 'האם המוצר מגיע מורכב?',
+    answer: 'חלק מהמוצרים מגיעים מורכבים וחלקם דורשים הרכבה קלה. הוראות הרכבה מפורטות מצורפות לאריזה. ניתן להזמין שירות הרכבה בתוספת תשלום.'
+  },
+  {
+    question: 'מה מדיניות ההחזרות?',
+    answer: 'ניתן להחזיר את המוצר תוך 14 יום מיום הקבלה, כל עוד המוצר באריזתו המקורית ולא נעשה בו שימוש.'
+  },
+  {
+    question: 'האם המשלוח כולל הכנסה לבית?',
+    answer: 'כן, המשלוח כולל הובלה והכנסה לבית עד לקומה השלישית ללא מעלית, או לכל קומה עם מעלית.'
+  },
+];
+
+// Fetch product FAQs from WordPress
+async function getProductFaqs(productId: number) {
+  try {
+    const response = await fetch(
+      `https://bellano.co.il/wp-json/bellano/v1/product-faq/${productId}`,
+      { next: { revalidate: 300 } }
+    );
+    
+    if (!response.ok) {
+      return defaultFaqs;
+    }
+    
+    const data = await response.json();
+    return data.faqs && data.faqs.length > 0 ? data.faqs : defaultFaqs;
+  } catch (error) {
+    console.error('Error fetching product FAQs:', error);
+    return defaultFaqs;
+  }
+}
+
 // Force dynamic rendering - no static generation
 export const dynamic = 'force-dynamic';
 
@@ -60,8 +104,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
     
     const product = transformProduct(wooProduct, variations);
+    
+    // Fetch FAQs for this product
+    const faqs = await getProductFaqs(wooProduct.id);
 
-    return <ProductPageClient product={product} variations={variations} />;
+    return <ProductPageClient product={product} variations={variations} faqs={faqs} />;
   } catch (error) {
     console.error('Error fetching product:', error);
     notFound();
