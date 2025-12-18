@@ -632,26 +632,64 @@ export default function CheckoutPage() {
               {(paymentMethod === 'credit_card' || paymentMethod === 'apple_pay') && (
                 <div className="bg-white rounded-lg shadow-sm p-6">
                   <h2 className="text-lg font-bold mb-4">מספר תשלומים</h2>
-                  <div className="flex flex-wrap gap-2">
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                  
+                  {/* Quick Options */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    {[
+                      { num: 1, label: 'תשלום אחד', sublabel: 'ללא ריבית' },
+                      { num: 3, label: '3 תשלומים', sublabel: formatPrice(getTotal() / 3) + ' לחודש' },
+                      { num: 6, label: '6 תשלומים', sublabel: formatPrice(getTotal() / 6) + ' לחודש' },
+                    ].map(({ num, label, sublabel }) => (
                       <button
                         key={num}
                         type="button"
                         onClick={() => setSelectedPayments(num)}
-                        className={`px-4 py-2 border rounded-lg transition-colors ${
+                        className={`p-4 border-2 rounded-xl transition-all text-center ${
                           selectedPayments === num
-                            ? 'border-black bg-black text-white'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
                       >
-                        {num === 1 ? 'תשלום אחד' : `${num} תשלומים`}
+                        <div className={`font-bold text-lg ${selectedPayments === num ? 'text-primary' : 'text-gray-900'}`}>
+                          {label}
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">{sublabel}</div>
                       </button>
                     ))}
                   </div>
+                  
+                  {/* Custom Selection Dropdown */}
+                  <div className="relative">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      או בחר מספר תשלומים אחר:
+                    </label>
+                    <select
+                      value={selectedPayments}
+                      onChange={(e) => setSelectedPayments(Number(e.target.value))}
+                      className="w-full p-3 border border-gray-200 rounded-lg bg-white appearance-none cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                        <option key={num} value={num}>
+                          {num === 1 
+                            ? 'תשלום אחד - ללא ריבית' 
+                            : `${num} תשלומים - ${formatPrice(getTotal() / num)} לחודש`
+                          }
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute left-3 top-[calc(50%+10px)] -translate-y-1/2 pointer-events-none">
+                      <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
+                  
+                  {/* Selected Summary */}
                   {selectedPayments > 1 && (
-                    <p className="mt-3 text-sm text-gray-500">
-                      {selectedPayments} תשלומים של {formatPrice(getTotal() / selectedPayments)}
-                    </p>
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                      <span className="text-gray-600">סה״כ לחודש:</span>
+                      <span className="text-lg font-bold text-primary">{formatPrice(getTotal() / selectedPayments)}</span>
+                    </div>
                   )}
                 </div>
               )}
