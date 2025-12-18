@@ -737,9 +737,28 @@ export default function CheckoutPage() {
                             </p>
                           )}
                           {item.adminFields && (
-                            <div className="text-xs text-blue-600 mt-1">
+                            <div className="text-xs text-blue-600 mt-1 space-y-0.5 bg-blue-50 p-2 rounded">
+                              {/* Dimensions */}
+                              {(item.adminFields.width || item.adminFields.depth || item.adminFields.height) && (
+                                <p className="text-blue-700">
+                                  📐 {[
+                                    item.adminFields.width && `ר: ${item.adminFields.width}`,
+                                    item.adminFields.depth && `ע: ${item.adminFields.depth}`,
+                                    item.adminFields.height && `ג: ${item.adminFields.height}`
+                                  ].filter(Boolean).join(' / ')}
+                                </p>
+                              )}
                               {item.adminFields.freeComments && <p>📝 {item.adminFields.freeComments}</p>}
-                              {item.adminFields.uploadedFileName && <p>📎 {item.adminFields.uploadedFileName}</p>}
+                              {item.adminFields.uploadedFileName && (
+                                <a 
+                                  href={item.adminFields.uploadedFile} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:underline block"
+                                >
+                                  📎 {item.adminFields.uploadedFileName}
+                                </a>
+                              )}
                             </div>
                           )}
                           
