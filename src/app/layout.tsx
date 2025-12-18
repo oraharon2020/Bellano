@@ -97,11 +97,39 @@ export default function RootLayout({
   return (
     <html lang="he" dir="rtl">
       <head>
+        {/* Favicon from WordPress */}
+        <link rel="icon" href="https://bellano.co.il/wp-content/uploads/2024/04/cropped-bellano-logo-square-32x32.webp" sizes="32x32" />
+        <link rel="icon" href="https://bellano.co.il/wp-content/uploads/2024/04/cropped-bellano-logo-square-192x192.webp" sizes="192x192" />
+        <link rel="apple-touch-icon" href="https://bellano.co.il/wp-content/uploads/2024/04/cropped-bellano-logo-square-180x180.webp" />
+        
+        {/* Facebook Domain Verification */}
+        <meta name="facebook-domain-verification" content="v0s7x4i0ko65qjr2nczfx0yoshknu0" />
+        
         {/* Preconnect to external resources */}
         <link rel="preconnect" href="https://bellano.co.il" />
         <link rel="dns-prefetch" href="https://bellano.co.il" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://www.googletagmanager.com" />
+        
+        {/* Google Tag Manager */}
+        <script
+          async
+          src="https://www.googletagmanager.com/gtag/js?id=GT-WBL97X64"
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.dataLayer = window.dataLayer || [];
+              function gtag(){dataLayer.push(arguments);}
+              gtag('js', new Date());
+              gtag('set', 'linker', {'domains': ['bellano.co.il']});
+              gtag('config', 'GT-WBL97X64');
+              gtag('config', 'AW-16598610854');
+            `,
+          }}
+        />
+        
         {/* JSON-LD Structured Data */}
         <OrganizationJsonLd />
         <WebsiteJsonLd />
