@@ -107,6 +107,13 @@ class Bellano_REST_API {
             'callback' => [$this->plugin->auth, 'admin_logout'],
             'permission_callback' => '__return_true'
         ]);
+        
+        // Upload file (admin only)
+        register_rest_route('bellano/v1', '/upload-file', [
+            'methods' => 'POST',
+            'callback' => [$this, 'upload_file'],
+            'permission_callback' => '__return_true'
+        ]);
     }
     
     public function get_homepage_data() {
@@ -139,6 +146,87 @@ class Bellano_REST_API {
     public function get_admin_upgrades() {
         return new WP_REST_Response([
             'upgrades' => $this->plugin->upgrades->get_upgrades()
+        ], 200);
+    }
+    
+    /**
+     * Upload file to WordPress media library
+     */
+    public function upload_file($request) {
+        $params = $request->get_json_params();
+        
+        $token = isset($params['token']) ? sanitize_text_field($params['token']) : '';
+        $filename = isset($params['filename']) ? sanitize_file_name($params['filename']) : '';
+        $file_type = isset($params['fileType']) ? sanitize_text_field($params['fileType']) : 'application/octet-stream';
+        $file_data = isset($params['fileData']) ? $params['fileData'] : '';
+        
+        // Verify admin token
+        if (empty($token)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'נדרש טוקן הזדהות'
+            ], 401);
+        }
+        
+        $user_id = $this->plugin->auth->verify_token($token);
+        if (!$user_id || !user_can($user_id, 'administrator')) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'אין הרשאה להעלאת קבצים'
+            ], 403);
+        }
+        
+        if (empty($filename) || empty($file_data)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'חסרים נתונים להעלאה'
+            ], 400);
+        }
+        
+        // Decode base64 file data
+        $decoded_data = base64_decode($file_data);
+        if ($decoded_data === false) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'שגיאה בפענוח הקובץ'
+            ], 400);
+        }
+        
+        // Get WordPress upload directory
+        $upload_dir = wp_upload_dir();
+        
+        // Create admin-uploads subfolder
+        $target_dir = $upload_dir['basedir'] . '/admin-uploads/' . date('Y/m');
+        if (!file_exists($target_dir)) {
+            wp_mkdir_p($target_dir);
+        }
+        
+        // Ensure unique filename
+        $target_path = $target_dir . '/' . $filename;
+        $counter = 1;
+        $path_info = pathinfo($filename);
+        while (file_exists($target_path)) {
+            $new_filename = $path_info['filename'] . '-' . $counter . '.' . ($path_info['extension'] ?? '');
+            $target_path = $target_dir . '/' . $new_filename;
+            $counter++;
+        }
+        
+        // Save file
+        $result = file_put_contents($target_path, $decoded_data);
+        if ($result === false) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'שגיאה בשמירת הקובץ'
+            ], 500);
+        }
+        
+        // Get URL
+        $file_url = str_replace($upload_dir['basedir'], $upload_dir['baseurl'], $target_path);
+        
+        return new WP_REST_Response([
+            'success' => true,
+            'url' => $file_url,
+            'filename' => basename($target_path)
         ], 200);
     }
 }

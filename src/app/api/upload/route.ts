@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il';
-const WP_USER = process.env.WP_UPLOAD_USER || 'api_upload';
-const WP_APP_PASSWORD = process.env.WP_APP_PASSWORD || '';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +12,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { success: false, message: 'לא נבחר קובץ' },
         { status: 400 }
+      );
+    }
+
+    if (!adminToken) {
+      return NextResponse.json(
+        { success: false, message: 'נדרשת הזדהות לפני העלאת קבצים' },
+        { status: 401 }
       );
     }
 
@@ -34,11 +39,27 @@ export async function POST(request: NextRequest) {
       'application/pdf',
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      // DWG files
+      'application/acad',
+      'application/x-acad',
+      'application/autocad_dwg',
+      'image/vnd.dwg',
+      'image/x-dwg',
+      'application/dwg',
+      'application/x-dwg',
+      // DXF files
+      'application/dxf',
+      'image/vnd.dxf',
+      'image/x-dxf',
     ];
 
-    if (!allowedTypes.includes(file.type)) {
+    // Also allow by extension for files that browsers might not recognize
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf', '.doc', '.docx', '.dwg', '.dxf'];
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
       return NextResponse.json(
-        { success: false, message: 'סוג קובץ לא נתמך' },
+        { success: false, message: 'סוג קובץ לא נתמך. ניתן להעלות: תמונות, PDF, Word, DWG, DXF' },
         { status: 400 }
       );
     }
@@ -52,62 +73,35 @@ export async function POST(request: NextRequest) {
     const safeName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
     const filename = `admin_upload_${timestamp}_${safeName}`;
 
-    // Upload to WordPress Media Library
-    const auth = Buffer.from(`${WP_USER}:${WP_APP_PASSWORD}`).toString('base64');
-    
-    const response = await fetch(`${WP_URL}/wp-json/wp/v2/media`, {
+    // Use our custom WordPress endpoint for upload
+    const response = await fetch(`${WP_URL}/wp-json/bellano/v1/upload-file`, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-        'Content-Type': file.type,
+        'Content-Type': 'application/json',
       },
-      body: buffer,
+      body: JSON.stringify({
+        token: adminToken,
+        filename: filename,
+        fileType: file.type || 'application/octet-stream',
+        fileData: buffer.toString('base64'),
+      }),
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('WordPress upload error:', errorText);
-      
-      // Fallback: try using admin token endpoint
-      if (adminToken) {
-        const fallbackResponse = await fetch(`${WP_URL}/wp-json/bellano/v1/upload-file`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            token: adminToken,
-            filename: filename,
-            fileType: file.type,
-            fileData: buffer.toString('base64'),
-          }),
-        });
-        
-        if (fallbackResponse.ok) {
-          const data = await fallbackResponse.json();
-          return NextResponse.json({
-            success: true,
-            url: data.url,
-            filename: data.filename,
-          });
-        }
-      }
-      
-      return NextResponse.json(
-        { success: false, message: 'שגיאה בהעלאת הקובץ' },
-        { status: 500 }
-      );
+    
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      return NextResponse.json({
+        success: true,
+        url: data.url,
+        filename: data.filename || filename,
+      });
     }
 
-    const data = await response.json();
-
-    return NextResponse.json({
-      success: true,
-      url: data.source_url,
-      mediaId: data.id,
-      filename: data.title?.rendered || filename,
-    });
+    console.error('WordPress upload error:', data);
+    return NextResponse.json(
+      { success: false, message: data.message || 'שגיאה בהעלאת הקובץ לשרת' },
+      { status: 500 }
+    );
 
   } catch (error) {
     console.error('Upload error:', error);

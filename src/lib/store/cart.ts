@@ -41,6 +41,7 @@ interface CartStore {
   isHydrated: boolean;
   isCheckingOut: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
+  updateItem: (id: string, item: Partial<CartItem>, variationId?: number) => void;
   removeItem: (id: string, variationId?: number) => void;
   updateQuantity: (id: string, quantity: number, variationId?: number) => void;
   clearCart: () => void;
@@ -95,6 +96,17 @@ export const useCartStore = create<CartStore>()(
           items: get().items.filter((i) => 
             getItemKey(i.id, i.variation?.id) !== itemKey
           ) 
+        });
+      },
+
+      updateItem: (id, updates, variationId) => {
+        const itemKey = getItemKey(id, variationId);
+        set({
+          items: get().items.map((i) =>
+            getItemKey(i.id, i.variation?.id) === itemKey 
+              ? { ...i, ...updates } 
+              : i
+          ),
         });
       },
 

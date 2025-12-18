@@ -166,4 +166,38 @@ class Bellano_Auth {
         
         return new WP_REST_Response(['success' => true], 200);
     }
+    
+    /**
+     * Verify token and return user ID (internal use)
+     * @param string $token The admin token
+     * @return int|false User ID if valid, false otherwise
+     */
+    public function verify_token($token) {
+        if (empty($token)) {
+            return false;
+        }
+        
+        // Find user with this token
+        $users = get_users([
+            'meta_key' => '_bellano_admin_token',
+            'meta_value' => $token,
+            'number' => 1
+        ]);
+        
+        if (empty($users)) {
+            return false;
+        }
+        
+        $user = $users[0];
+        
+        // Check if token expired
+        $expires = get_user_meta($user->ID, '_bellano_admin_token_expires', true);
+        if ($expires && $expires < time()) {
+            delete_user_meta($user->ID, '_bellano_admin_token');
+            delete_user_meta($user->ID, '_bellano_admin_token_expires');
+            return false;
+        }
+        
+        return $user->ID;
+    }
 }

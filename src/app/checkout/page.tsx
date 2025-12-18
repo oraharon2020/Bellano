@@ -1,9 +1,7 @@
-'use client';
-
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet } from 'lucide-react';
+import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 interface ShippingMethod {
@@ -26,7 +24,7 @@ interface CustomerData {
 type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order';
 
 export default function CheckoutPage() {
-  const { items, getTotal, clearCart, isHydrated } = useCartStore();
+  const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem } = useCartStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -701,32 +699,79 @@ export default function CheckoutPage() {
                 <h2 className="text-lg font-bold mb-4">סיכום הזמנה</h2>
                 
                 {/* Cart Items */}
-                <div className="space-y-3 mb-4 max-h-64 overflow-auto">
+                <div className="space-y-4 mb-4 max-h-96 overflow-auto">
                   {items.map((item) => (
-                    <div key={item.id + (item.variation?.id || '')} className="flex gap-3">
-                      <div className="relative w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                        {item.image?.sourceUrl ? (
-                          <Image
-                            src={item.image.sourceUrl}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <ShoppingBag className="w-6 h-6 text-gray-300" />
+                    <div key={item.id + (item.variation?.id || '')} className="border rounded-lg p-3">
+                      <div className="flex gap-3">
+                        <div className="relative w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
+                          {item.image?.sourceUrl ? (
+                            <Image
+                              src={item.image.sourceUrl}
+                              alt={item.name}
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <ShoppingBag className="w-6 h-6 text-gray-300" />
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="text-sm font-medium line-clamp-2">{item.name}</h4>
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.id, item.variation?.id)}
+                              className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                              title="הסר מוצר"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium line-clamp-2">{item.name}</h4>
-                        {item.variation && (
-                          <p className="text-xs text-gray-500">
-                            {item.variation.attributes.map((attr) => attr.value).join(' • ')}
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-500">כמות: {item.quantity}</p>
-                        <p className="text-sm font-medium">{item.price}</p>
+                          {item.variation && (
+                            <p className="text-xs text-gray-500">
+                              {item.variation.attributes.map((attr) => attr.value).join(' • ')}
+                            </p>
+                          )}
+                          {item.adminFields && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              {item.adminFields.freeComments && <p>📝 {item.adminFields.freeComments}</p>}
+                              {item.adminFields.uploadedFileName && <p>📎 {item.adminFields.uploadedFileName}</p>}
+                            </div>
+                          )}
+                          
+                          {/* Quantity Control */}
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2 border rounded">
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity - 1, item.variation?.id)}
+                                className="p-1 hover:bg-gray-100 transition-colors"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <span className="text-sm w-6 text-center">{item.quantity}</span>
+                              <button
+                                type="button"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1, item.variation?.id)}
+                                className="p-1 hover:bg-gray-100 transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <p className="text-sm font-bold">{item.price}</p>
+                          </div>
+                          
+                          {/* Edit Link */}
+                          <Link
+                            href={`/product/${item.slug}`}
+                            className="text-xs text-primary hover:underline inline-flex items-center gap-1 mt-2"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            ערוך מוצר
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   ))}

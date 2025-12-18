@@ -110,13 +110,6 @@ export function Header() {
                 </Button>
               </Link>
 
-              {/* Account */}
-              <Link href="/my-account">
-                <Button variant="ghost" size="icon">
-                  <User className="h-5 w-5" />
-                </Button>
-              </Link>
-
               {/* Cart */}
               <Button
                 variant="ghost"
