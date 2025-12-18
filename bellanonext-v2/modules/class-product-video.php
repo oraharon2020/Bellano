@@ -220,7 +220,13 @@ class Bellano_Product_Video {
     }
     
     public function save_product_video($post_id) {
-        if (!isset($_POST['bellano_video_nonce']) || !wp_verify_nonce($_POST['bellano_video_nonce'], 'bellano_product_video')) {
+        // Check nonce - but only verify if it exists (might be called from another save)
+        if (isset($_POST['bellano_video_nonce'])) {
+            if (!wp_verify_nonce($_POST['bellano_video_nonce'], 'bellano_product_video')) {
+                return;
+            }
+        } else {
+            // If nonce doesn't exist, the metabox wasn't submitted - skip
             return;
         }
         
@@ -228,9 +234,18 @@ class Bellano_Product_Video {
             return;
         }
         
+        // Check user can edit
+        if (!current_user_can('edit_post', $post_id)) {
+            return;
+        }
+        
+        // Debug log
+        error_log('Bellano Video Save - POST data: ' . print_r($_POST, true));
+        
         // Save video URL
         if (isset($_POST['bellano_product_video'])) {
             $video_url = esc_url_raw($_POST['bellano_product_video']);
+            error_log('Bellano Video Save - Video URL: ' . $video_url);
             if (!empty($video_url)) {
                 update_post_meta($post_id, '_bellano_product_video', $video_url);
             } else {

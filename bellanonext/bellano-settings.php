@@ -26,7 +26,9 @@ class Bellano_Settings {
         add_action('admin_enqueue_scripts', [$this, 'admin_scripts']);
         add_action('rest_api_init', [$this, 'register_rest_routes']);
         add_action('add_meta_boxes', [$this, 'add_product_metabox']);
+        add_action('add_meta_boxes', [$this, 'add_product_video_metabox']);
         add_action('save_post_product', [$this, 'save_product_faq']);
+        add_action('save_post_product', [$this, 'save_product_video']);
         
         // Auto-clear hooks
         add_action('update_option_bellano_banners', [$this, 'clear_homepage_cache']);
@@ -1071,6 +1073,13 @@ class Bellano_Settings {
         register_rest_route('bellano/v1', '/verify-admin-token', [
             'methods' => 'POST',
             'callback' => [$this, 'verify_admin_token'],
+            'permission_callback' => '__return_true'
+        ]);
+        
+        // Product Video
+        register_rest_route('bellano/v1', '/product-video/(?P<id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_product_video'],
             'permission_callback' => '__return_true'
         ]);
     }
