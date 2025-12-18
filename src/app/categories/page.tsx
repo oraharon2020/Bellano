@@ -11,9 +11,9 @@ export default async function CategoriesPage() {
   // Fetch real categories from WooCommerce
   const wooCategories = await getCategories({ per_page: 100, hide_empty: true });
   
-  // Filter out "uncategorized" and "sale" categories
+  // Filter out "uncategorized" category only
   const mainCategories = wooCategories.filter(
-    cat => cat.slug !== 'uncategorized' && cat.slug !== 'sale' && cat.count > 0
+    cat => cat.slug !== 'uncategorized' && cat.count > 0
   );
 
   return (
