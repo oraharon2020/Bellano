@@ -48,7 +48,7 @@ export function FloatingButtons() {
   return (
     <>
       {/* Contact Button - Right Side */}
-      <div className="fixed bottom-6 right-6 z-50">
+      <div className="fixed bottom-6 right-6 z-50 floating-buttons-container">
         {/* Contact Menu */}
         <div className={`absolute bottom-16 right-0 mb-2 transition-all duration-300 ${isContactOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <div className="bg-white rounded-2xl shadow-xl p-4 min-w-[200px] border">
@@ -105,7 +105,7 @@ export function FloatingButtons() {
       </div>
 
       {/* Accessibility Button - Left Side */}
-      <div className="fixed bottom-6 left-6 z-50">
+      <div className="fixed bottom-6 left-6 z-50 floating-buttons-container">
         {/* Accessibility Menu */}
         <div className={`absolute bottom-16 left-0 mb-2 transition-all duration-300 ${isAccessibilityOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
           <div className="bg-white rounded-2xl shadow-xl p-4 min-w-[280px] border">
@@ -214,6 +214,10 @@ export function FloatingButtons() {
         }
         .high-contrast * {
           border-color: #000 !important;
+        }
+        /* Exclude floating buttons from high contrast filter */
+        .high-contrast .floating-buttons-container {
+          filter: contrast(0.667); /* Cancel out the parent filter: 1/1.5 = 0.667 */
         }
         .highlight-links a {
           background-color: #ffff00 !important;

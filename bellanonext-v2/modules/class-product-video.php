@@ -120,19 +120,19 @@ class Bellano_Product_Video {
         <div class="bellano-video-metabox">
             <div class="field-row">
                 <label>🔗 קישור לסרטון</label>
-                <input type="text" name="bellano_product_video" id="bellano_product_video" 
+                <input type="text" name="bellano_product_video" id="bellano_video_url_field" 
                        value="<?php echo esc_attr($video_url); ?>" 
                        placeholder="https://... או העלה קובץ">
                 <p>
-                    <button type="button" class="button upload-video-btn">📤 העלה סרטון</button>
+                    <button type="button" class="button bellano-upload-video-btn">📤 העלה סרטון</button>
                     <?php if ($video_url): ?>
-                        <button type="button" class="button remove-video-btn">🗑️ הסר</button>
+                        <button type="button" class="button bellano-remove-video-btn">🗑️ הסר</button>
                     <?php endif; ?>
                 </p>
                 <p class="description">תומך ב-MP4, WebM, או קישור YouTube</p>
                 
                 <?php if ($video_url): ?>
-                    <div class="video-preview">
+                    <div class="bellano-video-preview">
                         <?php if (strpos($video_url, 'youtube.com') !== false || strpos($video_url, 'youtu.be') !== false): ?>
                             <p>✅ סרטון YouTube מוגדר</p>
                         <?php else: ?>
@@ -144,19 +144,19 @@ class Bellano_Product_Video {
             
             <div class="field-row">
                 <label>🖼️ תמונת תצוגה (Thumbnail)</label>
-                <input type="text" name="bellano_product_video_thumbnail" id="bellano_product_video_thumbnail" 
+                <input type="text" name="bellano_product_video_thumbnail" id="bellano_video_thumb_field" 
                        value="<?php echo esc_attr($video_thumbnail); ?>" 
                        placeholder="תמונה שתוצג לפני הפעלת הסרטון">
                 <p>
-                    <button type="button" class="button upload-thumbnail-btn">📤 העלה תמונה</button>
+                    <button type="button" class="button bellano-upload-thumb-btn">📤 העלה תמונה</button>
                     <?php if ($video_thumbnail): ?>
-                        <button type="button" class="button remove-thumbnail-btn">🗑️ הסר</button>
+                        <button type="button" class="button bellano-remove-thumb-btn">🗑️ הסר</button>
                     <?php endif; ?>
                 </p>
                 <p class="description">מומלץ: יחס תמונה 4:3, רזולוציה 800x600 לפחות</p>
                 
                 <?php if ($video_thumbnail): ?>
-                    <img src="<?php echo esc_url($video_thumbnail); ?>" class="media-preview thumbnail-preview">
+                    <img src="<?php echo esc_url($video_thumbnail); ?>" class="media-preview bellano-thumb-preview">
                 <?php endif; ?>
             </div>
         </div>
@@ -164,10 +164,10 @@ class Bellano_Product_Video {
         <script>
         (function($) {
             $(document).ready(function() {
-                // Upload video
-                $(document).on('click', '.upload-video-btn', function(e) {
+                // Upload video - using unique class
+                $(document).on('click', '.bellano-upload-video-btn', function(e) {
                     e.preventDefault();
-                    var $input = $('#bellano_product_video');
+                    var $input = $('#bellano_video_url_field');
                     var $container = $(this).closest('.field-row');
                     
                     var frame = wp.media({
@@ -178,26 +178,26 @@ class Bellano_Product_Video {
                     
                     frame.on('select', function() {
                         var attachment = frame.state().get('selection').first().toJSON();
-                        console.log('Video selected:', attachment.url);
+                        console.log('Bellano Video selected:', attachment.url);
                         $input.val(attachment.url);
-                        $container.find('.video-preview').remove();
-                        $container.append('<div class="video-preview"><video src="' + attachment.url + '" class="media-preview" controls style="max-width:300px;"></video></div>');
+                        $container.find('.bellano-video-preview').remove();
+                        $container.append('<div class="bellano-video-preview"><video src="' + attachment.url + '" class="media-preview" controls style="max-width:300px;"></video></div>');
                     });
                     
                     frame.open();
                 });
                 
                 // Remove video
-                $(document).on('click', '.remove-video-btn', function() {
-                    $('#bellano_product_video').val('');
-                    $(this).closest('.field-row').find('.video-preview').remove();
+                $(document).on('click', '.bellano-remove-video-btn', function() {
+                    $('#bellano_video_url_field').val('');
+                    $(this).closest('.field-row').find('.bellano-video-preview').remove();
                     $(this).remove();
                 });
                 
                 // Upload thumbnail
-                $(document).on('click', '.upload-thumbnail-btn', function(e) {
+                $(document).on('click', '.bellano-upload-thumb-btn', function(e) {
                     e.preventDefault();
-                    var $input = $('#bellano_product_video_thumbnail');
+                    var $input = $('#bellano_video_thumb_field');
                     var $container = $(this).closest('.field-row');
                     
                     var frame = wp.media({
@@ -208,19 +208,19 @@ class Bellano_Product_Video {
                     
                     frame.on('select', function() {
                         var attachment = frame.state().get('selection').first().toJSON();
-                        console.log('Thumbnail selected:', attachment.url);
+                        console.log('Bellano Thumbnail selected:', attachment.url);
                         $input.val(attachment.url);
-                        $container.find('.thumbnail-preview').remove();
-                        $container.append('<img src="' + attachment.url + '" class="media-preview thumbnail-preview" style="display:block; margin-top:10px;">');
+                        $container.find('.bellano-thumb-preview').remove();
+                        $container.append('<img src="' + attachment.url + '" class="media-preview bellano-thumb-preview" style="display:block; margin-top:10px;">');
                     });
                     
                     frame.open();
                 });
                 
                 // Remove thumbnail
-                $(document).on('click', '.remove-thumbnail-btn', function() {
-                    $('#bellano_product_video_thumbnail').val('');
-                    $(this).closest('.field-row').find('.thumbnail-preview').remove();
+                $(document).on('click', '.bellano-remove-thumb-btn', function() {
+                    $('#bellano_video_thumb_field').val('');
+                    $(this).closest('.field-row').find('.bellano-thumb-preview').remove();
                     $(this).remove();
                 });
             });
