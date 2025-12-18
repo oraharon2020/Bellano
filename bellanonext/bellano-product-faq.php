@@ -62,82 +62,93 @@ class Bellano_Product_FAQ {
      */
     public static function get_default_templates() {
         return array(
-            'imported' => array(
-                'name' => 'מוצר מיובא',
+            'standard' => array(
+                'name' => 'רהיטים מעץ (ברירת מחדל)',
                 'faqs' => array(
                     array(
-                        'question' => 'מה זמן האספקה?',
-                        'answer' => 'זמן האספקה למוצרים מיובאים הוא בין 14-21 ימי עסקים, בהתאם לזמינות במלאי.'
+                        'question' => 'זמני אספקה',
+                        'answer' => 'זמני האספקה נעים בין 12-26 ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.'
                     ),
                     array(
-                        'question' => 'מה האחריות על המוצר?',
-                        'answer' => 'אחריות של שנה מיום הקנייה על פגמים במבנה ובייצור. האחריות אינה כוללת בלאי טבעי או נזק שנגרם משימוש לא נכון.'
+                        'question' => 'אחריות המוצרים',
+                        'answer' => 'שנה אחריות מלאה על המוצר מיום הקנייה. האחריות מכסה פגמים במבנה ובייצור. האחריות אינה כוללת בלאי טבעי, נזק שנגרם משימוש לא נכון, או נזקי הובלה לאחר מסירת המוצר.'
                     ),
                     array(
-                        'question' => 'האם המוצר מגיע מורכב?',
-                        'answer' => 'המוצר מגיע ארוז ודורש הרכבה קלה. הוראות הרכבה מפורטות מצורפות לאריזה. ניתן להזמין שירות הרכבה בתוספת תשלום.'
+                        'question' => 'נקיון ותחזוקת המוצרים',
+                        'answer' => 'מומלץ לנקות את המוצר באופן קבוע עם מטלית רכה ויבשה. להסרת כתמים, השתמשו במטלית לחה עם מעט סבון עדין. הימנעו משימוש בחומרי ניקוי אגרסיביים או שוחקים. מומלץ להרחיק את המוצר ממקורות חום ישירים ומלחות גבוהה.'
                     ),
                     array(
-                        'question' => 'מה מדיניות ההחזרות?',
-                        'answer' => 'ניתן להחזיר את המוצר תוך 14 יום מיום הקבלה, כל עוד המוצר באריזתו המקורית ולא נעשה בו שימוש.'
+                        'question' => 'אפשרויות תשלום',
+                        'answer' => 'אנו מציעים מגוון אפשרויות תשלום נוחות: תשלום מאובטח בכרטיס אשראי, עד 12 תשלומים ללא ריבית, תשלום בביט או בהעברה בנקאית. כל התשלומים מאובטחים בתקן PCI DSS.'
                     ),
                     array(
-                        'question' => 'האם המשלוח כולל הכנסה לבית?',
-                        'answer' => 'כן, המשלוח כולל הובלה והכנסה לבית עד לקומה השלישית ללא מעלית, או לכל קומה עם מעלית.'
+                        'question' => 'משלוח והובלה',
+                        'answer' => 'משלוח חינם עד הבית! ההובלה כוללת הכנסה לבית עד לקומה השלישית ללא מעלית, או לכל קומה עם מעלית. נציג יתאם אתכם מועד אספקה נוח מראש.'
                     ),
                 )
             ),
-            'local' => array(
-                'name' => 'ייצור מקומי',
+            'custom' => array(
+                'name' => 'ייצור בהתאמה אישית',
                 'faqs' => array(
                     array(
-                        'question' => 'מה זמן האספקה?',
-                        'answer' => 'זמן הייצור הוא כ-21-30 ימי עסקים. המוצר מיוצר בהזמנה אישית בדיוק לפי הצבע והמידות שבחרתם.'
+                        'question' => 'זמני אספקה',
+                        'answer' => 'זמני הייצור למוצרים בהתאמה אישית הם כ-21-30 ימי עסקים. המוצר מיוצר בהזמנה אישית בדיוק לפי הצבע והמידות שבחרתם. נציג שירות יצור אתכם קשר לתיאום מועד אספקה.'
                     ),
                     array(
-                        'question' => 'מה האחריות על המוצר?',
-                        'answer' => 'אחריות של 3 שנים מיום הקנייה על המבנה והייצור. אנו גאים באיכות המוצרים שלנו ועומדים מאחוריהם.'
+                        'question' => 'אחריות המוצרים',
+                        'answer' => 'שנה אחריות מלאה על המוצר מיום הקנייה. האחריות מכסה פגמים במבנה ובייצור. אנו גאים באיכות המוצרים שלנו ועומדים מאחוריהם לאורך זמן.'
                     ),
                     array(
                         'question' => 'האם ניתן להזמין במידות מיוחדות?',
-                        'answer' => 'בהחלט! המוצר מיוצר בארץ וניתן להתאים אותו למידות ספציפיות. צרו קשר לקבלת הצעת מחיר.'
+                        'answer' => 'בהחלט! המוצר מיוצר בארץ וניתן להתאים אותו למידות ספציפיות לפי הצורך שלכם. צרו קשר לקבלת הצעת מחיר מותאמת.'
                     ),
                     array(
-                        'question' => 'מה מדיניות ההחזרות?',
-                        'answer' => 'מכיוון שהמוצר מיוצר בהזמנה אישית, לא ניתן לבטל לאחר תחילת הייצור. ניתן לבטל תוך 24 שעות מההזמנה.'
+                        'question' => 'נקיון ותחזוקת המוצרים',
+                        'answer' => 'מומלץ לנקות את המוצר באופן קבוע עם מטלית רכה ויבשה. להסרת כתמים, השתמשו במטלית לחה עם מעט סבון עדין. הימנעו משימוש בחומרי ניקוי אגרסיביים.'
                     ),
                     array(
-                        'question' => 'האם המשלוח כולל הרכבה?',
-                        'answer' => 'כן, המשלוח כולל הובלה, הכנסה והרכבה מלאה בביתכם ללא עלות נוספת.'
+                        'question' => 'אפשרויות תשלום',
+                        'answer' => 'אנו מציעים מגוון אפשרויות תשלום נוחות: תשלום מאובטח בכרטיס אשראי, עד 12 תשלומים ללא ריבית, תשלום בביט או בהעברה בנקאית.'
+                    ),
+                    array(
+                        'question' => 'משלוח והובלה',
+                        'answer' => 'משלוח חינם עד הבית! ההובלה כוללת הכנסה והרכבה מלאה בביתכם ללא עלות נוספת.'
+                    ),
+                    array(
+                        'question' => 'מדיניות ביטולים',
+                        'answer' => 'מכיוון שהמוצר מיוצר בהזמנה אישית, ניתן לבטל תוך 24 שעות מרגע ביצוע ההזמנה. לאחר תחילת הייצור לא ניתן לבטל את ההזמנה.'
                     ),
                 )
             ),
             'upholstery' => array(
-                'name' => 'ריפוד (כורסאות/ספות)',
+                'name' => 'ריפוד (כורסאות/מיטות)',
                 'faqs' => array(
                     array(
-                        'question' => 'מה זמן האספקה?',
-                        'answer' => 'זמן הייצור לפריטי ריפוד הוא כ-30-45 ימי עסקים, בהתאם לסוג הבד והמורכבות.'
+                        'question' => 'זמני אספקה',
+                        'answer' => 'זמני הייצור לפריטי ריפוד הם כ-30-45 ימי עסקים, בהתאם לסוג הבד והמורכבות. המוצר מיוצר בהזמנה אישית לפי בחירתכם.'
                     ),
                     array(
-                        'question' => 'מה האחריות על המוצר?',
-                        'answer' => 'אחריות של שנתיים על השלד והמנגנונים, ושנה על הריפוד. האחריות אינה כוללת בלאי טבעי של הבד.'
+                        'question' => 'אחריות המוצרים',
+                        'answer' => 'שנתיים אחריות על השלד והמנגנונים, ושנה על הריפוד. האחריות אינה כוללת בלאי טבעי של הבד או נזק שנגרם משימוש לא נכון.'
                     ),
                     array(
                         'question' => 'האם ניתן לבחור בד אחר?',
-                        'answer' => 'בהחלט! יש לנו מגוון רחב של בדים ועורות. מוזמנים להגיע לאולם התצוגה לראות את הדוגמאות או לבקש משלוח דוגמיות.'
+                        'answer' => 'בהחלט! יש לנו מגוון רחב של בדים ועורות. מוזמנים להגיע לאולם התצוגה לראות את הדוגמאות או לבקש משלוח דוגמיות לבית.'
                     ),
                     array(
-                        'question' => 'איך מתחזקים את הריפוד?',
-                        'answer' => 'מומלץ לנקות כתמים מיד עם מטלית לחה. לניקוי יסודי יש להשתמש בתכשיר ייעודי לבדים. הימנעו מחשיפה ישירה לשמש.'
+                        'question' => 'נקיון ותחזוקת הריפוד',
+                        'answer' => 'מומלץ לנקות כתמים מיד עם מטלית לחה. לניקוי יסודי יש להשתמש בתכשיר ייעודי לבדים. הימנעו מחשיפה ישירה לשמש ממושכת.'
                     ),
                     array(
-                        'question' => 'האם ניתן להחליף ריפוד בעתיד?',
-                        'answer' => 'כן, אנו מציעים שירות ריפוד מחדש לכל המוצרים שנרכשו אצלנו. צרו קשר לקבלת הצעת מחיר.'
+                        'question' => 'אפשרויות תשלום',
+                        'answer' => 'אנו מציעים מגוון אפשרויות תשלום נוחות: תשלום מאובטח בכרטיס אשראי, עד 12 תשלומים ללא ריבית, תשלום בביט או בהעברה בנקאית.'
+                    ),
+                    array(
+                        'question' => 'משלוח והובלה',
+                        'answer' => 'משלוח חינם עד הבית! ההובלה כוללת הכנסה והרכבה מלאה בביתכם ללא עלות נוספת.'
                     ),
                 )
             ),
-        );
     }
     
     /**
@@ -145,7 +156,7 @@ class Bellano_Product_FAQ {
      */
     public function render_admin_page() {
         $templates = get_option('bellano_faq_templates', self::get_default_templates());
-        $default_template = get_option('bellano_faq_default_template', 'imported');
+        $default_template = get_option('bellano_faq_default_template', 'standard');
         
         // Save templates
         if (isset($_POST['save_templates']) && check_admin_referer('bellano_faq_save')) {
@@ -164,8 +175,8 @@ class Bellano_Product_FAQ {
         if (isset($_POST['reset_defaults']) && check_admin_referer('bellano_faq_save')) {
             $templates = self::get_default_templates();
             update_option('bellano_faq_templates', $templates);
-            update_option('bellano_faq_default_template', 'imported');
-            $default_template = 'imported';
+            update_option('bellano_faq_default_template', 'standard');
+            $default_template = 'standard';
             echo '<div class="notice notice-success"><p>הטמפלטים אופסו לברירת המחדל!</p></div>';
         }
         ?>
@@ -356,7 +367,7 @@ class Bellano_Product_FAQ {
         wp_nonce_field('bellano_product_faq', 'bellano_faq_nonce');
         
         $templates = get_option('bellano_faq_templates', self::get_default_templates());
-        $default_template = get_option('bellano_faq_default_template', 'imported');
+        $default_template = get_option('bellano_faq_default_template', 'standard');
         
         $product_template = get_post_meta($post->ID, '_bellano_faq_template', true);
         $use_custom = get_post_meta($post->ID, '_bellano_faq_custom', true);
@@ -555,7 +566,7 @@ class Bellano_Product_FAQ {
         
         // Return template FAQs
         $templates = get_option('bellano_faq_templates', self::get_default_templates());
-        $default_template = get_option('bellano_faq_default_template', 'imported');
+        $default_template = get_option('bellano_faq_default_template', 'standard');
         $product_template = get_post_meta($product_id, '_bellano_faq_template', true);
         
         if (empty($product_template)) {
@@ -577,7 +588,7 @@ class Bellano_Product_FAQ {
      */
     public function get_faq_templates() {
         $templates = get_option('bellano_faq_templates', self::get_default_templates());
-        $default_template = get_option('bellano_faq_default_template', 'imported');
+        $default_template = get_option('bellano_faq_default_template', 'standard');
         
         return array(
             'templates' => $templates,
