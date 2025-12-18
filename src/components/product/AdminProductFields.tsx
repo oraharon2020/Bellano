@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2, Palette } from 'lucide-react';
+import { ProductDesignBoard } from './ProductDesignBoard';
 
 interface AdminFieldsData {
   width: string;
@@ -24,6 +25,8 @@ interface Upgrade {
 interface AdminFieldsProps {
   basePrice: number;
   variationPrice?: number;
+  productImage?: string;
+  productName?: string;
   onPriceChange?: (newPrice: number, data: AdminFieldsData) => void;
   onDataChange?: (data: AdminFieldsData) => void;
 }
@@ -54,6 +57,8 @@ const getAdminName = () => {
 export function AdminProductFields({ 
   basePrice, 
   variationPrice, 
+  productImage,
+  productName,
   onPriceChange,
   onDataChange 
 }: AdminFieldsProps) {
@@ -69,6 +74,7 @@ export function AdminProductFields({
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
+  const [showDesignBoard, setShowDesignBoard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<AdminFieldsData>({
@@ -579,6 +585,18 @@ export function AdminProductFields({
               </button>
             )}
 
+            {/* Design Board Button */}
+            {productImage && (
+              <button
+                type="button"
+                onClick={() => setShowDesignBoard(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                <Palette className="w-4 h-4" />
+                לוח עיצוב / סקיצה
+              </button>
+            )}
+
             {/* Price Summary */}
             <div className="border-t pt-4 space-y-2">
               <div className="flex justify-between text-sm text-gray-600">
@@ -666,6 +684,22 @@ export function AdminProductFields({
           </div>
         </>
       )}
+
+      {/* Design Board Modal */}
+      <ProductDesignBoard
+        isOpen={showDesignBoard}
+        onClose={() => setShowDesignBoard(false)}
+        productImage={productImage || ''}
+        productName={productName || 'מוצר'}
+        onSave={(imageDataUrl) => {
+          // Save design to formData as uploaded file
+          setFormData(prev => ({
+            ...prev,
+            uploadedFile: imageDataUrl,
+            uploadedFileName: `design-${Date.now()}.png`,
+          }));
+        }}
+      />
     </>
   );
 }
