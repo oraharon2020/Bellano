@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
       },
-      next: { revalidate: 60 }, // Cache for 1 minute
+      cache: 'no-store', // Don't cache search results
     });
 
     if (!response.ok) {
@@ -38,12 +38,12 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
     
-    // Simplify the response
+    // Simplify the response - WooCommerce returns images array
     const products = data.map((product: any) => ({
       id: product.id,
       name: product.name,
       slug: product.slug,
-      images: product.images || [],
+      image: product.images?.[0]?.src || product.images?.[0]?.thumbnail || '',
       price: product.price,
     }));
 
