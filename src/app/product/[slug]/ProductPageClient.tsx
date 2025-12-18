@@ -129,7 +129,6 @@ interface ProductPageClientProps {
   variations?: WooVariation[];
   faqs?: FAQItem[];
   video?: ProductVideoData | null;
-  video?: ProductVideoData | null;
 }
 
 export function ProductPageClient({ product, variations = [], faqs = [], video = null }: ProductPageClientProps) {
