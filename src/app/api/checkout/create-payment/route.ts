@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Meshulam API configuration
-// API Key is hardcoded in the Meshulam plugin
 const MESHULAM_API_KEY = 'ae67b1668109'; // Production API key from Meshulam plugin
-const MESHULAM_PAGE_CODE = '81e04dc34850'; // Page code from Meshulam plugin
+
+// Page codes for different payment methods (from WordPress)
+const PAGE_CODES = {
+  credit_card: '81e04dc34850',
+  bit: 'e10278843d0e', // Will be fetched from WordPress
+  apple_pay: 'e10278843d0e', // Will be fetched from WordPress
+  google_pay: 'e10278843d0e', // Will be fetched from WordPress
+};
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://bellano.vercel.app';
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il';
@@ -22,35 +28,46 @@ interface PaymentItem {
   sku: string;
 }
 
+type PaymentMethodType = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay';
+
 interface CreatePaymentRequest {
   order_id: number;
   amount: number;
   customer: CustomerData;
   payments: number;
   items: PaymentItem[];
+  payment_type?: PaymentMethodType;
 }
 
-// Get Meshulam user ID from WordPress
-async function getMeshulamUserId(): Promise<string> {
+// Get Meshulam user ID and page codes from WordPress
+async function getMeshulamConfig(): Promise<{ userId: string; pageCodes: typeof PAGE_CODES }> {
   try {
     const response = await fetch(`${WP_URL}/wp-json/bellano/v1/meshulam-config`);
     if (response.ok) {
       const data = await response.json();
-      return data.userId || 'e1ee96ba76032485';
+      return {
+        userId: data.userId || 'e1ee96ba76032485',
+        pageCodes: {
+          credit_card: data.pageCodes?.credit_card || PAGE_CODES.credit_card,
+          bit: data.pageCodes?.bit || PAGE_CODES.bit,
+          apple_pay: data.pageCodes?.apple_pay || PAGE_CODES.apple_pay,
+          google_pay: data.pageCodes?.google_pay || PAGE_CODES.google_pay,
+        }
+      };
     }
   } catch (error) {
     console.error('Error fetching Meshulam config:', error);
   }
-  return 'e1ee96ba76032485'; // Fallback
+  return { userId: 'e1ee96ba76032485', pageCodes: PAGE_CODES }; // Fallback
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreatePaymentRequest = await request.json();
-    const { order_id, amount, customer, payments, items } = body;
+    const { order_id, amount, customer, payments, items, payment_type = 'credit_card' } = body;
 
-    // Get user ID from WordPress (or use fallback)
-    const userId = await getMeshulamUserId();
+    // Get config from WordPress (or use fallback)
+    const config = await getMeshulamConfig();
     
     // Determine if sandbox mode (check WordPress or env)
     const isSandbox = process.env.MESHULAM_SANDBOX === 'true';
@@ -59,12 +76,15 @@ export async function POST(request: NextRequest) {
       : 'https://secure.meshulam.co.il/api/light/server/1.0/createPaymentProcess';
     
     const apiKey = isSandbox ? '305a9a777e42' : MESHULAM_API_KEY;
+    
+    // Get the correct page code for the payment method
+    const pageCode = config.pageCodes[payment_type] || PAGE_CODES.credit_card;
 
     // Build form data for Meshulam API
     const formData = new URLSearchParams();
-    formData.append('pageCode', MESHULAM_PAGE_CODE);
+    formData.append('pageCode', pageCode);
     formData.append('apiKey', apiKey);
-    formData.append('userId', userId);
+    formData.append('userId', config.userId);
     
     // Amount
     formData.append('sum', amount.toFixed(2));

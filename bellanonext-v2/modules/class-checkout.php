@@ -12,10 +12,19 @@ class Bellano_Checkout {
      * Get Meshulam configuration for Next.js checkout
      */
     public function get_meshulam_config() {
-        $userId = get_option('meshulam_bit_payment_code', '');
+        $userId = get_option('meshulam_bit_payment_code', 'e1ee96ba76032485');
+        
+        // Get page codes for each payment method
+        $pageCodes = [
+            'credit_card' => get_option('meshulam_live_pagecode', '81e04dc34850'),
+            'bit' => get_option('meshulam_bit_live_pagecode', ''),
+            'apple_pay' => get_option('meshulam_apple_live_pagecode', ''),
+            'google_pay' => get_option('meshulam_googlepay_live_pagecode', ''),
+        ];
         
         return [
             'userId' => $userId,
+            'pageCodes' => $pageCodes,
             'hasConfig' => !empty($userId),
         ];
     }
