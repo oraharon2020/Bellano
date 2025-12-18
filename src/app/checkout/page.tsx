@@ -145,20 +145,26 @@ export default function CheckoutPage() {
       }
 
       // Step 2: Get Meshulam payment URL (only for credit card)
+      // Calculate items for payment - use the cart prices
+      const paymentItems = items.map(item => ({
+        name: item.name,
+        price: parseFloat(item.price.replace(/[^\d.]/g, '')),
+        quantity: item.quantity,
+        sku: item.databaseId.toString(),
+      }));
+      
+      // Calculate total from items to ensure consistency with Meshulam
+      const calculatedTotal = paymentItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
       const paymentResponse = await fetch('/api/checkout/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           order_id: orderData.order_id,
-          amount: orderData.total,
+          amount: calculatedTotal, // Use calculated total instead of WooCommerce total
           customer: customerData,
           payments: selectedPayments,
-          items: items.map(item => ({
-            name: item.name,
-            price: parseFloat(item.price.replace(/[^\d.]/g, '')),
-            quantity: item.quantity,
-            sku: item.databaseId.toString(),
-          })),
+          items: paymentItems,
         }),
       });
 
