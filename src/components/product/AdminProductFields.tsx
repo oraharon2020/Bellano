@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Calculator, Upload, Settings } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User } from 'lucide-react';
 
 interface AdminFieldsData {
   width: string;
@@ -27,6 +27,29 @@ interface AdminFieldsProps {
   onDataChange?: (data: AdminFieldsData) => void;
 }
 
+// Helper to get/set admin token from localStorage
+const getAdminToken = () => {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('bellano_admin_token');
+};
+
+const setAdminToken = (token: string, userName: string) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('bellano_admin_token', token);
+  localStorage.setItem('bellano_admin_name', userName);
+};
+
+const clearAdminToken = () => {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('bellano_admin_token');
+  localStorage.removeItem('bellano_admin_name');
+};
+
+const getAdminName = () => {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem('bellano_admin_name') || '';
+};
+
 export function AdminProductFields({ 
   basePrice, 
   variationPrice, 
@@ -34,11 +57,16 @@ export function AdminProductFields({
   onDataChange 
 }: AdminFieldsProps) {
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminName, setAdminName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(true);
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
   const [selectedUpgrades, setSelectedUpgrades] = useState<Record<number, number>>({});
   const [showUpgradesPopup, setShowUpgradesPopup] = useState(false);
+  const [showLoginForm, setShowLoginForm] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginData, setLoginData] = useState({ username: '', password: '' });
   
   const [formData, setFormData] = useState<AdminFieldsData>({
     width: '',
@@ -56,14 +84,30 @@ export function AdminProductFields({
   useEffect(() => {
     const checkAdmin = async () => {
       try {
+        const token = getAdminToken();
+        const headers: Record<string, string> = {};
+        
+        if (token) {
+          headers['x-admin-token'] = token;
+        }
+        
         const response = await fetch('/api/auth/check-admin', {
           credentials: 'include',
+          headers,
         });
         const data = await response.json();
         setIsAdmin(data.isAdmin);
         
-        if (data.upgrades) {
-          setUpgrades(data.upgrades);
+        if (data.isAdmin) {
+          setAdminName(data.userName || getAdminName());
+          if (data.upgrades) {
+            setUpgrades(data.upgrades);
+          }
+        } else {
+          // Token might be invalid, clear it
+          if (token) {
+            clearAdminToken();
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -75,6 +119,46 @@ export function AdminProductFields({
 
     checkAdmin();
   }, []);
+
+  // Handle login
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+    setLoginLoading(true);
+    
+    try {
+      const response = await fetch('/api/auth/check-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(loginData),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setAdminToken(data.token, data.userName);
+        setIsAdmin(true);
+        setAdminName(data.userName);
+        setUpgrades(data.upgrades || []);
+        setShowLoginForm(false);
+        setLoginData({ username: '', password: '' });
+      } else {
+        setLoginError(data.message || 'שגיאה בהתחברות');
+      }
+    } catch (error) {
+      setLoginError('שגיאה בהתחברות');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
+  
+  // Handle logout
+  const handleLogout = () => {
+    clearAdminToken();
+    setIsAdmin(false);
+    setAdminName('');
+    setUpgrades([]);
+  };
 
   // Calculate total price
   const currentBasePrice = variationPrice || basePrice;
@@ -141,7 +225,88 @@ export function AdminProductFields({
   };
 
   if (isLoading) return null;
-  if (!isAdmin) return null;
+  
+  // Show login button if not admin
+  if (!isAdmin) {
+    return (
+      <>
+        <button
+          onClick={() => setShowLoginForm(true)}
+          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          <LogIn className="w-4 h-4" />
+          <span>כניסת נציג מכירות</span>
+        </button>
+        
+        {/* Login Modal */}
+        {showLoginForm && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/50 z-50"
+              onClick={() => setShowLoginForm(false)}
+            />
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-sm p-6">
+              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                כניסת נציג מכירות
+              </h3>
+              
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    שם משתמש
+                  </label>
+                  <input
+                    type="text"
+                    value={loginData.username}
+                    onChange={(e) => setLoginData(prev => ({ ...prev, username: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
+                    placeholder="שם משתמש ב-WordPress"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    סיסמה
+                  </label>
+                  <input
+                    type="password"
+                    value={loginData.password}
+                    onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
+                    placeholder="סיסמה"
+                    required
+                  />
+                </div>
+                
+                {loginError && (
+                  <p className="text-red-500 text-sm">{loginError}</p>
+                )}
+                
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    disabled={loginLoading}
+                    className="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
+                  >
+                    {loginLoading ? 'מתחבר...' : 'התחבר'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginForm(false)}
+                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </form>
+            </div>
+          </>
+        )}
+      </>
+    );
+  }
 
   return (
     <>
@@ -154,12 +319,27 @@ export function AdminProductFields({
           <div className="flex items-center gap-2">
             <Settings className="w-5 h-5 text-gray-600" />
             <span className="font-bold text-gray-800">שינוי נתונים - למנהלים</span>
+            {adminName && (
+              <span className="text-sm text-gray-500">({adminName})</span>
+            )}
           </div>
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-600" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-gray-600" />
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleLogout();
+              }}
+              className="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1"
+            >
+              <LogOut className="w-3 h-3" />
+              יציאה
+            </button>
+            {isExpanded ? (
+              <ChevronUp className="w-5 h-5 text-gray-600" />
+            ) : (
+              <ChevronDown className="w-5 h-5 text-gray-600" />
+            )}
+          </div>
         </button>
 
         {isExpanded && (
