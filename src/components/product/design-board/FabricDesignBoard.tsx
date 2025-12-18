@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { X, Download, Search, ImageIcon, Loader2, RotateCw, Trash2, Copy, FlipHorizontal, Type, ArrowRight, Square, Circle, Minus } from 'lucide-react';
+import { 
+  X, Download, Search, ImageIcon, Loader2, RotateCw, Trash2, Copy, FlipHorizontal, 
+  Type, ArrowRight, Square, Circle, Minus, Layers, Lock, Unlock, Eye, EyeOff,
+  ChevronUp, ChevronDown, Scissors, Wand2, Clipboard
+} from 'lucide-react';
 import * as fabric from 'fabric';
 
 interface ProductSearchResult {
@@ -9,6 +13,15 @@ interface ProductSearchResult {
   name: string;
   image: string;
   price: string;
+}
+
+interface LayerItem {
+  id: string;
+  name: string;
+  type: string;
+  locked: boolean;
+  visible: boolean;
+  object: fabric.FabricObject;
 }
 
 interface FabricDesignBoardProps {
@@ -37,6 +50,56 @@ export function FabricDesignBoard({
   const [textColor, setTextColor] = useState('#000000');
   const [shapeColor, setShapeColor] = useState('#000000');
   const [hasSelection, setHasSelection] = useState(false);
+  
+  // New states for advanced features
+  const [showLayers, setShowLayers] = useState(true);
+  const [layers, setLayers] = useState<LayerItem[]>([]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
+  const [isRemovingBackground, setIsRemovingBackground] = useState(false);
+  const [showCropMode, setShowCropMode] = useState(false);
+
+  // Generate unique ID for layers
+  const generateId = () => `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+  // Get descriptive name for object
+  const getObjectName = (obj: fabric.FabricObject, index: number): string => {
+    if (obj.type === 'i-text' || obj.type === 'text') {
+      const text = (obj as fabric.IText).text || '';
+      return `טקסט: ${text.substring(0, 15)}${text.length > 15 ? '...' : ''}`;
+    }
+    if (obj.type === 'image') return `תמונה ${index + 1}`;
+    if (obj.type === 'rect') return `מלבן ${index + 1}`;
+    if (obj.type === 'circle') return `עיגול ${index + 1}`;
+    if (obj.type === 'line') return `קו ${index + 1}`;
+    if (obj.type === 'path') return `חץ/צורה ${index + 1}`;
+    return `אלמנט ${index + 1}`;
+  };
+
+  // Update layers list from canvas
+  const updateLayers = useCallback(() => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const objects = canvas.getObjects();
+    const newLayers: LayerItem[] = objects
+      .filter((obj: any) => !obj.isCropRect) // Filter out crop rectangles
+      .map((obj, index) => ({
+        id: (obj as any).layerId || generateId(),
+        name: (obj as any).layerName || getObjectName(obj, index),
+        type: obj.type || 'object',
+        locked: !obj.selectable,
+        visible: obj.visible !== false,
+        object: obj
+      })).reverse();
+
+    // Store IDs on objects for consistency
+    newLayers.forEach(layer => {
+      (layer.object as any).layerId = layer.id;
+      (layer.object as any).layerName = layer.name;
+    });
+
+    setLayers(newLayers);
+  }, []);
 
   // Initialize Fabric canvas
   useEffect(() => {
@@ -47,12 +110,32 @@ export function FabricDesignBoard({
       height: 600,
       backgroundColor: '#ffffff',
       selection: true,
+      preserveObjectStacking: true,
     });
 
     // Enable controls on objects
-    canvas.on('selection:created', () => setHasSelection(true));
-    canvas.on('selection:updated', () => setHasSelection(true));
-    canvas.on('selection:cleared', () => setHasSelection(false));
+    canvas.on('selection:created', (e) => {
+      setHasSelection(true);
+      const obj = e.selected?.[0];
+      if (obj && (obj as any).layerId) {
+        setSelectedLayerId((obj as any).layerId);
+      }
+    });
+    canvas.on('selection:updated', (e) => {
+      setHasSelection(true);
+      const obj = e.selected?.[0];
+      if (obj && (obj as any).layerId) {
+        setSelectedLayerId((obj as any).layerId);
+      }
+    });
+    canvas.on('selection:cleared', () => {
+      setHasSelection(false);
+      setSelectedLayerId(null);
+    });
+
+    // Update layers when objects change
+    canvas.on('object:added', () => setTimeout(updateLayers, 50));
+    canvas.on('object:removed', () => setTimeout(updateLayers, 50));
 
     fabricRef.current = canvas;
 
@@ -66,6 +149,60 @@ export function FabricDesignBoard({
       fabricRef.current = null;
     };
   }, [isOpen, productImage]);
+
+  // Paste from clipboard
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const blob = item.getAsFile();
+          if (!blob) continue;
+
+          const reader = new FileReader();
+          reader.onload = async (event) => {
+            const dataUrl = event.target?.result as string;
+            if (dataUrl) {
+              await addImageToCanvas(dataUrl, false);
+            }
+          };
+          reader.readAsDataURL(blob);
+          break;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [isOpen]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const canvas = fabricRef.current;
+      if (!canvas) return;
+
+      // Delete key
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+        deleteSelected();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   // Search products
   const searchProducts = useCallback(async (query: string) => {
@@ -123,8 +260,91 @@ export function FabricDesignBoard({
       canvas.add(img);
       canvas.setActiveObject(img);
       canvas.renderAll();
+      updateLayers();
     } catch (error) {
       console.error('Error adding image:', error);
+    }
+  };
+
+  // Remove background from selected image
+  const removeBackground = async () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject || activeObject.type !== 'image') {
+      alert('בחר תמונה להסרת רקע');
+      return;
+    }
+
+    setIsRemovingBackground(true);
+
+    try {
+      // Dynamic import for background removal
+      const { removeBackground: removeBg } = await import('@imgly/background-removal');
+      
+      const fabricImage = activeObject as fabric.FabricImage;
+      const element = fabricImage.getElement() as HTMLImageElement;
+      
+      // Get image source
+      let imageSrc = element.src;
+      
+      // If it's a data URL, convert to blob
+      let imageBlob: Blob;
+      if (imageSrc.startsWith('data:')) {
+        const response = await fetch(imageSrc);
+        imageBlob = await response.blob();
+      } else {
+        // Fetch the image and convert to blob
+        const response = await fetch(imageSrc);
+        imageBlob = await response.blob();
+      }
+
+      // Remove background
+      const resultBlob = await removeBg(imageBlob, {
+        progress: (key, current, total) => {
+          console.log(`Processing: ${key} - ${Math.round((current / total) * 100)}%`);
+        }
+      });
+
+      // Convert result to data URL
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const newDataUrl = e.target?.result as string;
+        
+        // Create new image with removed background
+        const newImg = await fabric.FabricImage.fromURL(newDataUrl);
+        
+        // Copy properties from original
+        newImg.set({
+          left: fabricImage.left,
+          top: fabricImage.top,
+          scaleX: fabricImage.scaleX,
+          scaleY: fabricImage.scaleY,
+          angle: fabricImage.angle,
+          flipX: fabricImage.flipX,
+          flipY: fabricImage.flipY,
+          cornerStyle: 'circle',
+          cornerColor: '#7c3aed',
+          cornerStrokeColor: '#7c3aed',
+          borderColor: '#7c3aed',
+          transparentCorners: false,
+        });
+
+        // Replace old image with new one
+        canvas.remove(fabricImage);
+        canvas.add(newImg);
+        canvas.setActiveObject(newImg);
+        canvas.renderAll();
+        updateLayers();
+        setIsRemovingBackground(false);
+      };
+      reader.readAsDataURL(resultBlob);
+
+    } catch (error) {
+      console.error('Background removal error:', error);
+      alert('שגיאה בהסרת הרקע. נסה שוב.');
+      setIsRemovingBackground(false);
     }
   };
 
@@ -150,6 +370,7 @@ export function FabricDesignBoard({
     canvas.renderAll();
     setTextInput('');
     setShowTextInput(false);
+    updateLayers();
   };
 
   // Add shape
@@ -190,7 +411,6 @@ export function FabricDesignBoard({
         });
         break;
       case 'arrow':
-        // Arrow using path
         shape = new fabric.Path('M 0 10 L 80 10 L 80 0 L 100 15 L 80 30 L 80 20 L 0 20 Z', {
           left: 200,
           top: 200,
@@ -213,6 +433,7 @@ export function FabricDesignBoard({
     canvas.add(shape);
     canvas.setActiveObject(shape);
     canvas.renderAll();
+    updateLayers();
   };
 
   // Delete selected
@@ -221,9 +442,14 @@ export function FabricDesignBoard({
     if (!canvas) return;
 
     const activeObjects = canvas.getActiveObjects();
-    activeObjects.forEach(obj => canvas.remove(obj));
+    activeObjects.forEach(obj => {
+      if (obj.selectable !== false) {
+        canvas.remove(obj);
+      }
+    });
     canvas.discardActiveObject();
     canvas.renderAll();
+    updateLayers();
   };
 
   // Duplicate selected
@@ -242,6 +468,7 @@ export function FabricDesignBoard({
     canvas.add(cloned);
     canvas.setActiveObject(cloned);
     canvas.renderAll();
+    updateLayers();
   };
 
   // Rotate selected
@@ -268,10 +495,181 @@ export function FabricDesignBoard({
     canvas.renderAll();
   };
 
+  // Layer management functions
+  const toggleLayerLock = (layerId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    const newLocked = !layer.locked;
+    layer.object.set({
+      selectable: !newLocked,
+      evented: !newLocked,
+    });
+    
+    if (newLocked) {
+      canvas.discardActiveObject();
+    }
+    
+    canvas.renderAll();
+    updateLayers();
+  };
+
+  const toggleLayerVisibility = (layerId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    layer.object.set('visible', !layer.visible);
+    canvas.renderAll();
+    updateLayers();
+  };
+
+  const selectLayer = (layerId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer || layer.locked) return;
+
+    canvas.setActiveObject(layer.object);
+    canvas.renderAll();
+    setSelectedLayerId(layerId);
+  };
+
+  const moveLayerUp = (layerId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    canvas.bringObjectForward(layer.object);
+    canvas.renderAll();
+    updateLayers();
+  };
+
+  const moveLayerDown = (layerId: string) => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const layer = layers.find(l => l.id === layerId);
+    if (!layer) return;
+
+    canvas.sendObjectBackwards(layer.object);
+    canvas.renderAll();
+    updateLayers();
+  };
+
+  // Crop selected image
+  const cropSelectedImage = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const activeObject = canvas.getActiveObject();
+    if (!activeObject || activeObject.type !== 'image') {
+      alert('בחר תמונה לחיתוך');
+      return;
+    }
+
+    // Enable cropping mode
+    setShowCropMode(true);
+    
+    // Create crop rectangle overlay
+    const fabricImage = activeObject as fabric.FabricImage;
+    const imgWidth = fabricImage.width! * fabricImage.scaleX!;
+    const imgHeight = fabricImage.height! * fabricImage.scaleY!;
+    
+    const cropRect = new fabric.Rect({
+      left: fabricImage.left,
+      top: fabricImage.top,
+      width: imgWidth * 0.8,
+      height: imgHeight * 0.8,
+      fill: 'rgba(123, 58, 237, 0.2)',
+      stroke: '#7c3aed',
+      strokeWidth: 2,
+      strokeDashArray: [5, 5],
+      cornerStyle: 'circle',
+      cornerColor: '#7c3aed',
+      borderColor: '#7c3aed',
+      transparentCorners: false,
+    });
+
+    // Add custom properties
+    (cropRect as any).isCropRect = true;
+    (cropRect as any).targetImage = fabricImage;
+
+    canvas.add(cropRect);
+    canvas.setActiveObject(cropRect);
+    canvas.renderAll();
+  };
+
+  const applyCrop = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const cropRect = canvas.getObjects().find((obj: any) => obj.isCropRect) as fabric.Rect & { targetImage: fabric.FabricImage };
+    if (!cropRect || !cropRect.targetImage) {
+      setShowCropMode(false);
+      return;
+    }
+
+    const targetImage = cropRect.targetImage;
+    
+    // Calculate crop area relative to image
+    const imgLeft = targetImage.left!;
+    const imgTop = targetImage.top!;
+    const scaleX = targetImage.scaleX!;
+    const scaleY = targetImage.scaleY!;
+    
+    const cropLeft = (cropRect.left! - imgLeft) / scaleX;
+    const cropTop = (cropRect.top! - imgTop) / scaleY;
+    const cropWidth = (cropRect.width! * cropRect.scaleX!) / scaleX;
+    const cropHeight = (cropRect.height! * cropRect.scaleY!) / scaleY;
+
+    // Apply crop using clipPath
+    targetImage.set({
+      cropX: Math.max(0, cropLeft),
+      cropY: Math.max(0, cropTop),
+      width: Math.min(cropWidth, targetImage.width! - cropLeft),
+      height: Math.min(cropHeight, targetImage.height! - cropTop),
+    });
+
+    // Remove crop rectangle
+    canvas.remove(cropRect);
+    canvas.setActiveObject(targetImage);
+    canvas.renderAll();
+    setShowCropMode(false);
+    updateLayers();
+  };
+
+  const cancelCrop = () => {
+    const canvas = fabricRef.current;
+    if (!canvas) return;
+
+    const cropRect = canvas.getObjects().find((obj: any) => obj.isCropRect);
+    if (cropRect) {
+      canvas.remove(cropRect);
+      canvas.renderAll();
+    }
+    setShowCropMode(false);
+  };
+
   // Export canvas
   const handleExport = () => {
     const canvas = fabricRef.current;
     if (!canvas) return;
+
+    // Hide crop rect if visible
+    const cropRect = canvas.getObjects().find((obj: any) => obj.isCropRect);
+    if (cropRect) cropRect.set('visible', false);
+
+    canvas.discardActiveObject();
+    canvas.renderAll();
 
     const dataUrl = canvas.toDataURL({
       format: 'png',
@@ -279,13 +677,18 @@ export function FabricDesignBoard({
       multiplier: 2,
     });
 
+    // Restore crop rect
+    if (cropRect) {
+      cropRect.set('visible', true);
+      canvas.renderAll();
+    }
+
     // Download
     const link = document.createElement('a');
     link.download = `design-${productName || 'bellano'}-${Date.now()}.png`;
     link.href = dataUrl;
     link.click();
 
-    // Callback
     onSave?.(dataUrl);
   };
 
@@ -300,28 +703,36 @@ export function FabricDesignBoard({
 
   return (
     <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center" dir="rtl">
-      <div className="bg-white rounded-xl w-full h-full max-w-[95vw] max-h-[95vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-white rounded-xl w-full h-full max-w-[98vw] max-h-[98vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-l from-purple-50 to-white flex-shrink-0">
+        <div className="flex items-center justify-between p-3 border-b bg-gradient-to-l from-purple-50 to-white flex-shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-gray-800">🎨 לוח עיצוב - {productName}</h2>
+            <h2 className="text-lg font-bold text-gray-800">🎨 לוח עיצוב - {productName}</h2>
+            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">Ctrl+V להדבקת תמונה</span>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowSearch(!showSearch)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm"
             >
               <Search className="w-4 h-4" />
               הוסף מוצר
             </button>
             <button
+              onClick={() => setShowLayers(!showLayers)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors text-sm ${showLayers ? 'bg-purple-100 text-purple-700' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'}`}
+            >
+              <Layers className="w-4 h-4" />
+              שכבות
+            </button>
+            <button
               onClick={handleExport}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm"
             >
               <Download className="w-4 h-4" />
               ייצוא
             </button>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -330,7 +741,60 @@ export function FabricDesignBoard({
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
           {/* Toolbar */}
-          <div className="w-56 bg-gray-50 border-l p-4 flex flex-col gap-4 overflow-y-auto flex-shrink-0">
+          <div className="w-52 bg-gray-50 border-l p-3 flex flex-col gap-3 overflow-y-auto flex-shrink-0">
+            {/* Paste hint */}
+            <div className="bg-blue-50 rounded-lg p-2 text-xs text-blue-700 flex items-center gap-2">
+              <Clipboard className="w-4 h-4" />
+              <span>הדבק צילום מסך עם Ctrl+V</span>
+            </div>
+
+            {/* Background Removal */}
+            <div className="bg-white rounded-xl border p-3 space-y-2">
+              <h3 className="font-bold text-sm text-gray-700 mb-2">🪄 כלים מתקדמים</h3>
+              <button
+                onClick={removeBackground}
+                disabled={!hasSelection || isRemovingBackground}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+              >
+                {isRemovingBackground ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    מסיר רקע...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-4 h-4" />
+                    הסר רקע מתמונה
+                  </>
+                )}
+              </button>
+              {showCropMode ? (
+                <div className="flex gap-2">
+                  <button
+                    onClick={applyCrop}
+                    className="flex-1 px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                  >
+                    אשר חיתוך
+                  </button>
+                  <button
+                    onClick={cancelCrop}
+                    className="flex-1 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 text-sm"
+                  >
+                    בטל
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={cropSelectedImage}
+                  disabled={!hasSelection}
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-sm disabled:opacity-50"
+                >
+                  <Scissors className="w-4 h-4" />
+                  חיתוך תמונה
+                </button>
+              )}
+            </div>
+
             {/* Add Elements */}
             <div className="bg-white rounded-xl border p-3 space-y-2">
               <h3 className="font-bold text-sm text-gray-700 mb-2">➕ הוספת אלמנטים</h3>
@@ -420,21 +884,10 @@ export function FabricDesignBoard({
                   type="color"
                   value={shapeColor}
                   onChange={(e) => setShapeColor(e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer border-2"
+                  className="w-8 h-8 rounded cursor-pointer border-2"
                 />
-                <span className="text-sm text-gray-600">צבע צורות</span>
+                <span className="text-xs text-gray-600">צבע צורות</span>
               </div>
-            </div>
-
-            {/* Tips */}
-            <div className="bg-purple-50 rounded-xl p-3 text-xs text-purple-700">
-              <p className="font-bold mb-1">💡 טיפים:</p>
-              <ul className="space-y-1">
-                <li>• גרור פינות לשינוי גודל</li>
-                <li>• גרור מעגל עליון לסיבוב</li>
-                <li>• לחץ Delete למחיקה</li>
-                <li>• לחץ על אלמנט לבחירה</li>
-              </ul>
             </div>
           </div>
 
@@ -445,10 +898,97 @@ export function FabricDesignBoard({
             </div>
           </div>
 
+          {/* Layers Panel */}
+          {showLayers && (
+            <div className="w-64 border-r bg-gray-50 flex flex-col flex-shrink-0">
+              <div className="p-3 border-b bg-white flex items-center justify-between">
+                <h3 className="font-bold text-sm text-gray-700 flex items-center gap-2">
+                  <Layers className="w-4 h-4" />
+                  שכבות ({layers.length})
+                </h3>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-2">
+                {layers.length === 0 ? (
+                  <p className="text-center text-gray-500 text-sm py-8">אין שכבות</p>
+                ) : (
+                  <div className="space-y-1">
+                    {layers.map((layer, index) => (
+                      <div
+                        key={layer.id}
+                        onClick={() => selectLayer(layer.id)}
+                        className={`group flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors ${
+                          selectedLayerId === layer.id 
+                            ? 'bg-purple-100 border border-purple-300' 
+                            : 'bg-white border border-gray-200 hover:bg-gray-50'
+                        } ${layer.locked ? 'opacity-60' : ''}`}
+                      >
+                        {/* Layer icon */}
+                        <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-xs">
+                          {layer.type === 'image' && <ImageIcon className="w-4 h-4 text-gray-500" />}
+                          {(layer.type === 'i-text' || layer.type === 'text') && <Type className="w-4 h-4 text-gray-500" />}
+                          {layer.type === 'rect' && <Square className="w-4 h-4 text-gray-500" />}
+                          {layer.type === 'circle' && <Circle className="w-4 h-4 text-gray-500" />}
+                          {(layer.type === 'line' || layer.type === 'path') && <Minus className="w-4 h-4 text-gray-500" />}
+                        </div>
+                        
+                        {/* Layer name */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-gray-700 truncate">{layer.name}</p>
+                        </div>
+
+                        {/* Layer controls */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveLayerUp(layer.id); }}
+                            disabled={index === 0}
+                            className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                            title="הזז למעלה"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); moveLayerDown(layer.id); }}
+                            disabled={index === layers.length - 1}
+                            className="p-1 hover:bg-gray-200 rounded disabled:opacity-30"
+                            title="הזז למטה"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(layer.id); }}
+                            className="p-1 hover:bg-gray-200 rounded"
+                            title={layer.visible ? 'הסתר' : 'הצג'}
+                          >
+                            {layer.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 text-gray-400" />}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleLayerLock(layer.id); }}
+                            className="p-1 hover:bg-gray-200 rounded"
+                            title={layer.locked ? 'בטל נעילה' : 'נעל'}
+                          >
+                            {layer.locked ? <Lock className="w-3 h-3 text-orange-500" /> : <Unlock className="w-3 h-3" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Layer tips */}
+              <div className="p-3 border-t bg-purple-50">
+                <p className="text-xs text-purple-700">
+                  💡 נעל שכבות כדי למנוע זזה בטעות
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Search Panel */}
           {showSearch && (
-            <div className="w-80 border-r bg-gray-50 flex flex-col flex-shrink-0">
-              <div className="p-4 border-b bg-white">
+            <div className="w-72 border-r bg-gray-50 flex flex-col flex-shrink-0">
+              <div className="p-3 border-b bg-white">
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
@@ -456,19 +996,19 @@ export function FabricDesignBoard({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="חפש מוצר..."
-                    className="w-full pr-10 pl-4 py-2.5 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full pr-10 pl-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
                     autoFocus
                   />
                 </div>
               </div>
               
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-3">
                 {isSearching ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
                   </div>
                 ) : searchResults.length > 0 ? (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     {searchResults.map((product) => (
                       <button
                         key={product.id}
@@ -483,19 +1023,19 @@ export function FabricDesignBoard({
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center bg-gray-100">
-                            <ImageIcon className="w-8 h-8 text-gray-300" />
+                            <ImageIcon className="w-6 h-6 text-gray-300" />
                           </div>
                         )}
-                        <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs p-2 line-clamp-2">
+                        <div className="absolute inset-x-0 bottom-0 bg-black/60 text-white text-xs p-1.5 line-clamp-2">
                           {product.name}
                         </div>
                       </button>
                     ))}
                   </div>
                 ) : searchQuery ? (
-                  <p className="text-center text-gray-500 py-8">לא נמצאו תוצאות</p>
+                  <p className="text-center text-gray-500 py-8 text-sm">לא נמצאו תוצאות</p>
                 ) : (
-                  <p className="text-center text-gray-500 py-8">הקלד שם מוצר לחיפוש</p>
+                  <p className="text-center text-gray-500 py-8 text-sm">הקלד שם מוצר לחיפוש</p>
                 )}
               </div>
             </div>
@@ -514,6 +1054,7 @@ export function FabricDesignBoard({
                 placeholder="הקלד טקסט..."
                 className="w-full px-4 py-2 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 autoFocus
+                onKeyDown={(e) => e.key === 'Enter' && addText()}
               />
               <div className="flex items-center gap-3 mb-4">
                 <span className="text-sm">צבע:</span>
@@ -538,6 +1079,17 @@ export function FabricDesignBoard({
                   הוסף
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Background removal loading overlay */}
+        {isRemovingBackground && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-8 shadow-xl text-center">
+              <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+              <h3 className="font-bold text-lg mb-2">מסיר רקע...</h3>
+              <p className="text-gray-500 text-sm">התהליך עשוי לקחת כמה שניות</p>
             </div>
           </div>
         )}
