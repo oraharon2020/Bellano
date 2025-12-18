@@ -13,8 +13,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const wpUrl = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il';
-    const consumerKey = process.env.WC_CONSUMER_KEY;
-    const consumerSecret = process.env.WC_CONSUMER_SECRET;
+    const consumerKey = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
+    const consumerSecret = process.env.WC_CONSUMER_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET;
     
     console.log('WooCommerce config:', { 
       wpUrl, 
