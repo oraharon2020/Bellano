@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Minus, Plus, Trash2, ShoppingBag, X, Loader2 } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, X } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 export function CartSidebar() {
-  const { items, isOpen, closeCart, updateQuantity, removeItem, getTotal, isHydrated, checkout, isCheckingOut } = useCartStore();
+  const { items, isOpen, closeCart, updateQuantity, removeItem, getTotal, isHydrated } = useCartStore();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -14,10 +14,6 @@ export function CartSidebar() {
       currency: 'ILS',
       minimumFractionDigits: 0,
     }).format(price);
-  };
-
-  const handleCheckout = async () => {
-    await checkout();
   };
 
   if (!isHydrated || !isOpen) return null;
@@ -137,21 +133,14 @@ export function CartSidebar() {
                 🚚 משלוח חינם לכל הארץ!
               </div>
               
-              {/* Checkout Button */}
-              <button 
-                onClick={handleCheckout}
-                disabled={isCheckingOut}
-                className="block w-full py-3.5 bg-black text-white text-center font-medium rounded-md hover:bg-gray-800 transition-colors active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+              {/* Checkout Button - Link to Next.js checkout page */}
+              <Link 
+                href="/checkout"
+                onClick={closeCart}
+                className="block w-full py-3.5 bg-black text-white text-center font-medium rounded-md hover:bg-gray-800 transition-colors active:scale-[0.98]"
               >
-                {isCheckingOut ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    מעבר לתשלום...
-                  </span>
-                ) : (
-                  'מעבר לתשלום'
-                )}
-              </button>
+                מעבר לתשלום
+              </Link>
               
               {/* Continue Shopping */}
               <button 
