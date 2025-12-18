@@ -63,7 +63,7 @@ class Bellano_Banners {
                 .banner-header h3 { margin: 0; }
             </style>
             <div class="banner-header">
-                <h3>באנר #<span class="banner-number"><?php echo $index + 1; ?></span></h3>
+                <h3>באנר #<span class="banner-number"><?php echo is_numeric($index) ? $index + 1 : $index; ?></span></h3>
                 <button type="button" class="button remove-banner">🗑️ מחק</button>
             </div>
             <div class="banner-content">

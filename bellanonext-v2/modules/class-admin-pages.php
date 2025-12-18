@@ -83,13 +83,22 @@ class Bellano_Admin_Pages {
      */
     public function render_homepage_tab() {
         $featured_ids = get_option('bellano_featured_categories', array());
+        if (!is_array($featured_ids)) {
+            $featured_ids = array();
+        }
         
-        // Get all product categories
-        $categories = get_terms(array(
-            'taxonomy' => 'product_cat',
-            'hide_empty' => false,
-            'parent' => 0,
-        ));
+        // Get all product categories - check if WooCommerce is active
+        $categories = array();
+        if (taxonomy_exists('product_cat')) {
+            $terms = get_terms(array(
+                'taxonomy' => 'product_cat',
+                'hide_empty' => false,
+                'parent' => 0,
+            ));
+            if (!is_wp_error($terms)) {
+                $categories = $terms;
+            }
+        }
         ?>
         <div class="bellano-card">
             <h2>🏷️ קטגוריות מומלצות</h2>
