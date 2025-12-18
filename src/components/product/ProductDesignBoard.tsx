@@ -5,7 +5,8 @@ import {
   X, Search, Trash2, Download, RotateCw, 
   Type, ArrowRight, ZoomIn, ZoomOut, 
   Plus, Minus, Copy, Undo, FlipHorizontal,
-  Square, Circle, ImageIcon, ChevronUp, ChevronDown
+  Square, Circle, ImageIcon, ChevronUp, ChevronDown,
+  Crop, Droplets, Scissors, MousePointer, Eye
 } from 'lucide-react';
 
 interface DesignElement {
@@ -24,6 +25,8 @@ interface DesignElement {
   flipX?: boolean;
   flipY?: boolean;
   zIndex?: number;
+  opacity?: number;
+  originalSrc?: string;
 }
 
 interface ProductSearchResult {
@@ -32,6 +35,8 @@ interface ProductSearchResult {
   image: string;
   slug: string;
 }
+
+type ToolMode = 'select' | 'crop';
 
 interface ProductDesignBoardProps {
   isOpen: boolean;
@@ -57,6 +62,13 @@ export function ProductDesignBoard({
   const [zoom, setZoom] = useState(1);
   const [history, setHistory] = useState<DesignElement[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [toolMode, setToolMode] = useState<ToolMode>('select');
+  
+  // Crop state
+  const [isCropping, setIsCropping] = useState(false);
+  const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
+  const [cropEnd, setCropEnd] = useState({ x: 0, y: 0 });
+  const [showCropPreview, setShowCropPreview] = useState(false);
   
   // Product search
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +84,9 @@ export function ProductDesignBoard({
   // Color for shapes
   const [shapeColor, setShapeColor] = useState('#000000');
   const [shapeFill, setShapeFill] = useState('transparent');
+  
+  // Active toolbar section
+  const [activeSection, setActiveSection] = useState<string>('add');
 
   // Save to history
   const saveToHistory = useCallback((newElements: DesignElement[]) => {
@@ -100,8 +115,10 @@ export function ProductDesignBoard({
         width: 400,
         height: 300,
         src: productImage,
+        originalSrc: productImage,
         rotation: 0,
-        zIndex: 0
+        zIndex: 0,
+        opacity: 100
       }];
       setElements(initialElements);
       saveToHistory(initialElements);
@@ -120,6 +137,8 @@ export function ProductDesignBoard({
       }
       if (e.key === 'Escape') {
         setSelectedElement(null);
+        setToolMode('select');
+        setIsCropping(false);
       }
       if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
         e.preventDefault();
@@ -144,19 +163,31 @@ export function ProductDesignBoard({
     
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/products/search?q=${encodeURIComponent(query)}&per_page=20`);
-      const data = await response.json();
+      const url = `/api/products/search?q=${encodeURIComponent(query)}&per_page=20`;
+      console.log('Searching products:', url);
       
-      if (data.products) {
-        setSearchResults(data.products.map((p: any) => ({
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
+      
+      const data = await response.json();
+      console.log('Search results:', data);
+      
+      if (data.products && Array.isArray(data.products)) {
+        const results = data.products.map((p: any) => ({
           id: p.id,
           name: p.name,
           image: p.image || '',
           slug: p.slug
-        })));
+        }));
+        console.log('Mapped results:', results);
+        setSearchResults(results);
+      } else {
+        console.log('No products in response');
+        setSearchResults([]);
       }
     } catch (error) {
       console.error('Search error:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -187,8 +218,10 @@ export function ProductDesignBoard({
       width: 200,
       height: 200,
       src,
+      originalSrc: src,
       rotation: 0,
-      zIndex: getMaxZIndex() + 1
+      zIndex: getMaxZIndex() + 1,
+      opacity: 100
     };
     const newElements = [...elements, newElement];
     setElements(newElements);
@@ -209,7 +242,8 @@ export function ProductDesignBoard({
       content: textInput,
       fontSize: 24,
       color: textColor,
-      zIndex: getMaxZIndex() + 1
+      zIndex: getMaxZIndex() + 1,
+      opacity: 100
     };
     const newElements = [...elements, newElement];
     setElements(newElements);
@@ -219,74 +253,37 @@ export function ProductDesignBoard({
     setShowTextInput(false);
   };
 
-  // Add arrow
-  const addArrow = () => {
-    const newElement: DesignElement = {
-      id: `arrow-${Date.now()}`,
-      type: 'arrow',
-      x: 300,
-      y: 300,
-      width: 100,
-      rotation: 0,
+  // Add shapes
+  const addShape = (type: 'arrow' | 'line' | 'rectangle' | 'circle') => {
+    const baseProps = {
+      id: `${type}-${Date.now()}`,
+      type: type as DesignElement['type'],
+      x: 250 + Math.random() * 100,
+      y: 250 + Math.random() * 100,
       color: shapeColor,
-      zIndex: getMaxZIndex() + 1
+      zIndex: getMaxZIndex() + 1,
+      opacity: 100
     };
-    const newElements = [...elements, newElement];
-    setElements(newElements);
-    saveToHistory(newElements);
-    setSelectedElement(newElement.id);
-  };
-
-  // Add rectangle
-  const addRectangle = () => {
-    const newElement: DesignElement = {
-      id: `rect-${Date.now()}`,
-      type: 'rectangle',
-      x: 250,
-      y: 250,
-      width: 100,
-      height: 60,
-      color: shapeColor,
-      backgroundColor: shapeFill,
-      zIndex: getMaxZIndex() + 1
-    };
-    const newElements = [...elements, newElement];
-    setElements(newElements);
-    saveToHistory(newElements);
-    setSelectedElement(newElement.id);
-  };
-
-  // Add circle
-  const addCircle = () => {
-    const newElement: DesignElement = {
-      id: `circle-${Date.now()}`,
-      type: 'circle',
-      x: 300,
-      y: 300,
-      width: 80,
-      height: 80,
-      color: shapeColor,
-      backgroundColor: shapeFill,
-      zIndex: getMaxZIndex() + 1
-    };
-    const newElements = [...elements, newElement];
-    setElements(newElements);
-    saveToHistory(newElements);
-    setSelectedElement(newElement.id);
-  };
-
-  // Add line
-  const addLine = () => {
-    const newElement: DesignElement = {
-      id: `line-${Date.now()}`,
-      type: 'line',
-      x: 200,
-      y: 300,
-      width: 150,
-      rotation: 0,
-      color: shapeColor,
-      zIndex: getMaxZIndex() + 1
-    };
+    
+    let newElement: DesignElement;
+    
+    switch (type) {
+      case 'arrow':
+        newElement = { ...baseProps, width: 100, rotation: 0 };
+        break;
+      case 'line':
+        newElement = { ...baseProps, width: 150, rotation: 0 };
+        break;
+      case 'rectangle':
+        newElement = { ...baseProps, width: 100, height: 60, backgroundColor: shapeFill };
+        break;
+      case 'circle':
+        newElement = { ...baseProps, width: 80, height: 80, backgroundColor: shapeFill };
+        break;
+      default:
+        return;
+    }
+    
     const newElements = [...elements, newElement];
     setElements(newElements);
     saveToHistory(newElements);
@@ -347,6 +344,22 @@ export function ProductDesignBoard({
     saveToHistory(newElements);
   };
 
+  // Change opacity
+  const changeOpacity = (value: number) => {
+    if (!selectedElement) return;
+    
+    const newElements = elements.map(el => {
+      if (el.id !== selectedElement) return el;
+      return { ...el, opacity: value };
+    });
+    setElements(newElements);
+  };
+
+  // Save opacity to history when done dragging
+  const saveOpacityToHistory = () => {
+    saveToHistory(elements);
+  };
+
   // Move element in layer order
   const moveLayer = (direction: 'up' | 'down') => {
     if (!selectedElement) return;
@@ -369,6 +382,19 @@ export function ProductDesignBoard({
 
   // Mouse handlers for dragging
   const handleMouseDown = (e: React.MouseEvent, elementId: string) => {
+    if (toolMode === 'crop' && elements.find(el => el.id === elementId)?.type === 'image') {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (rect) {
+        const x = (e.clientX - rect.left) / zoom;
+        const y = (e.clientY - rect.top) / zoom;
+        setCropStart({ x, y });
+        setCropEnd({ x, y });
+        setIsCropping(true);
+        setSelectedElement(elementId);
+      }
+      return;
+    }
+    
     const element = elements.find(el => el.id === elementId);
     if (!element) return;
     
@@ -385,10 +411,17 @@ export function ProductDesignBoard({
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !selectedElement) return;
-    
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
+    
+    if (isCropping) {
+      const x = (e.clientX - rect.left) / zoom;
+      const y = (e.clientY - rect.top) / zoom;
+      setCropEnd({ x, y });
+      return;
+    }
+    
+    if (!isDragging || !selectedElement) return;
     
     const newX = (e.clientX - rect.left) / zoom - dragOffset.x;
     const newY = (e.clientY - rect.top) / zoom - dragOffset.y;
@@ -401,10 +434,146 @@ export function ProductDesignBoard({
   };
 
   const handleMouseUp = () => {
+    if (isCropping && selectedElement) {
+      setShowCropPreview(true);
+    }
     if (isDragging) {
       saveToHistory(elements);
     }
     setIsDragging(false);
+    setIsCropping(false);
+  };
+
+  // Apply crop
+  const applyCrop = async () => {
+    if (!selectedElement) return;
+    
+    const element = elements.find(el => el.id === selectedElement);
+    if (!element || element.type !== 'image' || !element.src) return;
+    
+    const minX = Math.min(cropStart.x, cropEnd.x);
+    const minY = Math.min(cropStart.y, cropEnd.y);
+    const maxX = Math.max(cropStart.x, cropEnd.x);
+    const maxY = Math.max(cropStart.y, cropEnd.y);
+    
+    const cropX = minX - element.x;
+    const cropY = minY - element.y;
+    const cropWidth = maxX - minX;
+    const cropHeight = maxY - minY;
+    
+    if (cropWidth < 10 || cropHeight < 10) {
+      setShowCropPreview(false);
+      return;
+    }
+    
+    try {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      const imgSrc = element.originalSrc || element.src || '';
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imgSrc;
+      });
+      
+      const scaleX = img.width / (element.width || 100);
+      const scaleY = img.height / (element.height || 100);
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = cropWidth * scaleX;
+      canvas.height = cropHeight * scaleY;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(
+          img,
+          cropX * scaleX, cropY * scaleY,
+          cropWidth * scaleX, cropHeight * scaleY,
+          0, 0,
+          canvas.width, canvas.height
+        );
+        
+        const croppedSrc = canvas.toDataURL('image/png');
+        
+        const newElements = elements.map(el => {
+          if (el.id !== selectedElement) return el;
+          return {
+            ...el,
+            src: croppedSrc,
+            x: minX,
+            y: minY,
+            width: cropWidth,
+            height: cropHeight
+          };
+        });
+        setElements(newElements);
+        saveToHistory(newElements);
+      }
+    } catch (error) {
+      console.error('Crop error:', error);
+    }
+    
+    setShowCropPreview(false);
+    setToolMode('select');
+  };
+
+  // Cancel crop
+  const cancelCrop = () => {
+    setShowCropPreview(false);
+    setToolMode('select');
+  };
+
+  // Remove background
+  const removeBackground = async () => {
+    if (!selectedElement) return;
+    
+    const element = elements.find(el => el.id === selectedElement);
+    if (!element || element.type !== 'image' || !element.src) return;
+    
+    try {
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      const imgSrc = element.src;
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = imgSrc;
+      });
+      
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      
+      if (ctx) {
+        ctx.drawImage(img, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        
+        const threshold = 240;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          
+          if (r > threshold && g > threshold && b > threshold) {
+            data[i + 3] = 0;
+          }
+        }
+        
+        ctx.putImageData(imageData, 0, 0);
+        const newSrc = canvas.toDataURL('image/png');
+        
+        const newElements = elements.map(el => {
+          if (el.id !== selectedElement) return el;
+          return { ...el, src: newSrc };
+        });
+        setElements(newElements);
+        saveToHistory(newElements);
+      }
+    } catch (error) {
+      console.error('Remove background error:', error);
+    }
   };
 
   // Resize element
@@ -449,18 +618,15 @@ export function ProductDesignBoard({
     canvas.width = 800;
     canvas.height = 600;
     
-    // White background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Sort elements by zIndex
     const sortedElements = [...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
     
-    // Draw elements
     for (const el of sortedElements) {
       ctx.save();
+      ctx.globalAlpha = (el.opacity ?? 100) / 100;
       
-      // Apply transformations
       if (el.rotation || el.flipX || el.flipY) {
         const centerX = el.x + (el.width || 0) / 2;
         const centerY = el.y + (el.height || 0) / 2;
@@ -490,7 +656,6 @@ export function ProductDesignBoard({
         ctx.moveTo(el.x, el.y);
         ctx.lineTo(endX - 10, el.y);
         ctx.stroke();
-        // Arrow head
         ctx.fillStyle = el.color || '#000000';
         ctx.beginPath();
         ctx.moveTo(endX, el.y);
@@ -531,13 +696,11 @@ export function ProductDesignBoard({
     
     const dataUrl = canvas.toDataURL('image/png');
     
-    // Download
     const link = document.createElement('a');
     link.download = `design-${productName}-${Date.now()}.png`;
     link.href = dataUrl;
     link.click();
     
-    // Callback
     onSave?.(dataUrl);
   };
 
@@ -545,186 +708,246 @@ export function ProductDesignBoard({
 
   if (!isOpen) return null;
 
+  // Toolbar button component
+  const ToolButton = ({ 
+    onClick, 
+    icon: Icon, 
+    label, 
+    active = false,
+    disabled = false,
+    danger = false,
+    tooltip
+  }: { 
+    onClick: () => void; 
+    icon: any; 
+    label: string;
+    active?: boolean;
+    disabled?: boolean;
+    danger?: boolean;
+    tooltip?: string;
+  }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={tooltip || label}
+      className={`
+        flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all w-full
+        ${active ? 'bg-purple-100 text-purple-700 border border-purple-300' : ''}
+        ${danger ? 'hover:bg-red-50 hover:text-red-600' : 'hover:bg-gray-100'}
+        ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}
+      `}
+    >
+      <Icon className="w-4 h-4 flex-shrink-0" />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+
+  // Section header component
+  const SectionHeader = ({ title, section }: { title: string; section: string }) => (
+    <button
+      onClick={() => setActiveSection(activeSection === section ? '' : section)}
+      className="flex items-center justify-between w-full px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 rounded-lg"
+    >
+      {title}
+      <ChevronDown className={`w-4 h-4 transition-transform ${activeSection === section ? 'rotate-180' : ''}`} />
+    </button>
+  );
+
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-xl w-full max-w-7xl max-h-[95vh] flex flex-col">
+      <div className="bg-white rounded-xl w-full max-w-7xl max-h-[95vh] flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-l from-purple-50 to-white">
           <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold">לוח עיצוב - {productName}</h2>
-            <span className="text-sm text-gray-500">גרור אלמנטים | Delete למחיקה | Ctrl+D לשכפול</span>
+            <h2 className="text-xl font-bold text-gray-800">🎨 לוח עיצוב - {productName}</h2>
+            <div className="hidden md:flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              <span className="font-medium">Del</span>=מחיקה
+              <span className="mx-1">|</span>
+              <span className="font-medium">Ctrl+D</span>=שכפול
+              <span className="mx-1">|</span>
+              <span className="font-medium">Ctrl+Z</span>=בטל
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex flex-1 overflow-hidden">
-          {/* Right Toolbar */}
-          <div className="w-20 bg-gray-100 p-2 flex flex-col gap-1 border-l overflow-y-auto">
-            <div className="text-xs font-medium text-gray-500 text-center mb-1">כלים</div>
-            
-            <button
-              onClick={() => setShowSearch(true)}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף תמונה ממוצר"
-            >
-              <ImageIcon className="w-5 h-5" />
-              <span className="text-[10px]">תמונה</span>
-            </button>
-            <button
-              onClick={() => setShowTextInput(true)}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף טקסט"
-            >
-              <Type className="w-5 h-5" />
-              <span className="text-[10px]">טקסט</span>
-            </button>
-            <button
-              onClick={addArrow}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף חץ"
-            >
-              <ArrowRight className="w-5 h-5" />
-              <span className="text-[10px]">חץ</span>
-            </button>
-            <button
-              onClick={addLine}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף קו"
-            >
-              <Minus className="w-5 h-5" />
-              <span className="text-[10px]">קו</span>
-            </button>
-            <button
-              onClick={addRectangle}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף מלבן"
-            >
-              <Square className="w-5 h-5" />
-              <span className="text-[10px]">מלבן</span>
-            </button>
-            <button
-              onClick={addCircle}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הוסף עיגול"
-            >
-              <Circle className="w-5 h-5" />
-              <span className="text-[10px]">עיגול</span>
-            </button>
-            
-            <div className="border-t my-2" />
-            <div className="text-xs font-medium text-gray-500 text-center mb-1">צבע</div>
-            
-            <div className="flex flex-col items-center gap-1">
-              <label className="text-[10px] text-gray-500">קו</label>
-              <input
-                type="color"
-                value={shapeColor}
-                onChange={(e) => setShapeColor(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer"
-              />
-            </div>
-            <div className="flex flex-col items-center gap-1">
-              <label className="text-[10px] text-gray-500">מילוי</label>
-              <input
-                type="color"
-                value={shapeFill === 'transparent' ? '#ffffff' : shapeFill}
-                onChange={(e) => setShapeFill(e.target.value)}
-                className="w-8 h-8 rounded cursor-pointer"
-              />
-              <button
-                onClick={() => setShapeFill('transparent')}
-                className={`text-[9px] px-1 py-0.5 rounded ${shapeFill === 'transparent' ? 'bg-gray-300' : 'bg-gray-100'}`}
-              >
-                ללא
-              </button>
+          {/* Right Toolbar - Redesigned */}
+          <div className="w-64 bg-gray-50 border-l flex flex-col overflow-hidden">
+            {/* Tool Mode Selector */}
+            <div className="p-3 border-b bg-white">
+              <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
+                <button
+                  onClick={() => setToolMode('select')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
+                    toolMode === 'select' ? 'bg-white shadow text-purple-700' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <MousePointer className="w-4 h-4" />
+                  בחירה וגרירה
+                </button>
+                <button
+                  onClick={() => setToolMode('crop')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md text-sm font-medium transition-all ${
+                    toolMode === 'crop' ? 'bg-white shadow text-yellow-600' : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                >
+                  <Crop className="w-4 h-4" />
+                  חיתוך
+                </button>
+              </div>
+              {toolMode === 'crop' && (
+                <p className="text-xs text-yellow-600 mt-2 text-center">
+                  ✂️ גרור מלבן על תמונה לחיתוך
+                </p>
+              )}
             </div>
             
-            <div className="border-t my-2" />
-            <div className="text-xs font-medium text-gray-500 text-center mb-1">עריכה</div>
-            
-            <button
-              onClick={() => resizeElement(20)}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הגדל"
-              disabled={!selectedElement}
-            >
-              <Plus className="w-5 h-5" />
-              <span className="text-[10px]">הגדל</span>
-            </button>
-            <button
-              onClick={() => resizeElement(-20)}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הקטן"
-              disabled={!selectedElement}
-            >
-              <Minus className="w-5 h-5" />
-              <span className="text-[10px]">הקטן</span>
-            </button>
-            <button
-              onClick={() => rotateSelected(15)}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="סובב"
-              disabled={!selectedElement}
-            >
-              <RotateCw className="w-5 h-5" />
-              <span className="text-[10px]">סובב</span>
-            </button>
-            <button
-              onClick={flipSelected}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הפוך אופקי"
-              disabled={!selectedElement}
-            >
-              <FlipHorizontal className="w-5 h-5" />
-              <span className="text-[10px]">הפוך</span>
-            </button>
-            <button
-              onClick={duplicateSelected}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="שכפל"
-              disabled={!selectedElement}
-            >
-              <Copy className="w-5 h-5" />
-              <span className="text-[10px]">שכפל</span>
-            </button>
-            <button
-              onClick={() => moveLayer('up')}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="הבא קדימה"
-              disabled={!selectedElement}
-            >
-              <ChevronUp className="w-5 h-5" />
-              <span className="text-[10px]">קדימה</span>
-            </button>
-            <button
-              onClick={() => moveLayer('down')}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="שלח אחורה"
-              disabled={!selectedElement}
-            >
-              <ChevronDown className="w-5 h-5" />
-              <span className="text-[10px]">אחורה</span>
-            </button>
-            <button
-              onClick={deleteSelected}
-              className="p-2 rounded-lg hover:bg-red-100 text-red-600 transition-colors flex flex-col items-center gap-1"
-              title="מחק"
-              disabled={!selectedElement || selectedElement === 'base-product'}
-            >
-              <Trash2 className="w-5 h-5" />
-              <span className="text-[10px]">מחק</span>
-            </button>
-            <button
-              onClick={undo}
-              className="p-2 rounded-lg hover:bg-gray-200 transition-colors flex flex-col items-center gap-1"
-              title="בטל"
-              disabled={historyIndex <= 0}
-            >
-              <Undo className="w-5 h-5" />
-              <span className="text-[10px]">בטל</span>
-            </button>
+            {/* Scrollable Sections */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {/* Add Elements Section */}
+              <div className="bg-white rounded-xl border shadow-sm">
+                <SectionHeader title="➕ הוספת אלמנטים" section="add" />
+                {activeSection === 'add' && (
+                  <div className="p-2 space-y-1 border-t">
+                    <ToolButton onClick={() => setShowSearch(true)} icon={ImageIcon} label="🔍 חפש והוסף תמונת מוצר" />
+                    <ToolButton onClick={() => setShowTextInput(true)} icon={Type} label="הוסף טקסט" />
+                    <div className="grid grid-cols-2 gap-1 pt-1">
+                      <ToolButton onClick={() => addShape('arrow')} icon={ArrowRight} label="חץ" />
+                      <ToolButton onClick={() => addShape('line')} icon={Minus} label="קו" />
+                      <ToolButton onClick={() => addShape('rectangle')} icon={Square} label="מלבן" />
+                      <ToolButton onClick={() => addShape('circle')} icon={Circle} label="עיגול" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Edit Section */}
+              <div className="bg-white rounded-xl border shadow-sm">
+                <SectionHeader title="✏️ עריכת אלמנט" section="edit" />
+                {activeSection === 'edit' && (
+                  <div className="p-2 space-y-1 border-t">
+                    {!selectedElement ? (
+                      <p className="text-xs text-gray-500 text-center py-4">
+                        בחר אלמנט בקנבס לעריכה
+                      </p>
+                    ) : (
+                      <>
+                        {selectedElementData?.type === 'image' && (
+                          <ToolButton 
+                            onClick={removeBackground} 
+                            icon={Droplets} 
+                            label="🧹 הסר רקע לבן" 
+                            tooltip="מסיר רקע לבן/בהיר מהתמונה"
+                          />
+                        )}
+                        <div className="grid grid-cols-2 gap-1">
+                          <ToolButton onClick={() => resizeElement(20)} icon={Plus} label="הגדל" />
+                          <ToolButton onClick={() => resizeElement(-20)} icon={Minus} label="הקטן" />
+                          <ToolButton onClick={() => rotateSelected(15)} icon={RotateCw} label="סובב" />
+                          <ToolButton onClick={flipSelected} icon={FlipHorizontal} label="הפוך" />
+                        </div>
+                        <ToolButton onClick={duplicateSelected} icon={Copy} label="שכפל" />
+                        
+                        {/* Opacity Slider */}
+                        <div className="px-3 py-3 bg-gray-50 rounded-lg mt-2">
+                          <div className="flex items-center justify-between text-sm text-gray-700 mb-2">
+                            <span className="flex items-center gap-2">
+                              <Eye className="w-4 h-4" />
+                              שקיפות
+                            </span>
+                            <span className="font-medium">{selectedElementData?.opacity ?? 100}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={selectedElementData?.opacity ?? 100}
+                            onChange={(e) => changeOpacity(parseInt(e.target.value))}
+                            onMouseUp={saveOpacityToHistory}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Layers Section */}
+              <div className="bg-white rounded-xl border shadow-sm">
+                <SectionHeader title="📚 שכבות" section="layers" />
+                {activeSection === 'layers' && (
+                  <div className="p-2 space-y-1 border-t">
+                    <div className="grid grid-cols-2 gap-1">
+                      <ToolButton onClick={() => moveLayer('up')} icon={ChevronUp} label="קדימה" disabled={!selectedElement} />
+                      <ToolButton onClick={() => moveLayer('down')} icon={ChevronDown} label="אחורה" disabled={!selectedElement} />
+                    </div>
+                    <div className="border-t my-2" />
+                    <ToolButton onClick={deleteSelected} icon={Trash2} label="🗑️ מחק אלמנט" disabled={!selectedElement || selectedElement === 'base-product'} danger />
+                    <ToolButton onClick={undo} icon={Undo} label="↩️ בטל פעולה" disabled={historyIndex <= 0} />
+                  </div>
+                )}
+              </div>
+
+              {/* Colors Section */}
+              <div className="bg-white rounded-xl border shadow-sm">
+                <SectionHeader title="🎨 צבעים לצורות" section="colors" />
+                {activeSection === 'colors' && (
+                  <div className="p-3 space-y-3 border-t">
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={shapeColor}
+                        onChange={(e) => setShapeColor(e.target.value)}
+                        className="w-12 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">צבע קו</p>
+                        <p className="text-xs text-gray-400 font-mono">{shapeColor}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={shapeFill === 'transparent' ? '#ffffff' : shapeFill}
+                        onChange={(e) => setShapeFill(e.target.value)}
+                        className="w-12 h-10 rounded-lg cursor-pointer border-2 border-gray-200"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">צבע מילוי</p>
+                        <button
+                          onClick={() => setShapeFill('transparent')}
+                          className={`text-xs px-2 py-0.5 rounded mt-1 ${shapeFill === 'transparent' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100'}`}
+                        >
+                          ללא מילוי
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Element Info */}
+            {selectedElementData && (
+              <div className="p-3 border-t bg-purple-50">
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+                  <span className="font-medium text-purple-800">
+                    נבחר: {selectedElementData.type === 'image' ? 'תמונה' : 
+                     selectedElementData.type === 'text' ? 'טקסט' :
+                     selectedElementData.type === 'arrow' ? 'חץ' :
+                     selectedElementData.type === 'rectangle' ? 'מלבן' :
+                     selectedElementData.type === 'circle' ? 'עיגול' :
+                     selectedElementData.type === 'line' ? 'קו' : selectedElementData.type}
+                    {selectedElementData.id === 'base-product' && ' (בסיס)'}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Canvas Area */}
@@ -747,20 +970,20 @@ export function ProductDesignBoard({
             >
               {/* Grid pattern */}
               <div 
-                className="absolute inset-0 pointer-events-none opacity-20"
+                className="absolute inset-0 pointer-events-none opacity-10"
                 style={{
-                  backgroundImage: 'linear-gradient(#ccc 1px, transparent 1px), linear-gradient(90deg, #ccc 1px, transparent 1px)',
+                  backgroundImage: 'linear-gradient(#9ca3af 1px, transparent 1px), linear-gradient(90deg, #9ca3af 1px, transparent 1px)',
                   backgroundSize: `${20 * zoom}px ${20 * zoom}px`
                 }}
               />
               
-              {/* Sort elements by zIndex */}
+              {/* Render elements */}
               {[...elements].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0)).map(element => (
                 <div
                   key={element.id}
-                  className={`absolute cursor-move ${
+                  className={`absolute ${toolMode === 'crop' && element.type === 'image' ? 'cursor-crosshair' : 'cursor-move'} ${
                     selectedElement === element.id 
-                      ? 'ring-2 ring-blue-500 ring-offset-2' 
+                      ? 'ring-2 ring-purple-500 ring-offset-2' 
                       : 'hover:ring-2 hover:ring-gray-300'
                   }`}
                   style={{
@@ -771,6 +994,7 @@ export function ProductDesignBoard({
                       scaleX(${element.flipX ? -1 : 1})
                       scaleY(${element.flipY ? -1 : 1})
                     `,
+                    opacity: (element.opacity ?? 100) / 100
                   }}
                   onMouseDown={(e) => {
                     e.stopPropagation();
@@ -860,27 +1084,47 @@ export function ProductDesignBoard({
                     />
                   )}
                   
-                  {/* Resize handles for selected element */}
+                  {/* Selection handles */}
                   {selectedElement === element.id && element.type === 'image' && (
                     <>
-                      <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-se-resize" />
-                      <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-sw-resize" />
-                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full cursor-ne-resize" />
-                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full cursor-nw-resize" />
+                      <div className="absolute -bottom-2 -left-2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow" />
+                      <div className="absolute -bottom-2 -right-2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow" />
+                      <div className="absolute -top-2 -left-2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow" />
+                      <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500 rounded-full border-2 border-white shadow" />
                     </>
                   )}
                 </div>
               ))}
+              
+              {/* Crop selection rectangle */}
+              {(isCropping || showCropPreview) && (
+                <div
+                  className="absolute border-2 border-dashed border-yellow-500 bg-yellow-500/20 pointer-events-none"
+                  style={{
+                    left: Math.min(cropStart.x, cropEnd.x) * zoom,
+                    top: Math.min(cropStart.y, cropEnd.y) * zoom,
+                    width: Math.abs(cropEnd.x - cropStart.x) * zoom,
+                    height: Math.abs(cropEnd.y - cropStart.y) * zoom
+                  }}
+                >
+                  <div className="absolute -top-6 left-0 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded">
+                    ✂️ אזור חיתוך
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Left Panel - Search Results */}
           {showSearch && (
-            <div className="w-80 bg-white border-r flex flex-col">
-              <div className="p-3 border-b">
+            <div className="w-80 bg-white border-r flex flex-col shadow-lg">
+              <div className="p-3 border-b bg-gray-50">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-medium">חיפוש מוצרים</h3>
-                  <button onClick={() => setShowSearch(false)} className="p-1 hover:bg-gray-100 rounded">
+                  <h3 className="font-semibold flex items-center gap-2">
+                    <Search className="w-4 h-4" />
+                    חיפוש מוצרים
+                  </h3>
+                  <button onClick={() => setShowSearch(false)} className="p-1 hover:bg-gray-200 rounded">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
@@ -890,42 +1134,67 @@ export function ProductDesignBoard({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="חפש מוצר לפי שם..."
-                    className="w-full pr-10 pl-3 py-2 border rounded-lg text-sm"
+                    placeholder="הקלד שם מוצר..."
+                    className="w-full pr-10 pl-3 py-2.5 border rounded-lg text-sm focus:ring-2 focus:ring-purple-300 focus:border-purple-300"
                     autoFocus
                   />
                 </div>
+                <p className="text-xs text-gray-500 mt-2">
+                  💡 חפש מוצר ולחץ עליו להוספה ללוח
+                </p>
               </div>
               <div className="flex-1 overflow-auto p-2">
                 {isSearching ? (
-                  <div className="text-center py-8 text-gray-500">מחפש...</div>
+                  <div className="text-center py-8 text-gray-500">
+                    <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto mb-2" />
+                    מחפש מוצרים...
+                  </div>
                 ) : searchResults.length === 0 ? (
                   <div className="text-center py-8 text-gray-500 text-sm">
-                    {searchQuery ? 'לא נמצאו תוצאות' : 'הקלד שם מוצר לחיפוש'}
+                    {searchQuery ? (
+                      <div>
+                        <p className="text-lg mb-2">😕</p>
+                        <p>לא נמצאו תוצאות עבור "{searchQuery}"</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-lg mb-2">🔍</p>
+                        <p>הקלד שם מוצר לחיפוש</p>
+                        <p className="text-xs mt-1 text-gray-400">לדוגמה: מזנון, כורסא, שולחן</p>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {searchResults.map(product => (
-                      <button
-                        key={product.id}
-                        onClick={() => product.image && addImageFromProduct(product.image)}
-                        className="p-2 border rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors text-right"
-                        disabled={!product.image}
-                      >
-                        {product.image ? (
-                          <img
-                            src={product.image}
-                            alt={product.name}
-                            className="w-full aspect-square object-cover rounded mb-1"
-                          />
-                        ) : (
-                          <div className="w-full aspect-square bg-gray-100 rounded mb-1 flex items-center justify-center">
-                            <ImageIcon className="w-6 h-6 text-gray-300" />
-                          </div>
-                        )}
-                        <p className="text-xs line-clamp-2">{product.name}</p>
-                      </button>
-                    ))}
+                  <div className="space-y-2">
+                    <p className="text-xs text-gray-500 px-1">נמצאו {searchResults.length} תוצאות</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {searchResults.map(product => (
+                        <button
+                          key={product.id}
+                          onClick={() => product.image && addImageFromProduct(product.image)}
+                          className="p-2 border rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-all text-right group"
+                          disabled={!product.image}
+                        >
+                          {product.image ? (
+                            <div className="relative overflow-hidden rounded">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-full aspect-square object-cover group-hover:scale-105 transition-transform"
+                              />
+                              <div className="absolute inset-0 bg-purple-500/0 group-hover:bg-purple-500/10 transition-colors flex items-center justify-center">
+                                <Plus className="w-8 h-8 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="w-full aspect-square bg-gray-100 rounded flex items-center justify-center">
+                              <ImageIcon className="w-6 h-6 text-gray-300" />
+                            </div>
+                          )}
+                          <p className="text-xs line-clamp-2 mt-1">{product.name}</p>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -933,39 +1202,66 @@ export function ProductDesignBoard({
           )}
         </div>
 
+        {/* Crop Preview Modal */}
+        {showCropPreview && (
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+            <div className="bg-white rounded-xl p-5 shadow-xl max-w-sm w-full mx-4">
+              <h3 className="font-semibold mb-2 text-center text-lg">✂️ חיתוך תמונה</h3>
+              <p className="text-sm text-gray-500 text-center mb-4">לחתוך את האזור המסומן?</p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={cancelCrop}
+                  className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={applyCrop}
+                  className="px-5 py-2.5 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 flex items-center gap-2 font-medium transition-colors"
+                >
+                  <Scissors className="w-4 h-4" />
+                  חתוך
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Text Input Modal */}
         {showTextInput && (
-          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-            <div className="bg-white rounded-lg p-4 w-80">
-              <h3 className="font-medium mb-3">הוסף טקסט</h3>
+          <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20">
+            <div className="bg-white rounded-xl p-5 w-96 shadow-xl mx-4">
+              <h3 className="font-semibold mb-3">✏️ הוסף טקסט</h3>
               <input
                 type="text"
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
                 placeholder="הקלד טקסט..."
-                className="w-full px-3 py-2 border rounded-lg mb-3"
+                className="w-full px-4 py-3 border rounded-lg mb-3 focus:ring-2 focus:ring-purple-300 text-lg"
                 autoFocus
                 onKeyDown={(e) => e.key === 'Enter' && addText()}
               />
-              <div className="flex items-center gap-2 mb-3">
-                <label className="text-sm text-gray-600">צבע:</label>
+              <div className="flex items-center gap-3 mb-4">
+                <label className="text-sm text-gray-600">צבע טקסט:</label>
                 <input
                   type="color"
                   value={textColor}
                   onChange={(e) => setTextColor(e.target.value)}
-                  className="w-8 h-8 rounded cursor-pointer"
+                  className="w-10 h-10 rounded-lg cursor-pointer border-2"
                 />
+                <span className="text-xs text-gray-400 font-mono">{textColor}</span>
               </div>
-              <div className="flex gap-2 justify-end">
+              <div className="flex gap-3 justify-end">
                 <button
                   onClick={() => setShowTextInput(false)}
-                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                  className="px-5 py-2.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   ביטול
                 </button>
                 <button
                   onClick={addText}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={!textInput.trim()}
+                  className="px-5 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
                 >
                   הוסף
                 </button>
@@ -977,45 +1273,41 @@ export function ProductDesignBoard({
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">זום:</span>
-            <button 
-              onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
-              className="p-1 hover:bg-gray-200 rounded"
-            >
-              <ZoomOut className="w-4 h-4" />
-            </button>
-            <span className="text-sm w-12 text-center">{Math.round(zoom * 100)}%</span>
-            <button 
-              onClick={() => setZoom(z => Math.min(2, z + 0.1))}
-              className="p-1 hover:bg-gray-200 rounded"
-            >
-              <ZoomIn className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border">
+              <span className="text-sm text-gray-500">זום:</span>
+              <button 
+                onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+              <span className="text-sm w-12 text-center font-medium">{Math.round(zoom * 100)}%</span>
+              <button 
+                onClick={() => setZoom(z => Math.min(2, z + 0.1))}
+                className="p-1 hover:bg-gray-100 rounded"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+            </div>
             
-            {selectedElementData && (
-              <span className="text-sm text-gray-500 mr-4">
-                נבחר: {selectedElementData.type === 'image' ? 'תמונה' : 
-                       selectedElementData.type === 'text' ? 'טקסט' :
-                       selectedElementData.type === 'arrow' ? 'חץ' :
-                       selectedElementData.type === 'rectangle' ? 'מלבן' :
-                       selectedElementData.type === 'circle' ? 'עיגול' :
-                       selectedElementData.type === 'line' ? 'קו' : selectedElementData.type}
-              </span>
-            )}
+            <div className="text-sm text-gray-500">
+              {elements.length} אלמנטים
+              {historyIndex > 0 && ` • ${historyIndex} פעולות`}
+            </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-lg"
+              className="px-5 py-2.5 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
             >
               סגור
             </button>
             <button
               onClick={exportAsImage}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 font-medium"
+              className="px-6 py-2.5 bg-gradient-to-l from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 flex items-center gap-2 font-medium shadow-lg shadow-purple-200 transition-all"
             >
               <Download className="w-4 h-4" />
-              שמור והורד
+              שמור והורד תמונה
             </button>
           </div>
         </div>
