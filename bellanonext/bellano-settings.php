@@ -935,6 +935,92 @@ class Bellano_Settings {
             'callback' => [$this, 'get_checkout_url'],
             'permission_callback' => '__return_true'
         ]);
+        
+        // Meshulam webhook - Called after payment
+        register_rest_route('bellano/v1', '/meshulam-webhook', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handle_meshulam_webhook'],
+            'permission_callback' => '__return_true'
+        ]);
+        
+        // Meshulam config - Get userId for Next.js checkout
+        register_rest_route('bellano/v1', '/meshulam-config', [
+            'methods' => 'GET',
+            'callback' => [$this, 'get_meshulam_config'],
+            'permission_callback' => '__return_true'
+        ]);
+    }
+    
+    /**
+     * Get Meshulam configuration for Next.js checkout
+     * Returns the userId which is stored in WordPress
+     */
+    public function get_meshulam_config() {
+        $userId = get_option('meshulam_bit_payment_code', '');
+        
+        return [
+            'userId' => $userId,
+            'hasConfig' => !empty($userId),
+        ];
+    }
+    
+    /**
+     * Handle Meshulam payment webhook
+     * This is called by Meshulam after a successful payment
+     */
+    public function handle_meshulam_webhook($request) {
+        // Log the webhook for debugging
+        error_log('Bellano Meshulam Webhook received: ' . print_r($_POST, true));
+        
+        // Get payment data from Meshulam
+        $data = $request->get_params();
+        
+        // Extract order ID from cField1 (we stored it there during payment creation)
+        $order_id = isset($data['cField1']) ? intval($data['cField1']) : 0;
+        $status = isset($data['status']) ? intval($data['status']) : 0;
+        $transaction_id = isset($data['asmachta']) ? sanitize_text_field($data['asmachta']) : '';
+        $approval_num = isset($data['cardNum']) ? sanitize_text_field($data['cardNum']) : '';
+        
+        if (!$order_id) {
+            error_log('Bellano Meshulam Webhook: No order ID found');
+            return new WP_REST_Response(['status' => 'error', 'message' => 'No order ID'], 400);
+        }
+        
+        $order = wc_get_order($order_id);
+        
+        if (!$order) {
+            error_log('Bellano Meshulam Webhook: Order not found: ' . $order_id);
+            return new WP_REST_Response(['status' => 'error', 'message' => 'Order not found'], 404);
+        }
+        
+        // Status 1 = Success
+        if ($status == 1) {
+            // Mark order as paid
+            $order->payment_complete($transaction_id);
+            
+            // Add order note
+            $order->add_order_note(sprintf(
+                __('תשלום התקבל דרך משולם (Next.js Checkout). מספר אישור: %s', 'bellano-settings'),
+                $transaction_id
+            ));
+            
+            // Update meta data
+            $order->update_meta_data('_meshulam_transaction_id', $transaction_id);
+            $order->update_meta_data('_meshulam_approval_num', $approval_num);
+            $order->update_meta_data('_paid_via', 'bellano_nextjs_checkout');
+            $order->save();
+            
+            error_log('Bellano Meshulam Webhook: Order ' . $order_id . ' marked as paid');
+            
+            return new WP_REST_Response(['status' => 'success', 'order_id' => $order_id], 200);
+        } else {
+            // Payment failed
+            $order->update_status('failed', __('תשלום משולם נכשל', 'bellano-settings'));
+            
+            error_log('Bellano Meshulam Webhook: Payment failed for order ' . $order_id);
+            
+            return new WP_REST_Response(['status' => 'failed', 'order_id' => $order_id], 200);
+        }
     }
     
     public function get_homepage_data() {
