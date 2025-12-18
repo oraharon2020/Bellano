@@ -55,6 +55,9 @@ class Bellano_Admin_Pages {
                 case 'homepage':
                     $this->render_homepage_tab();
                     break;
+                case 'banners':
+                    $plugin->banners->render_tab();
+                    break;
                 case 'faq':
                     $plugin->faq->render_tab();
                     break;
@@ -68,7 +71,7 @@ class Bellano_Admin_Pages {
                     $plugin->cache->render_tab();
                     break;
                 default:
-                    $plugin->banners->render_tab();
+                    $this->render_homepage_tab();
             }
             ?>
         </div>
