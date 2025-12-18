@@ -691,7 +691,7 @@ export function AdminProductFields({
         onClose={() => setShowDesignBoard(false)}
         productImage={productImage || ''}
         productName={productName || 'מוצר'}
-        onSave={(imageDataUrl) => {
+        onSave={(imageDataUrl: string) => {
           // Save design to formData as uploaded file
           setFormData(prev => ({
             ...prev,
