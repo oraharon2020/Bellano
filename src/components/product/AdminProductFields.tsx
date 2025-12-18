@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
 
 interface AdminFieldsData {
   width: string;
@@ -13,6 +13,7 @@ interface AdminFieldsData {
   discountValue: string;
   freeComments: string;
   uploadedFile: string;
+  uploadedFileName: string;
 }
 
 interface Upgrade {
@@ -67,6 +68,8 @@ export function AdminProductFields({
   const [loginError, setLoginError] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginData, setLoginData] = useState({ username: '', password: '' });
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<AdminFieldsData>({
     width: '',
@@ -78,6 +81,7 @@ export function AdminProductFields({
     discountValue: '',
     freeComments: '',
     uploadedFile: '',
+    uploadedFileName: '',
   });
 
   // Check if user is admin
@@ -158,6 +162,53 @@ export function AdminProductFields({
     setIsAdmin(false);
     setAdminName('');
     setUpgrades([]);
+  };
+  
+  // Handle file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', file);
+      formDataUpload.append('adminToken', getAdminToken() || '');
+      
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formDataUpload,
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setFormData(prev => ({
+          ...prev,
+          uploadedFile: data.url,
+          uploadedFileName: file.name,
+        }));
+      } else {
+        alert(data.message || 'שגיאה בהעלאת הקובץ');
+      }
+    } catch (error) {
+      alert('שגיאה בהעלאת הקובץ');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  // Remove uploaded file
+  const handleRemoveFile = () => {
+    setFormData(prev => ({
+      ...prev,
+      uploadedFile: '',
+      uploadedFileName: '',
+    }));
   };
 
   // Calculate total price
@@ -442,6 +493,73 @@ export function AdminProductFields({
                 rows={2}
                 placeholder="הערות לגבי ההזמנה..."
               />
+            </div>
+
+            {/* File Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">העלאת שרטוט/קובץ</label>
+              
+              {formData.uploadedFile ? (
+                <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-md">
+                  {formData.uploadedFile.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                    <ImageIcon className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <FileText className="w-5 h-5 text-green-600" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-green-800 truncate">
+                      {formData.uploadedFileName}
+                    </p>
+                    <a 
+                      href={formData.uploadedFile} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-xs text-green-600 hover:underline"
+                    >
+                      פתח קובץ
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveFile}
+                    className="p-1 text-gray-400 hover:text-red-500"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div className="relative">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    onChange={handleFileUpload}
+                    accept="image/*,.pdf,.doc,.docx"
+                    className="hidden"
+                    disabled={isUploading}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                    className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-300 rounded-md hover:border-gray-400 hover:bg-gray-50 transition-colors w-full justify-center disabled:opacity-50"
+                  >
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>מעלה...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        <span>העלה שרטוט או קובץ</span>
+                      </>
+                    )}
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1 text-center">
+                    תמונות, PDF או Word (עד 10MB)
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Upgrades Button */}

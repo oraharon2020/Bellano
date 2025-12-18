@@ -13,6 +13,8 @@ interface AdminFields {
   discount_type?: 'percent' | 'fixed';
   discount_value?: string;
   free_comments?: string;
+  uploaded_file?: string;
+  uploaded_file_name?: string;
   original_price?: string;
   final_price?: string;
 }
@@ -95,6 +97,12 @@ export async function POST(request: NextRequest) {
         }
         if (item.admin_fields.free_comments) {
           lineItem.meta_data.push({ key: '_admin_comments', value: item.admin_fields.free_comments });
+        }
+        if (item.admin_fields.uploaded_file) {
+          lineItem.meta_data.push({ key: '_admin_uploaded_file', value: item.admin_fields.uploaded_file });
+        }
+        if (item.admin_fields.uploaded_file_name) {
+          lineItem.meta_data.push({ key: '_admin_uploaded_file_name', value: item.admin_fields.uploaded_file_name });
         }
         if (item.admin_fields.original_price) {
           lineItem.meta_data.push({ key: '_admin_original_price', value: item.admin_fields.original_price });

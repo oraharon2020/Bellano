@@ -120,6 +120,8 @@ export default function CheckoutPage() {
               discount_type: item.adminFields.discountType,
               discount_value: item.adminFields.discountValue,
               free_comments: item.adminFields.freeComments,
+              uploaded_file: item.adminFields.uploadedFile,
+              uploaded_file_name: item.adminFields.uploadedFileName,
               original_price: item.adminFields.originalPrice,
               final_price: item.adminFields.finalPrice,
             } : undefined,

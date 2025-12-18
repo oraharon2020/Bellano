@@ -10,6 +10,8 @@ export interface AdminFieldsData {
   discountType?: 'percent' | 'fixed';
   discountValue?: string;
   freeComments?: string;
+  uploadedFile?: string;
+  uploadedFileName?: string;
   originalPrice?: string;
   finalPrice?: string;
 }

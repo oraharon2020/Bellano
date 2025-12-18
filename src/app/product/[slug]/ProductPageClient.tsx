@@ -306,6 +306,8 @@ export function ProductPageClient({ product, variations = [], faqs = [] }: Produ
         discountType: adminFieldsData.discountType,
         discountValue: adminFieldsData.discountValue,
         freeComments: adminFieldsData.freeComments,
+        uploadedFile: adminFieldsData.uploadedFile,
+        uploadedFileName: adminFieldsData.uploadedFileName,
         originalPrice: currentPrice,
         finalPrice: finalPrice,
       } : undefined,
