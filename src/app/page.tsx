@@ -184,11 +184,39 @@ async function HeroSection() {
 
 // Categories Section - Beautiful Full-Width Cards with Hover Effects
 async function CategoriesSection() {
-  const wooCategories = await getCategories({ per_page: 6, hide_empty: true });
-  const categories = wooCategories
-    .filter((cat: { parent: number }) => cat.parent === 0)
-    .slice(0, 6)
-    .map(transformCategory);
+  // Define category type
+  interface CategoryItem {
+    id: string | number;
+    name: string;
+    slug: string;
+    image?: { sourceUrl: string };
+  }
+  
+  // Try to get featured categories from WordPress, fallback to WooCommerce
+  let categories: CategoryItem[] = [];
+  
+  try {
+    const res = await fetch('https://bellano.co.il/wp-json/bellano/v1/featured-categories', {
+      next: { revalidate: 300 }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.categories && data.categories.length > 0) {
+        categories = data.categories;
+      }
+    }
+  } catch {
+    // Fallback to WooCommerce categories
+  }
+  
+  // Fallback: get from WooCommerce
+  if (categories.length === 0) {
+    const wooCategories = await getCategories({ per_page: 8, hide_empty: true });
+    categories = wooCategories
+      .filter((cat: { parent: number }) => cat.parent === 0)
+      .slice(0, 8)
+      .map(transformCategory) as CategoryItem[];
+  }
 
   // Category descriptions for better engagement
   const categoryDescriptions: Record<string, string> = {
@@ -202,10 +230,10 @@ async function CategoriesSection() {
   };
 
   return (
-    <section className="py-20 md:py-28 bg-[#fafaf8]">
+    <section className="py-16 md:py-24 bg-[#fafaf8]">
       <div className="container mx-auto px-4">
         {/* Section Header */}
-        <div className="text-center mb-16">
+        <div className="text-center mb-12">
           <p className="font-english text-gray-400 text-xs tracking-[0.3em] uppercase mb-4">
             FIND YOUR STYLE
           </p>
@@ -217,73 +245,55 @@ async function CategoriesSection() {
           </p>
         </div>
 
-        {/* Horizontal Scroll Categories - Mobile & Desktop */}
-        <div className="relative -mx-4 md:mx-0">
-          <div className="flex gap-5 overflow-x-auto pb-6 px-4 md:px-0 scrollbar-hide snap-x snap-mandatory md:grid md:grid-cols-3 md:gap-6 md:overflow-visible">
-            {categories.map((category, index) => (
-              <Link
-                key={category.id}
-                href={`/category/${category.slug}`}
-                className="group relative flex-shrink-0 w-[80vw] md:w-auto snap-center"
-              >
-                {/* Card Container */}
-                <div className="relative h-[400px] md:h-[450px] overflow-hidden rounded-2xl bg-white shadow-sm hover:shadow-xl transition-shadow duration-500">
-                  {/* Background Image */}
-                  {category.image && (
-                    <Image
-                      src={category.image.sourceUrl}
-                      alt={category.name}
-                      fill
-                      className="object-cover transition-transform duration-700 group-hover:scale-110"
-                      sizes="(max-width: 768px) 80vw, 33vw"
-                    />
-                  )}
-                  
-                  {/* Gradient Overlay - Stronger on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-70 group-hover:opacity-90 transition-opacity duration-500" />
-                  
-                  {/* Content */}
-                  <div className="absolute inset-0 flex flex-col justify-end p-6 md:p-8">
-                    {/* Category Number */}
-                    <span className="absolute top-6 right-6 font-english text-white/30 text-6xl font-bold">
-                      {String(index + 1).padStart(2, '0')}
-                    </span>
+        {/* Categories Grid - 2 cols mobile, 4 cols desktop */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+          {categories.slice(0, 8).map((category, index) => (
+            <Link
+              key={category.id}
+              href={`/category/${category.slug}`}
+              className="group relative"
+            >
+              {/* Card Container */}
+              <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-white shadow-sm hover:shadow-lg transition-shadow duration-500">
+                {/* Background Image */}
+                {category.image && (
+                  <Image
+                    src={category.image.sourceUrl}
+                    alt={category.name}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 768px) 50vw, 25vw"
+                  />
+                )}
+                
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+                
+                {/* Content */}
+                <div className="absolute inset-0 flex flex-col justify-end p-4 md:p-5">
+                  {/* Text Content */}
+                  <div className="relative z-10">
+                    <h3 className="text-white text-lg md:text-xl font-bold mb-1">
+                      {category.name}
+                    </h3>
+                    <p className="text-white/60 text-xs md:text-sm hidden md:block">
+                      {categoryDescriptions[category.name] || categoryDescriptions.default}
+                    </p>
                     
-                    {/* Text Content */}
-                    <div className="relative z-10">
-                      <h3 className="text-white text-2xl md:text-3xl font-bold mb-2 group-hover:translate-y-0 transition-transform duration-300">
-                        {category.name}
-                      </h3>
-                      <p className="text-white/70 text-sm mb-4 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-100">
-                        {categoryDescriptions[category.name] || categoryDescriptions.default}
-                      </p>
-                      
-                      {/* CTA Button */}
-                      <div className="flex items-center gap-3 opacity-80 group-hover:opacity-100 transition-all duration-300">
-                        <span className="bg-white text-black px-5 py-2.5 text-sm font-medium rounded-full group-hover:bg-black group-hover:text-white transition-colors duration-300">
-                          לצפייה בקולקציה
-                        </span>
-                        <span className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white group-hover:bg-white group-hover:text-black transition-all duration-300 group-hover:-translate-x-1">
-                          ←
-                        </span>
-                      </div>
-                    </div>
+                    {/* Arrow on hover */}
+                    <span className="inline-flex items-center gap-1 text-white/80 text-xs mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <span>לצפייה</span>
+                      <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                    </span>
                   </div>
                 </div>
-              </Link>
-            ))}
-          </div>
-          
-          {/* Scroll Hint - Mobile Only */}
-          <div className="flex justify-center gap-2 mt-4 md:hidden">
-            {categories.map((_, index) => (
-              <div key={index} className="w-2 h-2 rounded-full bg-gray-300" />
-            ))}
-          </div>
+              </div>
+            </Link>
+          ))}
         </div>
 
         {/* View All Link */}
-        <div className="text-center mt-12">
+        <div className="text-center mt-10">
           <Link 
             href="/categories" 
             className="inline-flex items-center gap-3 text-gray-600 hover:text-black transition-colors group"
