@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Minus, Plus, Trash2, ShoppingBag, X } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 export function CartSidebar() {
@@ -93,6 +93,41 @@ export function CartSidebar() {
                       <p className="text-xs text-gray-500 mt-1">
                         {item.variation.attributes.map((attr) => attr.value).join(' • ')}
                       </p>
+                    )}
+                    
+                    {/* Admin Fields Display */}
+                    {item.adminFields && (
+                      <div className="mt-2 text-xs space-y-1 bg-blue-50 p-2 rounded">
+                        {/* Dimensions */}
+                        {(item.adminFields.width || item.adminFields.depth || item.adminFields.height) && (
+                          <div className="flex items-center gap-1 text-blue-700">
+                            <Ruler className="w-3 h-3" />
+                            <span>
+                              {[
+                                item.adminFields.width && `ר: ${item.adminFields.width}`,
+                                item.adminFields.depth && `ע: ${item.adminFields.depth}`,
+                                item.adminFields.height && `ג: ${item.adminFields.height}`
+                              ].filter(Boolean).join(' / ')}
+                            </span>
+                          </div>
+                        )}
+                        {/* Comments */}
+                        {item.adminFields.freeComments && (
+                          <p className="text-blue-600">📝 {item.adminFields.freeComments}</p>
+                        )}
+                        {/* Uploaded File */}
+                        {item.adminFields.uploadedFile && (
+                          <a 
+                            href={item.adminFields.uploadedFile} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-blue-600 hover:underline"
+                          >
+                            <FileText className="w-3 h-3" />
+                            {item.adminFields.uploadedFileName || 'צפה בשרטוט'}
+                          </a>
+                        )}
+                      </div>
                     )}
                     
                     <div className="flex items-center justify-between mt-auto pt-2">
