@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle } from 'lucide-react';
+import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 interface ShippingMethod {
@@ -23,6 +23,8 @@ interface CustomerData {
   notes: string;
 }
 
+type PaymentMethod = 'credit_card' | 'phone_order';
+
 export default function CheckoutPage() {
   const { items, getTotal, clearCart, isHydrated } = useCartStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
@@ -31,6 +33,7 @@ export default function CheckoutPage() {
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<number | null>(null);
   const [selectedPayments, setSelectedPayments] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
   
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
@@ -109,6 +112,7 @@ export default function CheckoutPage() {
             quantity: item.quantity,
           })),
           shipping_method: selectedShipping,
+          payment_method: paymentMethod,
         }),
       });
 
@@ -120,7 +124,14 @@ export default function CheckoutPage() {
 
       setOrderId(orderData.order_id);
 
-      // Step 2: Get Meshulam payment URL
+      // If phone order - go directly to success (order is on-hold)
+      if (paymentMethod === 'phone_order') {
+        clearCart();
+        setStep('success');
+        return;
+      }
+
+      // Step 2: Get Meshulam payment URL (only for credit card)
       const paymentResponse = await fetch('/api/checkout/create-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -189,21 +200,36 @@ export default function CheckoutPage() {
 
   // Success Step
   if (step === 'success') {
+    const isPhoneOrder = paymentMethod === 'phone_order';
+    
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="container mx-auto px-4 py-16">
           <div className="max-w-md mx-auto text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-green-600" />
+            <div className={`w-20 h-20 ${isPhoneOrder ? 'bg-blue-100' : 'bg-green-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
+              {isPhoneOrder ? (
+                <Phone className="w-10 h-10 text-blue-600" />
+              ) : (
+                <CheckCircle className="w-10 h-10 text-green-600" />
+              )}
             </div>
-            <h1 className="text-2xl font-bold mb-4">ההזמנה התקבלה בהצלחה!</h1>
+            <h1 className="text-2xl font-bold mb-4">
+              {isPhoneOrder ? 'ההזמנה נשלחה בהצלחה!' : 'ההזמנה התקבלה בהצלחה!'}
+            </h1>
             <p className="text-gray-600 mb-2">תודה על הרכישה שלך</p>
             {orderId && (
-              <p className="text-gray-600 mb-8">מספר הזמנה: <strong>{orderId}</strong></p>
+              <p className="text-gray-600 mb-4">מספר הזמנה: <strong>{orderId}</strong></p>
             )}
-            <p className="text-sm text-gray-500 mb-8">
-              שלחנו לך אימייל עם פרטי ההזמנה. ניצור קשר בקרוב לתיאום המשלוח.
-            </p>
+            {isPhoneOrder ? (
+              <div className="bg-blue-50 text-blue-700 p-4 rounded-lg mb-8 text-sm">
+                <p className="font-medium mb-2">📞 נציג יצור איתך קשר בהקדם</p>
+                <p>ההזמנה שלך בהמתנה לתשלום. נציג שלנו יתקשר אליך להשלמת התשלום בטלפון.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 mb-8">
+                שלחנו לך אימייל עם פרטי ההזמנה. ניצור קשר בקרוב לתיאום המשלוח.
+              </p>
+            )}
             <Link 
               href="/"
               className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
@@ -423,31 +449,91 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Options */}
+              {/* Payment Method Selection */}
               <div className="bg-white rounded-lg shadow-sm p-6">
-                <h2 className="text-lg font-bold mb-4">מספר תשלומים</h2>
-                <div className="flex flex-wrap gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
-                    <button
-                      key={num}
-                      type="button"
-                      onClick={() => setSelectedPayments(num)}
-                      className={`px-4 py-2 border rounded-lg transition-colors ${
-                        selectedPayments === num
-                          ? 'border-black bg-black text-white'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      {num === 1 ? 'תשלום אחד' : `${num} תשלומים`}
-                    </button>
-                  ))}
+                <h2 className="text-lg font-bold mb-4">אמצעי תשלום</h2>
+                <div className="space-y-3">
+                  <label
+                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                      paymentMethod === 'credit_card'
+                        ? 'border-black bg-gray-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="credit_card"
+                        checked={paymentMethod === 'credit_card'}
+                        onChange={() => setPaymentMethod('credit_card')}
+                        className="w-4 h-4"
+                      />
+                      <CreditCard className="w-5 h-5 text-gray-500" />
+                      <span>כרטיס אשראי</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <ShieldCheck className="w-4 h-4 text-green-600" />
+                      <span className="text-xs text-green-600">מאובטח</span>
+                    </div>
+                  </label>
+                  
+                  <label
+                    className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                      paymentMethod === 'phone_order'
+                        ? 'border-black bg-gray-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="radio"
+                        name="payment_method"
+                        value="phone_order"
+                        checked={paymentMethod === 'phone_order'}
+                        onChange={() => setPaymentMethod('phone_order')}
+                        className="w-4 h-4"
+                      />
+                      <Phone className="w-5 h-5 text-gray-500" />
+                      <span>תשלום דרך נציג</span>
+                    </div>
+                  </label>
+                  
+                  {paymentMethod === 'phone_order' && (
+                    <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg">
+                      📞 נציג שלנו יצור איתך קשר בהקדם להשלמת התשלום
+                    </div>
+                  )}
                 </div>
-                {selectedPayments > 1 && (
-                  <p className="mt-3 text-sm text-gray-500">
-                    {selectedPayments} תשלומים של {formatPrice(getTotal() / selectedPayments)}
-                  </p>
-                )}
               </div>
+
+              {/* Payment Options - Only show for credit card */}
+              {paymentMethod === 'credit_card' && (
+                <div className="bg-white rounded-lg shadow-sm p-6">
+                  <h2 className="text-lg font-bold mb-4">מספר תשלומים</h2>
+                  <div className="flex flex-wrap gap-2">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setSelectedPayments(num)}
+                        className={`px-4 py-2 border rounded-lg transition-colors ${
+                          selectedPayments === num
+                            ? 'border-black bg-black text-white'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {num === 1 ? 'תשלום אחד' : `${num} תשלומים`}
+                      </button>
+                    ))}
+                  </div>
+                  {selectedPayments > 1 && (
+                    <p className="mt-3 text-sm text-gray-500">
+                      {selectedPayments} תשלומים של {formatPrice(getTotal() / selectedPayments)}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Order Summary */}
@@ -512,6 +598,11 @@ export default function CheckoutPage() {
                       <Loader2 className="w-5 h-5 animate-spin" />
                       מעבד...
                     </>
+                  ) : paymentMethod === 'phone_order' ? (
+                    <>
+                      <Phone className="w-5 h-5" />
+                      שליחת הזמנה
+                    </>
                   ) : (
                     <>
                       <CreditCard className="w-5 h-5" />
@@ -521,8 +612,14 @@ export default function CheckoutPage() {
                 </button>
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>תשלום מאובטח SSL</span>
+                  {paymentMethod === 'credit_card' ? (
+                    <>
+                      <ShieldCheck className="w-4 h-4" />
+                      <span>תשלום מאובטח SSL</span>
+                    </>
+                  ) : (
+                    <span>נציג יצור קשר להשלמת התשלום</span>
+                  )}
                 </div>
               </div>
             </div>

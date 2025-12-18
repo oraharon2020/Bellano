@@ -25,12 +25,13 @@ interface CreateOrderRequest {
   customer: CustomerData;
   items: OrderItem[];
   shipping_method: string;
+  payment_method?: 'credit_card' | 'phone_order';
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreateOrderRequest = await request.json();
-    const { customer, items, shipping_method } = body;
+    const { customer, items, shipping_method, payment_method = 'credit_card' } = body;
 
     if (!WC_KEY || !WC_SECRET) {
       return NextResponse.json(
@@ -39,12 +40,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine payment method settings
+    const isPhoneOrder = payment_method === 'phone_order';
+    
     // Create the order in WooCommerce
     const orderData = {
-      payment_method: 'meshulam',
-      payment_method_title: 'כרטיס אשראי',
+      payment_method: isPhoneOrder ? 'cod' : 'meshulam',
+      payment_method_title: isPhoneOrder ? 'תשלום דרך נציג' : 'כרטיס אשראי',
       set_paid: false,
-      status: 'pending',
+      status: isPhoneOrder ? 'on-hold' : 'pending',
       billing: {
         first_name: customer.firstName,
         last_name: customer.lastName,
