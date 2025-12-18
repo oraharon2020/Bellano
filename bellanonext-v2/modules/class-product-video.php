@@ -162,59 +162,69 @@ class Bellano_Product_Video {
         </div>
         
         <script>
-        jQuery(document).ready(function($) {
-            // Upload video
-            $('.upload-video-btn').click(function(e) {
-                e.preventDefault();
-                var frame = wp.media({
-                    title: 'בחר סרטון',
-                    library: { type: 'video' },
-                    multiple: false
+        (function($) {
+            $(document).ready(function() {
+                // Upload video
+                $(document).on('click', '.upload-video-btn', function(e) {
+                    e.preventDefault();
+                    var $input = $('#bellano_product_video');
+                    var $container = $(this).closest('.field-row');
+                    
+                    var frame = wp.media({
+                        title: 'בחר סרטון',
+                        library: { type: 'video' },
+                        multiple: false
+                    });
+                    
+                    frame.on('select', function() {
+                        var attachment = frame.state().get('selection').first().toJSON();
+                        console.log('Video selected:', attachment.url);
+                        $input.val(attachment.url);
+                        $container.find('.video-preview').remove();
+                        $container.append('<div class="video-preview"><video src="' + attachment.url + '" class="media-preview" controls style="max-width:300px;"></video></div>');
+                    });
+                    
+                    frame.open();
                 });
                 
-                frame.on('select', function() {
-                    var attachment = frame.state().get('selection').first().toJSON();
-                    $('#bellano_product_video').val(attachment.url);
-                    $('.video-preview').remove();
-                    $('.upload-video-btn').after('<div class="video-preview"><video src="' + attachment.url + '" class="media-preview" controls style="max-width:300px;"></video></div>');
+                // Remove video
+                $(document).on('click', '.remove-video-btn', function() {
+                    $('#bellano_product_video').val('');
+                    $(this).closest('.field-row').find('.video-preview').remove();
+                    $(this).remove();
                 });
                 
-                frame.open();
-            });
-            
-            // Remove video
-            $('.remove-video-btn').click(function() {
-                $('#bellano_product_video').val('');
-                $('.video-preview').remove();
-                $(this).remove();
-            });
-            
-            // Upload thumbnail
-            $('.upload-thumbnail-btn').click(function(e) {
-                e.preventDefault();
-                var frame = wp.media({
-                    title: 'בחר תמונת תצוגה',
-                    library: { type: 'image' },
-                    multiple: false
+                // Upload thumbnail
+                $(document).on('click', '.upload-thumbnail-btn', function(e) {
+                    e.preventDefault();
+                    var $input = $('#bellano_product_video_thumbnail');
+                    var $container = $(this).closest('.field-row');
+                    
+                    var frame = wp.media({
+                        title: 'בחר תמונת תצוגה',
+                        library: { type: 'image' },
+                        multiple: false
+                    });
+                    
+                    frame.on('select', function() {
+                        var attachment = frame.state().get('selection').first().toJSON();
+                        console.log('Thumbnail selected:', attachment.url);
+                        $input.val(attachment.url);
+                        $container.find('.thumbnail-preview').remove();
+                        $container.append('<img src="' + attachment.url + '" class="media-preview thumbnail-preview" style="display:block; margin-top:10px;">');
+                    });
+                    
+                    frame.open();
                 });
                 
-                frame.on('select', function() {
-                    var attachment = frame.state().get('selection').first().toJSON();
-                    $('#bellano_product_video_thumbnail').val(attachment.url);
-                    $('.thumbnail-preview').remove();
-                    $('.upload-thumbnail-btn').after('<img src="' + attachment.url + '" class="media-preview thumbnail-preview" style="display:block; margin-top:10px;">');
+                // Remove thumbnail
+                $(document).on('click', '.remove-thumbnail-btn', function() {
+                    $('#bellano_product_video_thumbnail').val('');
+                    $(this).closest('.field-row').find('.thumbnail-preview').remove();
+                    $(this).remove();
                 });
-                
-                frame.open();
             });
-            
-            // Remove thumbnail
-            $('.remove-thumbnail-btn').click(function() {
-                $('#bellano_product_video_thumbnail').val('');
-                $('.thumbnail-preview').remove();
-                $(this).remove();
-            });
-        });
+        })(jQuery);
         </script>
         <?php
     }
