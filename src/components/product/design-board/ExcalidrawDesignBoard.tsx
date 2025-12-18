@@ -1,14 +1,26 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { 
-  Tldraw, 
-  Editor,
-  createShapeId,
-  AssetRecordType
-} from 'tldraw';
-import 'tldraw/tldraw.css';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Download, Search, ImageIcon, Loader2 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+// Dynamic import for Excalidraw (it requires window)
+const Excalidraw = dynamic(
+  async () => {
+    const mod = await import('@excalidraw/excalidraw');
+    return mod.Excalidraw;
+  },
+  { ssr: false, loading: () => <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-purple-600" /></div> }
+);
+
+// Dynamic import for exportToBlob
+const getExportFunctions = async () => {
+  const mod = await import('@excalidraw/excalidraw');
+  return {
+    exportToBlob: mod.exportToBlob,
+    exportToSvg: mod.exportToSvg,
+  };
+};
 
 interface ProductSearchResult {
   id: number;
@@ -17,7 +29,7 @@ interface ProductSearchResult {
   price: string;
 }
 
-interface TldrawDesignBoardProps {
+interface ExcalidrawDesignBoardProps {
   isOpen: boolean;
   onClose: () => void;
   productImage?: string;
@@ -25,18 +37,19 @@ interface TldrawDesignBoardProps {
   onSave?: (imageDataUrl: string) => void;
 }
 
-export function TldrawDesignBoard({
+export function ExcalidrawDesignBoard({
   isOpen,
   onClose,
   productImage,
   productName,
   onSave
-}: TldrawDesignBoardProps) {
-  const [editor, setEditor] = useState<Editor | null>(null);
+}: ExcalidrawDesignBoardProps) {
+  const excalidrawRef = useRef<any>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ProductSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [initialDataLoaded, setInitialDataLoaded] = useState(false);
 
   // Search products
   const searchProducts = useCallback(async (query: string) => {
@@ -67,142 +80,141 @@ export function TldrawDesignBoard({
     return () => clearTimeout(timer);
   }, [searchQuery, searchProducts]);
 
-  // Load initial product image
-  useEffect(() => {
-    if (editor && productImage && isOpen) {
-      addImageToCanvas(productImage, true);
-    }
-  }, [editor, productImage, isOpen]);
-
   // Add image to canvas
-  const addImageToCanvas = async (src: string, isInitial = false) => {
-    if (!editor) return;
+  const addImageToCanvas = async (src: string) => {
+    if (!excalidrawRef.current) return;
 
     try {
-      // Create asset
-      const assetId = AssetRecordType.createId();
+      // Get current API
+      const api = excalidrawRef.current;
       
-      // Load image to get dimensions
+      // Load image to get dimensions and create data URL
+      const response = await fetch(src);
+      const blob = await response.blob();
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(blob);
+      });
+
+      // Get dimensions
       const img = new Image();
-      img.crossOrigin = 'anonymous';
-      
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         img.onload = () => resolve();
-        img.onerror = reject;
-        img.src = src;
+        img.src = dataUrl;
       });
 
-      const w = img.naturalWidth;
-      const h = img.naturalHeight;
-      
-      // Scale down if too large
+      // Scale if too large
+      let width = img.width;
+      let height = img.height;
       const maxSize = 400;
-      let width = w;
-      let height = h;
-      if (w > maxSize || h > maxSize) {
-        const scale = maxSize / Math.max(w, h);
-        width = w * scale;
-        height = h * scale;
+      if (width > maxSize || height > maxSize) {
+        const scale = maxSize / Math.max(width, height);
+        width *= scale;
+        height *= scale;
       }
 
-      // Create asset record
-      editor.createAssets([{
-        id: assetId,
-        type: 'image',
-        typeName: 'asset',
-        props: {
-          name: productName || 'image',
-          src: src,
-          w,
-          h,
-          mimeType: 'image/jpeg',
-          isAnimated: false,
-        },
-        meta: {},
-      }]);
+      // Create file ID
+      const fileId = `file-${Date.now()}` as any;
 
-      // Create image shape
-      const shapeId = createShapeId();
-      editor.createShape({
-        id: shapeId,
-        type: 'image',
-        x: isInitial ? 100 : 200 + Math.random() * 100,
-        y: isInitial ? 100 : 200 + Math.random() * 100,
-        props: {
-          assetId,
-          w: width,
-          h: height,
-        },
+      // Add file to Excalidraw
+      const files = {
+        [fileId]: {
+          id: fileId,
+          dataURL: dataUrl,
+          mimeType: blob.type || 'image/jpeg',
+          created: Date.now(),
+        }
+      };
+
+      // Create image element
+      const imageElement = {
+        id: `img-${Date.now()}`,
+        type: 'image' as const,
+        x: 100 + Math.random() * 100,
+        y: 100 + Math.random() * 100,
+        width,
+        height,
+        fileId,
+        status: 'saved' as const,
+        scale: [1, 1] as [number, number],
+      };
+
+      // Get current elements and add new one
+      const currentElements = api.getSceneElements() || [];
+      const currentFiles = api.getFiles() || {};
+
+      api.updateScene({
+        elements: [...currentElements, imageElement],
       });
-
-      // Select the new shape
-      editor.select(shapeId);
       
-      // If initial, zoom to fit
-      if (isInitial) {
-        setTimeout(() => {
-          editor.zoomToFit();
-        }, 100);
-      }
+      api.addFiles(Object.values({ ...currentFiles, ...files }));
+
     } catch (error) {
       console.error('Error adding image:', error);
     }
   };
 
-  // Export canvas using editor's built-in export
+  // Load initial product image
+  useEffect(() => {
+    if (excalidrawRef.current && productImage && isOpen && !initialDataLoaded) {
+      // Small delay to ensure Excalidraw is ready
+      setTimeout(() => {
+        addImageToCanvas(productImage);
+        setInitialDataLoaded(true);
+      }, 500);
+    }
+  }, [excalidrawRef.current, productImage, isOpen, initialDataLoaded]);
+
+  // Reset when closed
+  useEffect(() => {
+    if (!isOpen) {
+      setInitialDataLoaded(false);
+    }
+  }, [isOpen]);
+
+  // Export canvas
   const handleExport = async () => {
-    if (!editor) return;
+    if (!excalidrawRef.current) return;
 
     try {
-      const shapeIds = editor.getCurrentPageShapeIds();
-      if (shapeIds.size === 0) {
+      const api = excalidrawRef.current;
+      const elements = api.getSceneElements();
+      const files = api.getFiles();
+
+      if (!elements || elements.length === 0) {
         alert('אין אלמנטים לייצוא');
         return;
       }
 
-      // Use editor's getSvgString method and convert to PNG
-      const svg = await editor.getSvgString([...shapeIds], {
-        background: true,
-        padding: 20,
+      const { exportToBlob } = await getExportFunctions();
+      
+      const blob = await exportToBlob({
+        elements,
+        files,
+        getDimensions: () => ({ width: 1200, height: 800, scale: 2 }),
+        exportBackground: true,
+        appState: {
+          exportBackground: true,
+          viewBackgroundColor: '#ffffff',
+        },
       });
 
-      if (!svg) {
-        alert('שגיאה בייצוא');
-        return;
-      }
-
-      // Convert SVG to PNG using canvas
-      const img = new Image();
-      const svgBlob = new Blob([svg.svg], { type: 'image/svg+xml' });
-      const url = URL.createObjectURL(svgBlob);
-      
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        canvas.width = svg.width;
-        canvas.height = svg.height;
-        const ctx = canvas.getContext('2d');
+      // Convert to data URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
         
-        if (ctx) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0);
-          
-          const dataUrl = canvas.toDataURL('image/png');
-          
-          // Download
-          const link = document.createElement('a');
-          link.download = `design-${productName || 'bellano'}-${Date.now()}.png`;
-          link.href = dataUrl;
-          link.click();
+        // Download
+        const link = document.createElement('a');
+        link.download = `design-${productName || 'bellano'}-${Date.now()}.png`;
+        link.href = dataUrl;
+        link.click();
 
-          // Callback
-          onSave?.(dataUrl);
-        }
-        
-        URL.revokeObjectURL(url);
+        // Callback
+        onSave?.(dataUrl);
       };
-      
-      img.src = url;
+      reader.readAsDataURL(blob);
     } catch (error) {
       console.error('Export error:', error);
     }
@@ -210,7 +222,7 @@ export function TldrawDesignBoard({
 
   // Add product from search
   const addProductImage = (imageSrc: string) => {
-    addImageToCanvas(imageSrc, false);
+    addImageToCanvas(imageSrc);
     setShowSearch(false);
     setSearchQuery('');
   };
@@ -225,7 +237,7 @@ export function TldrawDesignBoard({
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-gray-800">🎨 לוח עיצוב - {productName}</h2>
             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              tldraw - עורך מקצועי
+              Excalidraw - עורך מקצועי
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -251,19 +263,26 @@ export function TldrawDesignBoard({
 
         {/* Main Content */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Tldraw Canvas */}
+          {/* Excalidraw Canvas */}
           <div className="flex-1 relative" dir="ltr">
-            <Tldraw
-              onMount={(editor) => {
-                setEditor(editor);
+            <Excalidraw
+              excalidrawAPI={(api: any) => { excalidrawRef.current = api; }}
+              theme="light"
+              langCode="en"
+              UIOptions={{
+                canvasActions: {
+                  saveToActiveFile: false,
+                  loadScene: false,
+                  export: false,
+                  saveAsImage: false,
+                },
               }}
-              inferDarkMode={false}
             />
           </div>
 
           {/* Search Panel */}
           {showSearch && (
-            <div className="w-80 border-r bg-gray-50 flex flex-col">
+            <div className="w-80 border-r bg-gray-50 flex flex-col" dir="rtl">
               <div className="p-4 border-b bg-white">
                 <div className="relative">
                   <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2, Palette } from 'lucide-react';
-import { TldrawDesignBoard } from './design-board';
+import { ExcalidrawDesignBoard } from './design-board';
 
 interface AdminFieldsData {
   width: string;
@@ -685,8 +685,8 @@ export function AdminProductFields({
         </>
       )}
 
-      {/* Design Board Modal - Using Tldraw */}
-      <TldrawDesignBoard
+      {/* Design Board Modal - Using Excalidraw */}
+      <ExcalidrawDesignBoard
         isOpen={showDesignBoard}
         onClose={() => setShowDesignBoard(false)}
         productImage={productImage || ''}
