@@ -42,12 +42,13 @@ interface CreateOrderRequest {
   items: OrderItem[];
   shipping_method: string;
   payment_method?: 'credit_card' | 'phone_order';
+  coupon_code?: string | null;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: CreateOrderRequest = await request.json();
-    const { customer, items, shipping_method, payment_method = 'credit_card' } = body;
+    const { customer, items, shipping_method, payment_method = 'credit_card', coupon_code } = body;
 
     if (!WC_KEY || !WC_SECRET) {
       return NextResponse.json(
@@ -153,6 +154,8 @@ export async function POST(request: NextRequest) {
         },
       ],
       customer_note: customer.notes || '',
+      // Add coupon if provided
+      coupon_lines: coupon_code ? [{ code: coupon_code }] : [],
       meta_data: [
         {
           key: '_created_via',

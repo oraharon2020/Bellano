@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus } from 'lucide-react';
+import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 interface ShippingMethod {
@@ -23,9 +24,17 @@ interface CustomerData {
   notes: string;
 }
 
+interface AppliedCoupon {
+  code: string;
+  discount: number;
+  discountDisplay: string;
+  discount_type: string;
+}
+
 type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order';
 
 export default function CheckoutPage() {
+  const searchParams = useSearchParams();
   const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem } = useCartStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
   const [isLoading, setIsLoading] = useState(false);
@@ -34,6 +43,12 @@ export default function CheckoutPage() {
   const [orderId, setOrderId] = useState<number | null>(null);
   const [selectedPayments, setSelectedPayments] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('credit_card');
+  
+  // Coupon state
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
@@ -50,6 +65,66 @@ export default function CheckoutPage() {
     { id: 'free_shipping', title: 'משלוח חינם', cost: 0 },
   ]);
   const [selectedShipping, setSelectedShipping] = useState('free_shipping');
+
+  // Auto-apply coupon from URL
+  useEffect(() => {
+    const couponFromUrl = searchParams.get('coupon');
+    if (couponFromUrl && !appliedCoupon && items.length > 0) {
+      setCouponCode(couponFromUrl);
+      validateCoupon(couponFromUrl);
+    }
+  }, [searchParams, items.length]);
+
+  const subtotal = getTotal();
+  const discount = appliedCoupon?.discount || 0;
+  const finalTotal = Math.max(0, subtotal - discount);
+
+  const validateCoupon = async (code?: string) => {
+    const codeToValidate = code || couponCode.trim();
+    if (!codeToValidate) {
+      setCouponError('נא להזין קוד קופון');
+      return;
+    }
+
+    setIsValidatingCoupon(true);
+    setCouponError('');
+
+    try {
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: codeToValidate,
+          cart_total: subtotal,
+          product_ids: items.map(item => item.databaseId),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAppliedCoupon({
+          code: data.coupon.code,
+          discount: data.discount,
+          discountDisplay: data.discountDisplay,
+          discount_type: data.coupon.discount_type,
+        });
+        setCouponCode('');
+        setCouponError('');
+      } else {
+        setCouponError(data.message);
+      }
+    } catch {
+      setCouponError('שגיאה באימות הקופון');
+    } finally {
+      setIsValidatingCoupon(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError('');
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -128,6 +203,8 @@ export default function CheckoutPage() {
           })),
           shipping_method: selectedShipping,
           payment_method: paymentMethod,
+          // Include coupon if applied
+          coupon_code: appliedCoupon?.code || null,
         }),
       });
 
@@ -798,18 +875,70 @@ export default function CheckoutPage() {
                   ))}
                 </div>
 
+                {/* Coupon Section */}
+                <div className="border-t pt-4 mb-4">
+                  {!appliedCoupon ? (
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="קוד קופון"
+                          className="w-full pr-10 pl-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), validateCoupon())}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => validateCoupon()}
+                        disabled={isValidatingCoupon}
+                        className="px-4 py-2 bg-gray-100 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {isValidatingCoupon ? <Loader2 className="w-4 h-4 animate-spin" /> : 'החל'}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between bg-green-50 p-3 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Tag className="w-4 h-4 text-green-600" />
+                        <span className="text-sm text-green-700 font-medium">
+                          {appliedCoupon.code} ({appliedCoupon.discountDisplay})
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={removeCoupon}
+                        className="text-red-500 hover:text-red-600 text-sm"
+                      >
+                        הסר
+                      </button>
+                    </div>
+                  )}
+                  {couponError && (
+                    <p className="text-red-500 text-xs mt-2">{couponError}</p>
+                  )}
+                </div>
+
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between text-gray-600">
                     <span>סה״כ מוצרים</span>
-                    <span>{formatPrice(getTotal())}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
+                  {appliedCoupon && (
+                    <div className="flex justify-between text-green-600">
+                      <span>הנחה ({appliedCoupon.code})</span>
+                      <span>-{formatPrice(discount)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-gray-600">
                     <span>משלוח</span>
                     <span className="text-green-600">חינם</span>
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold text-lg">
                     <span>סה״כ לתשלום</span>
-                    <span>{formatPrice(getTotal())}</span>
+                    <span>{formatPrice(finalTotal)}</span>
                   </div>
                 </div>
 

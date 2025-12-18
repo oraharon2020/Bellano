@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getProducts, getCategories, transformProduct, transformCategory } from '@/lib/woocommerce';
 import { Truck, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react';
+import { NewsletterForm } from '@/components/home/NewsletterForm';
 
 // Types for homepage banners
 interface HomepageBanner {
@@ -531,7 +532,7 @@ function FeaturesStrip() {
   );
 }
 
-// Newsletter Section - Elegant Design
+// Newsletter Section - Elegant Design with functional form
 function NewsletterSection() {
   return (
     <section className="py-20 md:py-28 bg-[#1a1a1a] text-white relative overflow-hidden">
@@ -556,19 +557,7 @@ function NewsletterSection() {
             מבצעים בלעדיים והשראה לעיצוב הבית
           </p>
           
-          <form className="flex flex-col sm:flex-row gap-4 max-w-lg mx-auto">
-            <input
-              type="email"
-              placeholder="הזינו את האימייל שלכם"
-              className="flex-1 px-6 py-4 bg-white/10 border border-white/20 text-white placeholder:text-white/40 focus:outline-none focus:border-white/50 focus:bg-white/15 transition-all"
-            />
-            <button
-              type="submit"
-              className="px-8 py-4 bg-white text-black font-medium hover:bg-gray-100 transition-colors whitespace-nowrap"
-            >
-              הרשמה
-            </button>
-          </form>
+          <NewsletterForm />
           
           <p className="text-white/30 text-xs mt-6">
             לא נשלח ספאם. ניתן לבטל בכל עת.

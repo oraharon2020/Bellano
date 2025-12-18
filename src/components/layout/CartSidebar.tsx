@@ -1,12 +1,24 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
+
+interface AppliedCoupon {
+  code: string;
+  discount: number;
+  discountDisplay: string;
+  discount_type: string;
+}
 
 export function CartSidebar() {
   const { items, isOpen, closeCart, updateQuantity, removeItem, getTotal, isHydrated } = useCartStore();
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -14,6 +26,56 @@ export function CartSidebar() {
       currency: 'ILS',
       minimumFractionDigits: 0,
     }).format(price);
+  };
+
+  const subtotal = getTotal();
+  const discount = appliedCoupon?.discount || 0;
+  const finalTotal = Math.max(0, subtotal - discount);
+
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('נא להזין קוד קופון');
+      return;
+    }
+
+    setIsValidating(true);
+    setCouponError('');
+
+    try {
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode.trim(),
+          cart_total: subtotal,
+          product_ids: items.map(item => item.databaseId),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setAppliedCoupon({
+          code: data.coupon.code,
+          discount: data.discount,
+          discountDisplay: data.discountDisplay,
+          discount_type: data.coupon.discount_type,
+        });
+        setCouponCode('');
+        setCouponError('');
+      } else {
+        setCouponError(data.message);
+      }
+    } catch (error) {
+      setCouponError('שגיאה באימות הקופון');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError('');
   };
 
   if (!isHydrated || !isOpen) return null;
@@ -157,10 +219,68 @@ export function CartSidebar() {
 
             {/* Cart Footer */}
             <div className="border-t p-4 space-y-3 bg-white shrink-0 pb-safe">
+              {/* Coupon Section */}
+              <div className="space-y-2">
+                {!appliedCoupon ? (
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Tag className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        placeholder="קוד קופון"
+                        className="w-full pr-10 pl-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                        onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
+                      />
+                    </div>
+                    <button
+                      onClick={validateCoupon}
+                      disabled={isValidating}
+                      className="px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    >
+                      {isValidating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'החל'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-green-50 p-2.5 rounded-md">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-green-600" />
+                      <span className="text-sm text-green-700">
+                        {appliedCoupon.code} ({appliedCoupon.discountDisplay})
+                      </span>
+                    </div>
+                    <button
+                      onClick={removeCoupon}
+                      className="text-red-500 hover:text-red-600 text-sm"
+                    >
+                      הסר
+                    </button>
+                  </div>
+                )}
+                {couponError && (
+                  <p className="text-red-500 text-xs">{couponError}</p>
+                )}
+              </div>
+
               {/* Subtotal */}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center text-sm">
                 <span className="text-gray-600">סה״כ ביניים</span>
-                <span className="font-bold text-lg">{formatPrice(getTotal())}</span>
+                <span>{formatPrice(subtotal)}</span>
+              </div>
+              
+              {/* Discount */}
+              {appliedCoupon && (
+                <div className="flex justify-between items-center text-sm text-green-600">
+                  <span>הנחה</span>
+                  <span>-{formatPrice(discount)}</span>
+                </div>
+              )}
+
+              {/* Total */}
+              <div className="flex justify-between items-center pt-2 border-t">
+                <span className="font-bold">סה״כ לתשלום</span>
+                <span className="font-bold text-lg">{formatPrice(finalTotal)}</span>
               </div>
               
               {/* Free shipping notice */}
@@ -170,7 +290,7 @@ export function CartSidebar() {
               
               {/* Checkout Button - Link to Next.js checkout page */}
               <Link 
-                href="/checkout"
+                href={`/checkout${appliedCoupon ? `?coupon=${appliedCoupon.code}` : ''}`}
                 onClick={closeCart}
                 className="block w-full py-3.5 bg-black text-white text-center font-medium rounded-md hover:bg-gray-800 transition-colors active:scale-[0.98]"
               >

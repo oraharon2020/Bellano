@@ -22,20 +22,6 @@ export function Footer() {
   return (
     <footer className="bg-gray-100 mt-16">
       {/* Newsletter Section */}
-      <div className="bg-black text-white py-6 md:py-8">
-        <div className="container mx-auto px-4 text-center">
-          <h3 className="text-lg md:text-xl font-bold mb-3">
-            הרשמו למועדון הלקוחות שלנו לקבלת הטבות!
-          </h3>
-          <Link
-            href="/my-account"
-            className="inline-block bg-white text-black px-6 py-2.5 rounded-md font-medium hover:bg-gray-100 transition-colors"
-          >
-            הרשמה / התחברות
-          </Link>
-        </div>
-      </div>
-
       {/* Main Footer */}
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-8">
