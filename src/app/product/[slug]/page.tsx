@@ -1,6 +1,9 @@
 import { ProductPageClient } from './ProductPageClient';
 import { getProductBySlug, getProductVariations, transformProduct } from '@/lib/woocommerce/api';
 import { notFound } from 'next/navigation';
+import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo';
+
+const SITE_URL = 'https://bellano.co.il';
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -96,13 +99,30 @@ export async function generateMetadata({ params }: ProductPageProps) {
     }
     
     const product = transformProduct(wooProduct);
-    const description = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || '';
+    const description = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
+      `${product.name} - רהיט מעוצב באיכות גבוהה. משלוח חינם עד הבית!`;
     
     return {
-      title: `${product.name} | בלאנו - רהיטי מעצבים`,
+      title: product.name,
       description,
+      alternates: {
+        canonical: `${SITE_URL}/product/${slug}`,
+      },
       openGraph: {
-        title: product.name,
+        title: `${product.name} | בלאנו`,
+        description,
+        url: `${SITE_URL}/product/${slug}`,
+        type: 'website',
+        images: product.image?.sourceUrl ? [{ 
+          url: product.image.sourceUrl,
+          width: 800,
+          height: 600,
+          alt: product.name,
+        }] : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${product.name} | בלאנו`,
         description,
         images: product.image?.sourceUrl ? [product.image.sourceUrl] : [],
       },
@@ -141,7 +161,33 @@ export default async function ProductPage({ params }: ProductPageProps) {
       getProductVideo(wooProduct.id),
     ]);
 
-    return <ProductPageClient product={product} variations={variations} faqs={faqs} video={video} />;
+    // Get category name for breadcrumb
+    const categoryName = wooProduct.categories?.[0]?.name || 'מוצרים';
+    const categorySlug = wooProduct.categories?.[0]?.slug || '';
+
+    return (
+      <>
+        {/* JSON-LD Structured Data */}
+        <ProductJsonLd
+          name={product.name}
+          description={product.description || ''}
+          image={product.image?.sourceUrl || ''}
+          url={`${SITE_URL}/product/${slug}`}
+          price={product.price}
+          sku={product.sku || String(product.databaseId)}
+          availability={wooProduct.stock_status === 'instock' ? 'InStock' : 'OutOfStock'}
+        />
+        <BreadcrumbJsonLd
+          items={[
+            { name: 'דף הבית', url: SITE_URL },
+            ...(categorySlug ? [{ name: categoryName, url: `${SITE_URL}/category/${categorySlug}` }] : []),
+            { name: product.name, url: `${SITE_URL}/product/${slug}` },
+          ]}
+        />
+        
+        <ProductPageClient product={product} variations={variations} faqs={faqs} video={video} />
+      </>
+    );
   } catch (error) {
     console.error('Error fetching product:', error);
     notFound();

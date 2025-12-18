@@ -1,5 +1,8 @@
 import { ProductGrid } from '@/components/products';
 import { getProductsByCategorySlug, getCategoryBySlug, getCategories, transformProduct } from '@/lib/woocommerce';
+import { BreadcrumbJsonLd } from '@/components/seo';
+
+const SITE_URL = 'https://bellano.co.il';
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
@@ -35,14 +38,31 @@ export async function generateMetadata({ params }: CategoryPageProps) {
   try {
     const category = await getCategoryBySlug(slug);
     const name = category?.name || slug;
+    const description = category?.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
+      `מבחר רחב של ${name} איכותיים בעיצוב מודרני. משלוח חינם עד הבית!`;
     
     return {
-      title: `${name} | בלאנו - רהיטי מעצבים`,
-      description: `מבחר רחב של ${name} איכותיים. משלוח חינם עד הבית!`,
+      title: name,
+      description,
+      alternates: {
+        canonical: `${SITE_URL}/category/${slug}`,
+      },
+      openGraph: {
+        title: `${name} | בלאנו`,
+        description,
+        url: `${SITE_URL}/category/${slug}`,
+        type: 'website',
+        images: category?.image?.src ? [{ url: category.image.src }] : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${name} | בלאנו`,
+        description,
+      },
     };
   } catch {
     return {
-      title: `${slug} | בלאנו - רהיטי מעצבים`,
+      title: slug,
     };
   }
 }
@@ -68,16 +88,25 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const categoryName = category?.name || slug;
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Breadcrumb */}
-      <nav className="text-sm text-muted-foreground mb-6">
-        <a href="/" className="hover:text-primary">דף הבית</a>
-        <span className="mx-2">/</span>
-        <span>{categoryName}</span>
-      </nav>
+    <>
+      {/* JSON-LD Breadcrumb */}
+      <BreadcrumbJsonLd 
+        items={[
+          { name: 'דף הבית', url: SITE_URL },
+          { name: categoryName, url: `${SITE_URL}/category/${slug}` },
+        ]} 
+      />
+      
+      <div className="container mx-auto px-4 py-8">
+        {/* Breadcrumb */}
+        <nav className="text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">
+          <a href="/" className="hover:text-primary">דף הבית</a>
+          <span className="mx-2">/</span>
+          <span>{categoryName}</span>
+        </nav>
 
-      {/* Category Header */}
-      <div className="mb-8">
+        {/* Category Header */}
+        <div className="mb-8">
         <h1 className="text-3xl md:text-4xl font-bold mb-4">{categoryName}</h1>
         {category?.description ? (
           <div 
@@ -104,14 +133,15 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </select>
       </div>
 
-      {/* Products Grid */}
-      {products.length > 0 ? (
-        <ProductGrid products={products} />
-      ) : (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">לא נמצאו מוצרים בקטגוריה זו</p>
-        </div>
-      )}
-    </div>
+        {/* Products Grid */}
+        {products.length > 0 ? (
+          <ProductGrid products={products} />
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">לא נמצאו מוצרים בקטגוריה זו</p>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
