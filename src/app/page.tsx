@@ -252,42 +252,51 @@ async function CategoriesSection() {
             <Link
               key={category.id}
               href={`/category/${category.slug}`}
-              className="group relative"
+              className="group"
             >
-              {/* Card Container - Square with one sharp corner */}
-              <div className="relative aspect-square overflow-hidden rounded-2xl rounded-bl-none bg-white shadow-sm hover:shadow-xl transition-all duration-500">
-                {/* Background Image */}
-                {category.image && (
-                  <Image
-                    src={category.image.sourceUrl}
-                    alt={category.name}
-                    fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
-                    sizes="(max-width: 768px) 50vw, 250px"
-                    quality={75}
-                  />
-                )}
-                
-                {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
-                
-                {/* Content */}
-                <div className="absolute inset-0 flex flex-col justify-end p-3 pb-4 md:p-5">
-                  {/* Text Content */}
-                  <div className="relative z-10">
-                    <h3 className="text-white text-lg md:text-xl font-bold mb-0 md:mb-1">
-                      {category.name}
-                    </h3>
-                    <p className="text-white/60 text-xs md:text-sm hidden md:block">
-                      {categoryDescriptions[category.name] || categoryDescriptions.default}
-                    </p>
-                    
-                    {/* Arrow on hover */}
-                    <span className="inline-flex items-center gap-1 text-white/80 text-xs mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <span>לצפייה</span>
-                      <span className="group-hover:-translate-x-1 transition-transform">←</span>
-                    </span>
+              {/* Card Container */}
+              <div className="flex flex-col">
+                {/* Image Container - Square with one sharp corner */}
+                <div className="relative aspect-square overflow-hidden rounded-2xl rounded-bl-none bg-white shadow-sm hover:shadow-xl transition-all duration-500">
+                  {/* Background Image */}
+                  {category.image && (
+                    <Image
+                      src={category.image.sourceUrl}
+                      alt={category.name}
+                      fill
+                      className="object-cover transition-transform duration-700 group-hover:scale-110"
+                      sizes="(max-width: 768px) 50vw, 250px"
+                      quality={75}
+                    />
+                  )}
+                  
+                  {/* Gradient Overlay - Desktop only */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 md:opacity-80 group-hover:opacity-90 transition-opacity duration-500" />
+                  
+                  {/* Desktop Content - on image */}
+                  <div className="absolute inset-0 hidden md:flex flex-col justify-end p-5">
+                    <div className="relative z-10">
+                      <h3 className="text-white text-xl font-bold mb-1">
+                        {category.name}
+                      </h3>
+                      <p className="text-white/60 text-sm">
+                        {categoryDescriptions[category.name] || categoryDescriptions.default}
+                      </p>
+                      
+                      {/* Arrow on hover */}
+                      <span className="inline-flex items-center gap-1 text-white/80 text-xs mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <span>לצפייה</span>
+                        <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                      </span>
+                    </div>
                   </div>
+                </div>
+                
+                {/* Mobile Content - below image */}
+                <div className="md:hidden pt-2 pb-1">
+                  <h3 className="text-gray-900 text-sm font-semibold text-center">
+                    {category.name}
+                  </h3>
                 </div>
               </div>
             </Link>
