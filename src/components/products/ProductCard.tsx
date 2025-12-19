@@ -57,6 +57,10 @@ interface ProductCardProps {
   product: Product;
 }
 
+// Client-side cache for variation images (shared across all ProductCard instances)
+const variationImageCache = new Map<string, string | null>();
+const pendingFetches = new Map<string, Promise<string | null>>();
+
 export function ProductCard({ product }: ProductCardProps) {
   const { toggleItem, isInWishlist, isHydrated } = useWishlistStore();
   const isWishlisted = isHydrated && isInWishlist(product.id);
@@ -81,28 +85,64 @@ export function ProductCard({ product }: ProductCardProps) {
     return unique;
   }, [product.variations]);
   
-  // Fetch variation image when color is selected
+  // Fetch variation image (with cache)
+  const fetchVariationImage = async (colorName: string): Promise<string | null> => {
+    const cacheKey = `${product.databaseId}-${colorName}`;
+    
+    // Check cache first
+    if (variationImageCache.has(cacheKey)) {
+      return variationImageCache.get(cacheKey) || null;
+    }
+    
+    // Check if already fetching
+    if (pendingFetches.has(cacheKey)) {
+      return pendingFetches.get(cacheKey)!;
+    }
+    
+    // Start fetch
+    const fetchPromise = (async () => {
+      try {
+        const response = await fetch(`/api/variation-image?productId=${product.databaseId}&colorName=${encodeURIComponent(colorName)}`);
+        const data = await response.json();
+        const image = data.image || null;
+        variationImageCache.set(cacheKey, image);
+        return image;
+      } catch {
+        variationImageCache.set(cacheKey, null);
+        return null;
+      } finally {
+        pendingFetches.delete(cacheKey);
+      }
+    })();
+    
+    pendingFetches.set(cacheKey, fetchPromise);
+    return fetchPromise;
+  };
+  
+  // Prefetch on hover
+  const handleColorHover = (colorName: string) => {
+    fetchVariationImage(colorName);
+  };
+  
+  // Handle color click
   const handleColorClick = async (colorName: string) => {
     if (selectedColor === colorName) {
-      // Deselect - go back to original image
       setSelectedColor(null);
       setVariationImage(null);
       return;
     }
     
     setSelectedColor(colorName);
-    setIsLoadingImage(true);
     
-    try {
-      const response = await fetch(`/api/variation-image?productId=${product.databaseId}&colorName=${encodeURIComponent(colorName)}`);
-      const data = await response.json();
-      
-      if (data.image) {
-        setVariationImage(data.image);
-      }
-    } catch (error) {
-      console.error('Failed to fetch variation image:', error);
-    } finally {
+    const cacheKey = `${product.databaseId}-${colorName}`;
+    if (variationImageCache.has(cacheKey)) {
+      // Already cached - instant switch
+      setVariationImage(variationImageCache.get(cacheKey) || null);
+    } else {
+      // Not cached yet - show loading
+      setIsLoadingImage(true);
+      const image = await fetchVariationImage(colorName);
+      setVariationImage(image);
       setIsLoadingImage(false);
     }
   };
@@ -231,6 +271,7 @@ export function ProductCard({ product }: ProductCardProps) {
                 <button
                   key={variation.id}
                   onClick={() => handleColorClick(variation.colorName || '')}
+                  onMouseEnter={() => handleColorHover(variation.colorName || '')}
                   disabled={isLoadingImage}
                   className={`relative rounded-full overflow-hidden border shadow-sm cursor-pointer transition-all ${
                     isSelected 
