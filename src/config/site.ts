@@ -15,7 +15,7 @@ export const siteConfig = {
   
   // URLs
   url: 'https://bellano.co.il',
-  wordpressUrl: 'https://bellano.co.il',
+  wordpressUrl: process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il',
   vercelUrl: 'https://bellano.vercel.app',
   
   // Contact
