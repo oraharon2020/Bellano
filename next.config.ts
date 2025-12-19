@@ -54,18 +54,13 @@ const nextConfig: NextConfig = {
         destination: '/',
         permanent: false,
       },
-      // About page
+      // About page (old URL redirects to clean URL)
       {
         source: '/about-us',
-        destination: '/page/about-us',
+        destination: '/about',
         permanent: true,
       },
-      {
-        source: '/about',
-        destination: '/page/about-us',
-        permanent: true,
-      },
-      // Policies
+      // Policies (old URLs redirect to clean URLs)
       {
         source: '/refund_returns-2',
         destination: '/faq',
@@ -73,7 +68,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/privacy-policy-2',
-        destination: '/page/privacy-policy',
+        destination: '/privacy-policy',
         permanent: true,
       },
       // Hebrew pages
@@ -111,6 +106,27 @@ const nextConfig: NextConfig = {
         source: '/:path+/',
         destination: '/:path+',
         permanent: true,
+      },
+    ];
+  },
+
+  // Rewrites - clean URLs that load from /page/[slug]
+  async rewrites() {
+    return [
+      // About page - /about loads content from /page/about-us
+      {
+        source: '/about',
+        destination: '/page/about-us',
+      },
+      // Privacy policy
+      {
+        source: '/privacy-policy',
+        destination: '/page/privacy-policy',
+      },
+      // Terms
+      {
+        source: '/terms',
+        destination: '/page/privacy-policy',
       },
     ];
   },
