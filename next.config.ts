@@ -57,7 +57,12 @@ const nextConfig: NextConfig = {
       // About page
       {
         source: '/about-us',
-        destination: '/about',
+        destination: '/page/about-us',
+        permanent: true,
+      },
+      {
+        source: '/about',
+        destination: '/page/about-us',
         permanent: true,
       },
       // Policies

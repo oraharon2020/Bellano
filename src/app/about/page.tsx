@@ -11,7 +11,7 @@ export default function AboutPage() {
       {/* Breadcrumb */}
       <nav className="text-sm text-muted-foreground mb-6">
         <a href="/" className="hover:text-primary">דף הבית</a>
-        <span className="mx-2">/</span>
+        <span className="mx-2">/</span> 
         <span>אודותינו</span>
       </nav>
 
