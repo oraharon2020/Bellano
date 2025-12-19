@@ -3,5 +3,6 @@ export {
   WebsiteJsonLd, 
   ProductJsonLd, 
   BreadcrumbJsonLd,
-  LocalBusinessJsonLd 
+  LocalBusinessJsonLd,
+  FAQJsonLd
 } from './JsonLd';

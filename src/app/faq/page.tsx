@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronDown, Phone, Mail, MessageCircle, MapPin, Clock } from 'lucide-react';
+import { FAQJsonLd } from '@/components/seo';
 
 const faqs = [
   {
@@ -48,6 +49,9 @@ export default function FAQPage() {
 
   return (
     <div className="bg-white min-h-screen">
+      {/* FAQ Schema for Google */}
+      <FAQJsonLd questions={faqs} />
+      
       {/* Breadcrumb */}
       <div className="border-b">
         <div className="container mx-auto px-4 py-3">

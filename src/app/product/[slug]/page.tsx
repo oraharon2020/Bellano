@@ -1,7 +1,7 @@
 import { ProductPageClient } from './ProductPageClient';
 import { getProductBySlug, getProductVariations, transformProduct, getColorSwatches } from '@/lib/woocommerce/api';
 import { notFound } from 'next/navigation';
-import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo';
+import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from '@/components/seo';
 
 const SITE_URL = 'https://bellano.co.il';
 
@@ -178,6 +178,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
             { name: product.name, url: `${SITE_URL}/product/${slug}` },
           ]}
         />
+        {/* FAQ Schema for product questions */}
+        <FAQJsonLd faqs={faqs} />
         
         <ProductPageClient product={product} variations={variations} faqs={faqs} video={video} swatches={swatches} />
       </>
