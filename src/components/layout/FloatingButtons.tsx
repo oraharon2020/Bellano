@@ -16,16 +16,30 @@ export function FloatingButtons() {
   const applyAccessibility = () => {
     document.documentElement.style.fontSize = `${fontSize}%`;
     
+    // Apply high contrast to main content only, not floating buttons
+    const mainContent = document.querySelector('main');
+    const header = document.querySelector('header');
+    const footer = document.querySelector('footer');
+    
     if (highContrast) {
-      document.body.classList.add('high-contrast');
+      mainContent?.classList.add('high-contrast');
+      header?.classList.add('high-contrast');
+      footer?.classList.add('high-contrast');
     } else {
-      document.body.classList.remove('high-contrast');
+      mainContent?.classList.remove('high-contrast');
+      header?.classList.remove('high-contrast');
+      footer?.classList.remove('high-contrast');
     }
     
+    // Apply grayscale to main content only
     if (grayscale) {
-      document.body.style.filter = 'grayscale(100%)';
+      if (mainContent) (mainContent as HTMLElement).style.filter = 'grayscale(100%)';
+      if (header) (header as HTMLElement).style.filter = 'grayscale(100%)';
+      if (footer) (footer as HTMLElement).style.filter = 'grayscale(100%)';
     } else {
-      document.body.style.filter = '';
+      if (mainContent) (mainContent as HTMLElement).style.filter = '';
+      if (header) (header as HTMLElement).style.filter = '';
+      if (footer) (footer as HTMLElement).style.filter = '';
     }
 
     if (highlightLinks) {
@@ -41,8 +55,21 @@ export function FloatingButtons() {
     setGrayscale(false);
     setHighlightLinks(false);
     document.documentElement.style.fontSize = '100%';
-    document.body.style.filter = '';
-    document.body.classList.remove('high-contrast', 'highlight-links');
+    
+    // Reset main content
+    const mainContent = document.querySelector('main');
+    const header = document.querySelector('header');
+    const footer = document.querySelector('footer');
+    
+    mainContent?.classList.remove('high-contrast');
+    header?.classList.remove('high-contrast');
+    footer?.classList.remove('high-contrast');
+    
+    if (mainContent) (mainContent as HTMLElement).style.filter = '';
+    if (header) (header as HTMLElement).style.filter = '';
+    if (footer) (footer as HTMLElement).style.filter = '';
+    
+    document.body.classList.remove('highlight-links');
   };
 
   return (
@@ -215,11 +242,16 @@ export function FloatingButtons() {
         .high-contrast * {
           border-color: #000 !important;
         }
-        /* Exclude floating buttons from high contrast filter */
-        .high-contrast .floating-buttons-container {
-          filter: contrast(0.667); /* Cancel out the parent filter: 1/1.5 = 0.667 */
+        /* Exclude floating buttons from high contrast filter by moving them outside the filter context */
+        .floating-buttons-container {
+          isolation: isolate;
         }
-        .highlight-links a {
+        .high-contrast ~ .floating-buttons-container,
+        body.high-contrast .floating-buttons-container {
+          filter: none !important;
+          position: fixed !important;
+        }
+        .highlight-links a:not(.floating-buttons-container a) {
           background-color: #ffff00 !important;
           color: #000 !important;
           text-decoration: underline !important;
