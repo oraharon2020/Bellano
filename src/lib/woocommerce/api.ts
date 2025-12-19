@@ -59,7 +59,7 @@ export interface WooProduct {
   stock_status: string;
   categories: { id: number; name: string; slug: string }[];
   images: { id: number; src: string; alt: string }[];
-  attributes: { id: number; name: string; options: string[] }[];
+  attributes: { id: number; name: string; options: string[]; variation: boolean }[];
   variations: number[];
   related_ids: number[];
 }
@@ -326,9 +326,10 @@ export function findSwatchByName(swatches: Record<string, ColorSwatch>, name: st
 }
 
 export function transformProduct(wooProduct: WooProduct, variations?: WooVariation[], swatches?: Record<string, ColorSwatch>) {
-  // Extract color variations from product attributes or variations
+  // Extract color attribute only if it's used for variations
   const colorAttr = wooProduct.attributes?.find(attr => 
-    attr.name === 'צבע' || attr.name === 'color' || attr.name === 'pa_color' || attr.name === 'pa_color-product'
+    (attr.name === 'צבע' || attr.name === 'color' || attr.name === 'pa_color' || attr.name === 'pa_color-product') &&
+    attr.variation === true // Only include if used for variations
   );
   
   // Build variations array from actual variations data (ensure it's an array)
@@ -369,8 +370,8 @@ export function transformProduct(wooProduct: WooProduct, variations?: WooVariati
     };
   }).filter(v => v.colorName);
 
-  // If no variations but has color attribute, create from attribute options
-  const fallbackVariations = !productVariations.length && colorAttr 
+  // If no variations but has color attribute (used for variations), create from attribute options
+  const fallbackVariations = !productVariations.length && colorAttr && colorAttr.variation
     ? colorAttr.options.map((color, index) => {
         const swatch = swatches ? findSwatchByName(swatches, color) : undefined;
         return {
@@ -417,10 +418,16 @@ export function transformProduct(wooProduct: WooProduct, variations?: WooVariati
       })),
     },
     attributes: {
-      nodes: (wooProduct.attributes || []).map(attr => ({
-        name: attr.name,
-        options: attr.options,
-      })),
+      // Only include color attributes that are used for variations
+      nodes: (wooProduct.attributes || [])
+        .filter(attr => 
+          attr.variation === true && 
+          (attr.name === 'צבע' || attr.name === 'color' || attr.name === 'pa_color' || attr.name === 'pa_color-product')
+        )
+        .map(attr => ({
+          name: attr.name,
+          options: attr.options,
+        })),
     },
   };
 }
