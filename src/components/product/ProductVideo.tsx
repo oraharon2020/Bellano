@@ -52,6 +52,8 @@ export function ProductVideo({ video, productName }: ProductVideoProps) {
                 fill
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 400px"
+                loading="lazy"
+                quality={75}
               />
             ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300" />

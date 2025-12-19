@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
@@ -60,6 +60,7 @@ interface ProductCardProps {
 export function ProductCard({ product }: ProductCardProps) {
   const { toggleItem, isInWishlist, isHydrated } = useWishlistStore();
   const isWishlisted = isHydrated && isInWishlist(product.id);
+  const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
   
   // Get unique colors from variations (deduplicate by colorName)
   const uniqueColors = useMemo(() => {
@@ -111,15 +112,19 @@ export function ProductCard({ product }: ProductCardProps) {
       )
     : 0;
 
+  // Get display image - use selected variation image if available
+  const displayImage = selectedVariation?.image?.sourceUrl || product.image?.sourceUrl;
+  const displayImageAlt = selectedVariation?.image?.altText || product.image?.altText || product.name;
+
   return (
     <div className="group">
       {/* Image Container */}
       <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3">
         <Link href={`/product/${product.slug}`}>
-          {product.image?.sourceUrl ? (
+          {displayImage ? (
             <Image
-              src={product.image.sourceUrl}
-              alt={product.image.altText || product.name}
+              src={displayImage}
+              alt={displayImageAlt}
               fill
               className="object-cover transition-all duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -177,7 +182,7 @@ export function ProductCard({ product }: ProductCardProps) {
           </span>
         </div>
 
-        {/* Available Colors - display only, no click action */}
+        {/* Available Colors - click to change product image */}
         {hasColors ? (
           <div className="flex items-center justify-center gap-2 pt-3 flex-wrap">
             {/* Show 4 on mobile, 6 on desktop */}
@@ -185,11 +190,17 @@ export function ProductCard({ product }: ProductCardProps) {
               // Use swatchImage for the circle
               const swatchImageUrl = variation.swatchImage || variation.image?.sourceUrl;
               const hasSwatchImage = !!swatchImageUrl;
+              const isSelected = selectedVariation?.id === variation.id;
               
               return (
-                <div
+                <button
                   key={variation.id}
-                  className={`relative rounded-full overflow-hidden border border-gray-200 shadow-sm ${index >= 4 ? 'hidden md:block' : ''}`}
+                  onClick={() => setSelectedVariation(isSelected ? null : variation)}
+                  className={`relative rounded-full overflow-hidden border shadow-sm cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'ring-2 ring-black ring-offset-1 border-black' 
+                      : 'border-gray-200 hover:border-gray-400'
+                  } ${index >= 4 ? 'hidden md:block' : ''}`}
                   title={variation.colorName || ''}
                   style={{ width: 28, height: 28 }}
                 >
@@ -207,7 +218,7 @@ export function ProductCard({ product }: ProductCardProps) {
                       style={getColorStyle(variation.colorName || '')}
                     />
                   )}
-                </div>
+                </button>
               );
             })}
             {/* Show +X count - different for mobile vs desktop */}
