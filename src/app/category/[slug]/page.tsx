@@ -1,5 +1,5 @@
 import { ProductGrid } from '@/components/products';
-import { getProductsByCategorySlug, getCategoryBySlug, getCategories, transformProduct } from '@/lib/woocommerce';
+import { getProductsByCategorySlugWithVariations, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 
@@ -75,13 +75,13 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   let products: any[] = [];
 
   try {
-    const [categoryData, wooProducts] = await Promise.all([
+    const [categoryData, productsData] = await Promise.all([
       getCategoryBySlug(slug),
-      getProductsByCategorySlug(slug, { per_page: 24 }),
+      getProductsByCategorySlugWithVariations(slug, { per_page: 24 }),
     ]);
     
     category = categoryData;
-    products = wooProducts.map(p => transformProduct(p));
+    products = productsData;
   } catch (error) {
     console.error('Error fetching category data:', error);
   }

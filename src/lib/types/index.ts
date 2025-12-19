@@ -17,12 +17,13 @@ export interface ProductAttribute {
 
 export interface ProductVariation {
   id: string;
-  databaseId: number;
-  name: string;
-  price: string;
+  databaseId?: number;
+  name?: string;
+  colorName?: string;
+  price?: string;
   regularPrice?: string;
   salePrice?: string;
-  attributes: {
+  attributes?: {
     nodes: ProductAttribute[];
   };
   image?: ProductImage;

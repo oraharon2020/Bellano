@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getProducts, getCategories, transformProduct, transformCategory } from '@/lib/woocommerce';
+import { getProductsWithVariations, getCategories, transformCategory } from '@/lib/woocommerce';
 import { Truck, ShieldCheck, CreditCard, RotateCcw } from 'lucide-react';
 import { NewsletterForm } from '@/components/home/NewsletterForm';
 
@@ -312,8 +312,7 @@ async function CategoriesSection() {
 
 // Best Sellers Section
 async function BestSellersSection() {
-  const wooProducts = await getProducts({ per_page: 8, orderby: 'popularity' });
-  const products = wooProducts.map((product) => transformProduct(product));
+  const products = await getProductsWithVariations({ per_page: 8, orderby: 'popularity' });
 
   return (
     <section className="py-20 md:py-28 bg-white">

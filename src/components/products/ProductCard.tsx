@@ -1,17 +1,18 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useWishlistStore } from '@/lib/store/wishlist';
-import type { Product } from '@/lib/types';
+import type { Product, ProductVariation } from '@/lib/types';
 
-// Color mapping for visual display
+// Color mapping for visual display (fallback when no image)
 const colorMap: Record<string, string> = {
   'לבן': '#FFFFFF',
-  'לבן מט': '#FFFFFF',
+  'לבן מט': '#F8F8F8',
   'שחור': '#000000',
   'שחור מט': '#1a1a1a',
   'אפור': '#808080',
@@ -25,20 +26,28 @@ const colorMap: Record<string, string> = {
   'טבעי': '#E8DCC4',
   'וונגה': '#3E2723',
   'אפור בטון': '#9E9E9E',
+  'כחול': '#3B82F6',
+  'ירוק': '#22C55E',
+  'אדום': '#EF4444',
+  'ורוד': '#EC4899',
+  'סגול': '#8B5CF6',
+  'צהוב': '#EAB308',
+  'כתום': '#F97316',
+  'בז\'': '#D4C4B0',
+  'קרם': '#FFFDD0',
+  'חום': '#8B4513',
 };
 
-// Get color value or gradient for display
+// Get color value for display
 const getColorStyle = (colorName: string): React.CSSProperties => {
   const lowerName = colorName.toLowerCase();
   
-  // Check for exact match first
   for (const [key, value] of Object.entries(colorMap)) {
     if (lowerName.includes(key.toLowerCase())) {
       return { backgroundColor: value };
     }
   }
   
-  // Default gradient for unknown colors
   return { 
     background: 'linear-gradient(135deg, #DEB887 50%, #8B7355 50%)' 
   };
@@ -52,6 +61,28 @@ export function ProductCard({ product }: ProductCardProps) {
   const { toggleItem, isInWishlist, isHydrated } = useWishlistStore();
   const isWishlisted = isHydrated && isInWishlist(product.id);
   
+  // Get variations with images (for clickable swatches)
+  const variationsWithImages = useMemo(() => {
+    const variations = product.variations || [];
+    // Filter variations that have either an image or a color name
+    return variations.filter(v => v.image?.sourceUrl || v.colorName);
+  }, [product.variations]);
+
+  // Selected variation state
+  const [selectedVariation, setSelectedVariation] = useState<ProductVariation | null>(null);
+
+  // Current image to display - either selected variation image or product default
+  const currentImage = selectedVariation?.image || product.image;
+  
+  // Fallback to color options from attributes if no variations with images
+  const colorAttribute = product.attributes?.nodes?.find(
+    attr => attr.name === 'צבע' || attr.name === 'color' || attr.name.toLowerCase().includes('color')
+  );
+  const colorOptions = colorAttribute?.options || [];
+  
+  // Use variations if available, otherwise use color attributes
+  const hasVariationImages = variationsWithImages.length > 0;
+
   const wishlistItem = {
     id: product.id,
     databaseId: product.databaseId,
@@ -76,14 +107,13 @@ export function ProductCard({ product }: ProductCardProps) {
       )
     : 0;
 
-  // Get current display image (just use product image, no variation switching on cards)
-  const currentImage = product.image;
-
-  // Get color options from attributes (not variations - much faster!)
-  const colorAttribute = product.attributes?.nodes?.find(
-    attr => attr.name === 'צבע' || attr.name === 'color' || attr.name.toLowerCase().includes('color')
-  );
-  const colorOptions = colorAttribute?.options || [];
+  // Handle variation click - changes the displayed image
+  const handleVariationClick = (variation: ProductVariation, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Toggle off if clicking the same variation
+    setSelectedVariation(selectedVariation?.id === variation.id ? null : variation);
+  };
 
   return (
     <div className="group">
@@ -151,8 +181,50 @@ export function ProductCard({ product }: ProductCardProps) {
           </span>
         </div>
 
-        {/* Color Variations - from attributes, display only */}
-        {colorOptions.length > 0 && (
+        {/* Color Variations with Images - clickable to change product image */}
+        {hasVariationImages ? (
+          <div className="flex items-center justify-center gap-1.5 pt-2 flex-wrap">
+            {variationsWithImages.slice(0, 6).map((variation) => {
+              const isSelected = selectedVariation?.id === variation.id;
+              const hasImage = !!variation.image?.sourceUrl;
+              
+              return (
+                <button
+                  key={variation.id}
+                  onClick={(e) => handleVariationClick(variation, e)}
+                  className={`relative rounded-full overflow-hidden transition-all cursor-pointer ${
+                    isSelected 
+                      ? 'ring-2 ring-primary ring-offset-1 scale-110' 
+                      : 'hover:ring-2 hover:ring-gray-300 hover:ring-offset-1'
+                  }`}
+                  title={variation.colorName || ''}
+                  style={{ width: hasImage ? 28 : 24, height: hasImage ? 28 : 24 }}
+                >
+                  {hasImage ? (
+                    <Image
+                      src={variation.image!.sourceUrl}
+                      alt={variation.colorName || ''}
+                      fill
+                      className="object-cover"
+                      sizes="28px"
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-full border border-gray-200"
+                      style={getColorStyle(variation.colorName || '')}
+                    />
+                  )}
+                </button>
+              );
+            })}
+            {variationsWithImages.length > 6 && (
+              <span className="text-xs text-muted-foreground ml-1">
+                +{variationsWithImages.length - 6}
+              </span>
+            )}
+          </div>
+        ) : colorOptions.length > 0 ? (
+          // Fallback to color attributes (no image switching)
           <div className="flex items-center justify-center gap-2 pt-2">
             {colorOptions.slice(0, 5).map((color, index) => (
               <div
@@ -166,7 +238,7 @@ export function ProductCard({ product }: ProductCardProps) {
               <span className="text-xs text-muted-foreground">+{colorOptions.length - 5}</span>
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
