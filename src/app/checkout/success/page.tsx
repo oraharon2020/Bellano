@@ -31,6 +31,8 @@ interface OrderData {
 function SuccessContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('order_id');
+  const orderType = searchParams.get('type'); // 'phone_order' for phone orders
+  const isPhoneOrder = orderType === 'phone_order';
   const [orderStatus, setOrderStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [trackingFired, setTrackingFired] = useState(false);
@@ -41,10 +43,11 @@ function SuccessContent() {
       setTrackingFired(true);
       
       const totalValue = parseFloat(orderData.total) || 0;
+      const eventType = isPhoneOrder ? 'Lead' : 'Purchase'; // Phone orders are leads until paid
       
-      // Facebook Pixel - Purchase Event
+      // Facebook Pixel - Purchase or Lead Event
       if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
+        (window as any).fbq('track', eventType, {
           value: totalValue,
           currency: 'ILS',
           content_type: 'product',
@@ -52,23 +55,23 @@ function SuccessContent() {
           num_items: orderData.items.reduce((sum, item) => sum + item.quantity, 0),
           order_id: orderData.id,
         });
-        console.log('Facebook Purchase event fired:', totalValue);
+        console.log(`Facebook ${eventType} event fired:`, totalValue);
       }
 
-      // Google Ads - Conversion
+      // Google Ads - Conversion (for both - phone orders are still valuable leads)
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'conversion', {
-          send_to: `${siteConfig.analytics.googleAds}/purchase`,
+          send_to: `${siteConfig.analytics.googleAds}/${isPhoneOrder ? 'lead' : 'purchase'}`,
           value: totalValue,
           currency: 'ILS',
           transaction_id: orderData.id,
         });
-        console.log('Google Ads conversion fired:', totalValue);
+        console.log('Google Ads conversion fired:', totalValue, isPhoneOrder ? '(lead)' : '(purchase)');
       }
 
-      // Google Analytics 4 - Purchase
+      // Google Analytics 4 - Purchase or generate_lead
       if (typeof window !== 'undefined' && (window as any).gtag) {
-        (window as any).gtag('event', 'purchase', {
+        (window as any).gtag('event', isPhoneOrder ? 'generate_lead' : 'purchase', {
           transaction_id: orderData.id,
           value: totalValue,
           currency: 'ILS',
@@ -79,7 +82,7 @@ function SuccessContent() {
             price: parseFloat(item.price.replace(/[^\d.]/g, '')) || 0,
           })),
         });
-        console.log('GA4 purchase event fired:', totalValue);
+        console.log(`GA4 ${isPhoneOrder ? 'generate_lead' : 'purchase'} event fired:`, totalValue);
       }
     }
   }, [orderStatus, orderData, trackingFired]);
@@ -165,27 +168,48 @@ function SuccessContent() {
           <div className="text-center mb-8">
             {/* Animated Success Icon */}
             <div className="relative w-32 h-32 mx-auto mb-6">
-              <div className="absolute inset-0 bg-green-200 rounded-full animate-ping opacity-20" />
-              <div className="absolute inset-0 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="w-16 h-16 text-green-600" />
+              <div className={`absolute inset-0 ${isPhoneOrder ? 'bg-blue-200' : 'bg-green-200'} rounded-full animate-ping opacity-20`} />
+              <div className={`absolute inset-0 ${isPhoneOrder ? 'bg-blue-100' : 'bg-green-100'} rounded-full flex items-center justify-center`}>
+                {isPhoneOrder ? (
+                  <Phone className="w-16 h-16 text-blue-600" />
+                ) : (
+                  <CheckCircle className="w-16 h-16 text-green-600" />
+                )}
               </div>
             </div>
 
             <h1 className="text-3xl md:text-4xl font-bold mb-3 text-gray-900">
-              ההזמנה בוצעה בהצלחה! 🎉
+              {isPhoneOrder ? 'ההזמנה נשלחה בהצלחה! 📞' : 'ההזמנה בוצעה בהצלחה! 🎉'}
             </h1>
             <p className="text-lg text-gray-600">
               תודה שבחרת ב{siteConfig.name}!
             </p>
           </div>
 
+          {/* Phone Order Notice */}
+          {isPhoneOrder && (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6 mb-6">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-blue-900 mb-2">נציג יצור איתך קשר בהקדם</h3>
+                  <p className="text-blue-700 text-sm">
+                    ההזמנה שלך נשמרה במערכת והיא ממתינה לתשלום. נציג שלנו יתקשר אליך בשעות הפעילות להשלמת התשלום בטלפון.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Order Number Card */}
           {orderId && (
-            <div className="bg-white rounded-2xl shadow-lg p-6 mb-6 border border-green-100">
+            <div className={`bg-white rounded-2xl shadow-lg p-6 mb-6 border ${isPhoneOrder ? 'border-blue-100' : 'border-green-100'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-                    <Package className="w-6 h-6 text-green-600" />
+                  <div className={`w-12 h-12 ${isPhoneOrder ? 'bg-blue-100' : 'bg-green-100'} rounded-full flex items-center justify-center`}>
+                    <Package className={`w-6 h-6 ${isPhoneOrder ? 'text-blue-600' : 'text-green-600'}`} />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">מספר הזמנה</p>
@@ -194,7 +218,7 @@ function SuccessContent() {
                 </div>
                 {orderData && (
                   <div className="text-left">
-                    <p className="text-sm text-gray-500">סה״כ שולם</p>
+                    <p className="text-sm text-gray-500">{isPhoneOrder ? 'סה״כ לתשלום' : 'סה״כ שולם'}</p>
                     <p className="text-2xl font-bold text-green-600">₪{parseFloat(orderData.total).toLocaleString()}</p>
                   </div>
                 )}
@@ -241,25 +265,41 @@ function SuccessContent() {
               <div className="absolute right-[23px] top-0 bottom-0 w-0.5 bg-gray-200" />
               
               <div className="space-y-6">
-                {/* Step 1 */}
-                <div className="flex gap-4 relative">
-                  <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center z-10 flex-shrink-0">
-                    <Mail className="w-5 h-5 text-green-600" />
+                {/* Step 1 - Different for phone orders */}
+                {isPhoneOrder ? (
+                  <div className="flex gap-4 relative">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center z-10 flex-shrink-0">
+                      <Phone className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div className="pt-2">
+                      <p className="font-semibold text-gray-900">נציג יתקשר אליך</p>
+                      <p className="text-sm text-gray-500">נציג {siteConfig.name} יצור איתך קשר להשלמת התשלום בטלפון</p>
+                    </div>
                   </div>
-                  <div className="pt-2">
-                    <p className="font-semibold text-gray-900">אישור נשלח במייל</p>
-                    <p className="text-sm text-gray-500">קיבלת אימייל עם פרטי ההזמנה המלאים</p>
+                ) : (
+                  <div className="flex gap-4 relative">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center z-10 flex-shrink-0">
+                      <Mail className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div className="pt-2">
+                      <p className="font-semibold text-gray-900">אישור נשלח במייל</p>
+                      <p className="text-sm text-gray-500">קיבלת אימייל עם פרטי ההזמנה המלאים</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Step 2 */}
                 <div className="flex gap-4 relative">
                   <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center z-10 flex-shrink-0">
-                    <Phone className="w-5 h-5 text-blue-600" />
+                    {isPhoneOrder ? <Mail className="w-5 h-5 text-blue-600" /> : <Phone className="w-5 h-5 text-blue-600" />}
                   </div>
                   <div className="pt-2">
-                    <p className="font-semibold text-gray-900">ניצור איתך קשר</p>
-                    <p className="text-sm text-gray-500">צוות {siteConfig.name} יתאם איתך את פרטי המשלוח</p>
+                    <p className="font-semibold text-gray-900">{isPhoneOrder ? 'תקבל אישור במייל' : 'ניצור איתך קשר'}</p>
+                    <p className="text-sm text-gray-500">
+                      {isPhoneOrder 
+                        ? 'לאחר התשלום תקבל אימייל אישור עם פרטי ההזמנה' 
+                        : `צוות ${siteConfig.name} יתאם איתך את פרטי המשלוח`}
+                    </p>
                   </div>
                 </div>
 

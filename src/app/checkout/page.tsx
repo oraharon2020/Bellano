@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag } from 'lucide-react';
@@ -35,6 +35,7 @@ type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem } = useCartStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
   const [isLoading, setIsLoading] = useState(false);
@@ -219,10 +220,10 @@ export default function CheckoutPage() {
 
       setOrderId(orderData.order_id);
 
-      // If phone order - go directly to success (order is on-hold)
+      // If phone order - redirect to success page with phone_order flag
       if (paymentMethod === 'phone_order') {
         clearCart();
-        setStep('success');
+        router.push(`/checkout/success?order_id=${orderData.order_id}&type=phone_order`);
         return;
       }
 
