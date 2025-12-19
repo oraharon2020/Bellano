@@ -50,6 +50,9 @@ export default function CheckoutPage() {
   const [couponError, setCouponError] = useState('');
   const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
   
+  // Terms agreement
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
     lastName: '',
@@ -948,10 +951,33 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
+                {/* Terms Agreement Checkbox */}
+                <div className="mt-4 pt-4 border-t">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="mt-1 w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
+                      required
+                    />
+                    <span className="text-sm text-gray-600 group-hover:text-gray-800">
+                      קראתי ואני מסכים/ה ל
+                      <Link 
+                        href="/page/privacy-policy" 
+                        target="_blank"
+                        className="text-black underline hover:no-underline mx-1"
+                      >
+                        תקנון האתר ומדיניות הפרטיות
+                      </Link>
+                    </span>
+                  </label>
+                </div>
+
                 <button
                   type="submit"
-                  disabled={isLoading}
-                  className="w-full mt-6 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  disabled={isLoading || !agreedToTerms}
+                  className="w-full mt-4 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <>
