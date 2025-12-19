@@ -9,6 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('order_id');
+    const includeDetails = searchParams.get('include_details') === 'true';
 
     if (!orderId) {
       return NextResponse.json(
@@ -43,14 +44,44 @@ export async function GET(request: NextRequest) {
 
     const data = await response.json();
 
-    return NextResponse.json({
+    // Basic response
+    const result: Record<string, unknown> = {
       success: true,
       order_id: data.id,
       status: data.status,
       total: data.total,
       payment_method: data.payment_method,
       date_paid: data.date_paid,
-    });
+    };
+
+    // Include full order details for thank you page
+    if (includeDetails) {
+      result.order = {
+        id: data.id.toString(),
+        status: data.status,
+        total: data.total,
+        currency: data.currency,
+        items: data.line_items.map((item: {
+          name: string;
+          quantity: number;
+          total: string;
+          image?: { src?: string };
+        }) => ({
+          name: item.name,
+          quantity: item.quantity,
+          price: `₪${parseFloat(item.total).toLocaleString()}`,
+          image: item.image?.src || null,
+        })),
+        billing: {
+          first_name: data.billing.first_name,
+          last_name: data.billing.last_name,
+          email: data.billing.email,
+          phone: data.billing.phone,
+        },
+      };
+    }
+
+    return NextResponse.json(result);
 
   } catch (error) {
     console.error('Error checking order status:', error);
