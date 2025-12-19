@@ -512,11 +512,33 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             <p className="text-xs text-gray-400 mb-3 md:mb-4">מק״ט: {product.databaseId}</p>
 
             {/* Price */}
-            <div className="flex items-baseline gap-2 mb-3 md:mb-4">
-              <span className="text-xl md:text-2xl font-semibold">{currentPrice}</span>
-              {hasDiscount && currentRegularPrice && (
-                <span className="text-sm text-gray-400 line-through">{currentRegularPrice}</span>
-              )}
+            <div className="mb-3 md:mb-4">
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl md:text-2xl font-semibold">{currentPrice}</span>
+                {hasDiscount && currentRegularPrice && (
+                  <span className="text-sm text-gray-400 line-through">{currentRegularPrice}</span>
+                )}
+              </div>
+              
+              {/* Installments info */}
+              {(() => {
+                const priceNum = parseFloat(currentPrice.replace(/[^\d.]/g, ''));
+                if (priceNum >= 300) {
+                  const installments = 6;
+                  const monthlyPayment = Math.ceil(priceNum / installments);
+                  return (
+                    <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                      <span className="bg-black text-white text-xs font-medium px-1.5 py-0.5 rounded">
+                        x{installments}
+                      </span>
+                      <span>תשלומים ללא ריבית.</span>
+                      <span className="text-gray-400">|</span>
+                      <span>כ-₪{monthlyPayment.toLocaleString()} לחודש</span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
             </div>
 
             {/* Short Description */}
