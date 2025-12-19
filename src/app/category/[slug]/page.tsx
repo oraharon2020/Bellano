@@ -1,5 +1,5 @@
 import { ProductGrid } from '@/components/products';
-import { getProductsByCategorySlugWithVariations, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
+import { getProductsByCategorySlugWithSwatches, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 
@@ -77,7 +77,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   try {
     const [categoryData, productsData] = await Promise.all([
       getCategoryBySlug(slug),
-      getProductsByCategorySlugWithVariations(slug, { per_page: 24 }),
+      getProductsByCategorySlugWithSwatches(slug, { per_page: 24 }),
     ]);
     
     category = categoryData;

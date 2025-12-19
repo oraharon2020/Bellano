@@ -3,12 +3,14 @@ const WOOCOMMERCE_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellan
 const CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || '';
 const CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || '';
 
-// Debug log (remove in production)
-console.log('WooCommerce Config:', {
-  url: WOOCOMMERCE_URL,
-  hasKey: !!CONSUMER_KEY,
-  hasSecret: !!CONSUMER_SECRET,
-});
+// Cache durations
+const CACHE_DURATION = {
+  PRODUCTS: 300,      // 5 minutes for product listings
+  PRODUCT: 600,       // 10 minutes for single product
+  CATEGORIES: 3600,   // 1 hour for categories
+  SWATCHES: 3600,     // 1 hour for color swatches
+  VARIATIONS: 600,    // 10 minutes for variations
+};
 
 // Base fetch function with authentication
 async function wooFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -27,7 +29,7 @@ async function wooFetch<T>(endpoint: string, options: RequestInit = {}): Promise
       ...options.headers,
     },
     next: { 
-      revalidate: 3600,  // Cache for 1 hour
+      revalidate: options.next?.revalidate ?? CACHE_DURATION.PRODUCTS,
       tags: ['woocommerce'] 
     },
   });
@@ -205,6 +207,44 @@ export async function getProductsByCategorySlug(
   });
 }
 
+/**
+ * Get products with swatches only (no variations - faster for catalog pages)
+ * This is optimized for category pages where we just need color swatches, not full variation data
+ */
+export async function getProductsWithSwatches(params?: {
+  per_page?: number;
+  page?: number;
+  category?: number;
+  search?: string;
+  orderby?: 'date' | 'price' | 'popularity' | 'rating';
+  order?: 'asc' | 'desc';
+}): Promise<ReturnType<typeof transformProduct>[]> {
+  // Fetch products and color swatches in parallel
+  const [products, swatches] = await Promise.all([
+    getProducts(params),
+    getColorSwatches()
+  ]);
+  
+  // Transform products with swatches only (no individual variation API calls!)
+  return products.map(product => transformProduct(product, undefined, swatches));
+}
+
+/**
+ * Get products by category slug with swatches (optimized for category pages)
+ */
+export async function getProductsByCategorySlugWithSwatches(
+  categorySlug: string,
+  params?: { per_page?: number; page?: number; orderby?: 'date' | 'price' | 'popularity' | 'rating'; order?: 'asc' | 'desc' }
+): Promise<ReturnType<typeof transformProduct>[]> {
+  const category = await getCategoryBySlug(categorySlug);
+  if (!category) return [];
+  
+  return getProductsWithSwatches({
+    category: category.id,
+    ...params,
+  });
+}
+
 // Transform functions to match our app types
 
 // Color swatch cache
@@ -249,21 +289,40 @@ async function getColorSwatches(): Promise<Record<string, ColorSwatch>> {
   return colorSwatchesCache || {};
 }
 
-// Find swatch by name (fuzzy match)
+// Normalize string for comparison (remove extra spaces, lowercase)
+function normalizeForComparison(str: string): string {
+  return str.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// Find swatch by name (improved matching)
 function findSwatchByName(swatches: Record<string, ColorSwatch>, name: string): ColorSwatch | undefined {
-  // First try exact slug match
-  const slug = name.toLowerCase()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\u0590-\u05ff-]/g, '');
+  if (!name || !swatches) return undefined;
   
-  if (swatches[slug]) return swatches[slug];
+  const normalizedName = normalizeForComparison(name);
   
-  // Then try to find by name
-  return Object.values(swatches).find(s => 
-    s.name === name || 
-    s.name.includes(name) || 
-    name.includes(s.name)
+  // 1. Try exact name match first (case-insensitive)
+  const exactMatch = Object.values(swatches).find(s => 
+    normalizeForComparison(s.name) === normalizedName
   );
+  if (exactMatch) return exactMatch;
+  
+  // 2. Try slug match (convert Hebrew name to potential slug patterns)
+  const possibleSlugs = [
+    name.toLowerCase().replace(/\s+/g, '-'),
+    name.toLowerCase().replace(/\s+/g, ''),
+  ];
+  for (const slug of possibleSlugs) {
+    if (swatches[slug]) return swatches[slug];
+  }
+  
+  // 3. Try partial match - swatch name contains the search term
+  const partialMatch = Object.values(swatches).find(s => 
+    normalizeForComparison(s.name).includes(normalizedName) ||
+    normalizedName.includes(normalizeForComparison(s.name))
+  );
+  if (partialMatch) return partialMatch;
+  
+  return undefined;
 }
 
 export function transformProduct(wooProduct: WooProduct, variations?: WooVariation[], swatches?: Record<string, ColorSwatch>) {

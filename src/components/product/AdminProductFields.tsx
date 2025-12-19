@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2, Palette } from 'lucide-react';
-import { FabricDesignBoard } from './design-board';
+
+// Lazy load the heavy FabricDesignBoard component
+const FabricDesignBoard = lazy(() => import('./design-board/FabricDesignBoard').then(mod => ({ default: mod.FabricDesignBoard })));
+
+// Loading fallback for design board
+const DesignBoardLoader = () => (
+  <div className="w-full h-[600px] flex items-center justify-center bg-gray-100 rounded-lg">
+    <div className="text-center">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+      <p className="mt-2 text-sm text-muted-foreground">טוען לוח עיצוב...</p>
+    </div>
+  </div>
+);
 
 interface AdminFieldsData {
   width: string;
@@ -685,21 +697,25 @@ export function AdminProductFields({
         </>
       )}
 
-      {/* Design Board Modal - Using Fabric.js */}
-      <FabricDesignBoard
-        isOpen={showDesignBoard}
-        onClose={() => setShowDesignBoard(false)}
-        productImage={productImage || ''}
-        productName={productName || 'מוצר'}
-        onSave={(imageDataUrl: string) => {
-          // Save design to formData as uploaded file
-          setFormData(prev => ({
-            ...prev,
-            uploadedFile: imageDataUrl,
-            uploadedFileName: `design-${Date.now()}.png`,
-          }));
-        }}
-      />
+      {/* Design Board Modal - Using Fabric.js (lazy loaded) */}
+      {showDesignBoard && (
+        <Suspense fallback={<DesignBoardLoader />}>
+          <FabricDesignBoard
+            isOpen={showDesignBoard}
+            onClose={() => setShowDesignBoard(false)}
+            productImage={productImage || ''}
+            productName={productName || 'מוצר'}
+            onSave={(imageDataUrl: string) => {
+              // Save design to formData as uploaded file
+              setFormData(prev => ({
+                ...prev,
+                uploadedFile: imageDataUrl,
+                uploadedFileName: `design-${Date.now()}.png`,
+              }));
+            }}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

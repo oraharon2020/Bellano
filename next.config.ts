@@ -60,7 +60,23 @@ const nextConfig: NextConfig = {
           },
         ],
       },
+      // Preconnect to external domains for faster loading
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Link',
+            value: '<https://bellano.co.il>; rel=preconnect, <https://i0.wp.com>; rel=preconnect, <https://fonts.googleapis.com>; rel=preconnect',
+          },
+        ],
+      },
     ];
+  },
+  
+  // Experimental optimizations
+  experimental: {
+    // Optimize package imports
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-popover'],
   },
 };
 
