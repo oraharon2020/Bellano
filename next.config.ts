@@ -77,6 +77,8 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize package imports
     optimizePackageImports: ['lucide-react', '@radix-ui/react-dialog', '@radix-ui/react-popover'],
+    // Optimize CSS loading
+    optimizeCss: true,
   },
 };
 
