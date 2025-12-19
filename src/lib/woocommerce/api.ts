@@ -434,12 +434,9 @@ export function transformProduct(wooProduct: WooProduct, variations?: WooVariati
       })),
     },
     attributes: {
-      // Only include color attributes that are used for variations
+      // Include all attributes that are used for variations (colors, sizes, etc.)
       nodes: (wooProduct.attributes || [])
-        .filter(attr => 
-          attr.variation === true && 
-          (attr.name === 'צבע' || attr.name === 'color' || attr.name === 'pa_color' || attr.name === 'pa_color-product')
-        )
+        .filter(attr => attr.variation === true)
         .map(attr => ({
           name: attr.name,
           options: attr.options,
