@@ -3,6 +3,7 @@ import { getProductsByCategorySlugWithSwatches, getCategoryBySlug, getCategories
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 import { siteConfig } from '@/config/site';
+import { getYoastSEO, yoastToMetadata } from '@/lib/wordpress/seo';
 
 const SITE_URL = siteConfig.url;
 
@@ -38,27 +39,39 @@ export async function generateMetadata({ params }: CategoryPageProps) {
   const { slug } = await params;
   
   try {
+    // Try to get Yoast SEO data from WordPress first
+    const yoastData = await getYoastSEO(`/product-category/${slug}/`);
+    
     const category = await getCategoryBySlug(slug);
     const name = category?.name || slug;
-    const description = category?.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
+    const fallbackDescription = category?.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
       `מבחר רחב של ${name} איכותיים בעיצוב מודרני. משלוח חינם עד הבית!`;
+    const fallbackImage = category?.image?.src || `${SITE_URL}/og-image.jpg`;
     
-    // Use category image or fallback to site OG image
-    const ogImage = category?.image?.src || `${SITE_URL}/og-image.jpg`;
+    // If Yoast data exists, use it (what you configure in WordPress)
+    if (yoastData) {
+      return yoastToMetadata(yoastData, {
+        title: `${name} | בלאנו`,
+        description: fallbackDescription,
+        url: `${SITE_URL}/category/${slug}`,
+        image: fallbackImage,
+      });
+    }
     
+    // Fallback to auto-generated metadata
     return {
       title: name,
-      description,
+      description: fallbackDescription,
       alternates: {
         canonical: `${SITE_URL}/category/${slug}`,
       },
       openGraph: {
         title: `${name} | בלאנו`,
-        description,
+        description: fallbackDescription,
         url: `${SITE_URL}/category/${slug}`,
         type: 'website',
         images: [{ 
-          url: ogImage,
+          url: fallbackImage,
           width: 1200,
           height: 630,
           alt: name,
@@ -67,8 +80,8 @@ export async function generateMetadata({ params }: CategoryPageProps) {
       twitter: {
         card: 'summary_large_image',
         title: `${name} | בלאנו`,
-        description,
-        images: [ogImage],
+        description: fallbackDescription,
+        images: [fallbackImage],
       },
     };
   } catch {
