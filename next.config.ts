@@ -83,12 +83,6 @@ const nextConfig: NextConfig = {
         destination: '/sitemap.xml',
         permanent: true,
       },
-      // Blog (if not exists, redirect to home)
-      {
-        source: '/blog',
-        destination: '/',
-        permanent: false,
-      },
       // Partner page
       {
         source: '/partner',

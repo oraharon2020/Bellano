@@ -260,7 +260,7 @@ async function CategoriesSection() {
                 {/* Image Container - Square with one sharp corner */}
                 <div className="relative aspect-square overflow-hidden rounded-2xl rounded-bl-none bg-white shadow-sm hover:shadow-xl transition-all duration-500">
                   {/* Background Image */}
-                  {category.image && (
+                  {category.image?.sourceUrl && (
                     <Image
                       src={category.image.sourceUrl}
                       alt={category.name}

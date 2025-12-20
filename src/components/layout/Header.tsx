@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
-import { Search, ShoppingBag, Menu, Phone, User, Heart, X, ChevronLeft } from 'lucide-react';
+import { Search, ShoppingBag, Menu, Phone, Heart, X, ChevronLeft, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCartStore } from '@/lib/store/cart';
 import { useWishlistStore } from '@/lib/store/wishlist';
@@ -11,24 +11,7 @@ import { CartSidebar } from './CartSidebar';
 import { SearchModal } from '@/components/search/SearchModal';
 import { siteConfig } from '@/config/site';
 
-const categories = [
-  { name: 'שולחנות סלון', slug: 'living-room-tables' },
-  { name: 'מזנונים לסלון', slug: 'living-room-sideboards' },
-  { name: 'קומודות', slug: 'dresser' },
-  { name: 'קונסולות', slug: 'consoles' },
-  { name: 'שידות לילה', slug: 'bedside-tables' },
-  { name: 'כורסאות', slug: 'designed-armchairs' },
-  { name: 'פינות אוכל', slug: 'dining' },
-  { name: 'מראות', slug: 'mirrors' },
-  { name: 'ספריות', slug: 'libraries' },
-  { name: 'מיטות', slug: 'beds' },
-];
-
-const infoLinks = [
-  { name: 'אודותינו', href: '/page/about-us' },
-  { name: 'צרו קשר', href: '/contact' },
-  { name: 'שאלות נפוצות', href: '/faq' },
-];
+const { navigation } = siteConfig;
 
 export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -71,19 +54,48 @@ export function Header() {
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden lg:flex items-center gap-6">
-              {categories.slice(0, 7).map((category) => (
-                <Link
-                  key={category.slug}
-                  href={`/category/${category.slug}`}
-                  className="text-sm hover:text-primary transition-colors whitespace-nowrap"
-                >
-                  {category.name}
-                </Link>
+            <nav className="hidden lg:flex items-center gap-1">
+              {navigation.main.map((item) => (
+                <div key={item.name} className="relative group">
+                  {'children' in item && item.children ? (
+                    // Dropdown menu
+                    <>
+                      <button className="flex items-center gap-1 px-3 py-2 text-sm hover:text-primary transition-colors whitespace-nowrap">
+                        {item.name}
+                        <ChevronDown className="w-3.5 h-3.5 transition-transform group-hover:rotate-180" />
+                      </button>
+                      <div className="absolute top-full right-0 pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                        <div className="bg-white border rounded-lg shadow-lg py-2 min-w-[180px]">
+                          {item.children.map((child) => (
+                            <Link
+                              key={child.slug}
+                              href={`/category/${child.slug}`}
+                              className="block px-4 py-2 text-sm hover:bg-gray-50 hover:text-primary transition-colors"
+                            >
+                              {child.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    // Direct link (like Sale)
+                    <Link
+                      href={'slug' in item && item.slug ? `/category/${item.slug}` : ('href' in item ? item.href : '/')}
+                      className={`px-3 py-2 text-sm transition-colors whitespace-nowrap ${
+                        'highlight' in item && item.highlight 
+                          ? 'text-red-600 font-semibold hover:text-red-700' 
+                          : 'hover:text-primary'
+                      }`}
+                    >
+                      {item.name}
+                    </Link>
+                  )}
+                </div>
               ))}
               <Link
                 href="/categories"
-                className="text-sm font-medium text-primary hover:underline"
+                className="px-3 py-2 text-sm text-primary font-medium hover:underline"
               >
                 כל הקטגוריות
               </Link>
@@ -175,36 +187,61 @@ export function Header() {
 
             {/* Menu Content */}
             <div className="flex-1 overflow-auto">
-              {/* Categories */}
-              <div className="p-4">
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">קטגוריות</p>
-                <nav className="space-y-1">
-                  {categories.map((category) => (
-                    <Link
-                      key={category.slug}
-                      href={`/category/${category.slug}`}
-                      className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      <span className="font-medium">{category.name}</span>
-                      <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-black transition-colors" />
-                    </Link>
-                  ))}
-                </nav>
-              </div>
+              {/* Main Navigation with Sections */}
+              {navigation.main.map((section) => (
+                'children' in section && section.children ? (
+                  <div key={section.name} className="border-b">
+                    <div className="p-4">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{section.name}</p>
+                      <nav className="space-y-1">
+                        {section.children.map((item) => (
+                          <Link
+                            key={item.slug}
+                            href={`/category/${item.slug}`}
+                            className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                            onClick={() => setMobileMenuOpen(false)}
+                          >
+                            <span className="font-medium">{item.name}</span>
+                            <ChevronLeft className="w-4 h-4 text-gray-400 group-hover:text-black transition-colors" />
+                          </Link>
+                        ))}
+                      </nav>
+                    </div>
+                  </div>
+                ) : (
+                  <Link
+                    key={section.name}
+                    href={'slug' in section && section.slug ? `/category/${section.slug}` : ('href' in section ? section.href : '/')}
+                    className={`flex items-center justify-between py-3 px-4 border-b transition-colors ${
+                      'highlight' in section && section.highlight ? 'bg-red-50 text-red-600 font-semibold' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <span className="font-medium">{section.name}</span>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Link>
+                )
+              ))}
               
-              {/* Divider */}
-              <div className="h-2 bg-gray-100" />
+              {/* All Categories Link */}
+              <Link
+                href="/categories"
+                className="flex items-center justify-between py-3 px-4 border-b bg-gray-50 transition-colors hover:bg-gray-100"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <span className="font-semibold text-primary">כל הקטגוריות</span>
+                <ChevronLeft className="w-4 h-4 text-primary" />
+              </Link>
               
               {/* Info Links */}
               <div className="p-4">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">מידע</p>
                 <nav className="space-y-1">
-                  {infoLinks.map((link) => (
+                  {navigation.info.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}
-                      className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
+                      className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-gray-50 transition-colors group"
                       onClick={() => setMobileMenuOpen(false)}
                     >
                       <span className="font-medium">{link.name}</span>

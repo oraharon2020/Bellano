@@ -1,5 +1,6 @@
 import { MetadataRoute } from 'next';
 import { getProducts, getCategories, getTags } from '@/lib/woocommerce';
+import { getPosts } from '@/lib/wordpress';
 import { siteConfig } from '@/config/site';
 
 const SITE_URL = siteConfig.url;
@@ -18,6 +19,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: new Date(),
       changeFrequency: 'weekly',
       priority: 0.9,
+    },
+    {
+      url: `${SITE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.7,
     },
     {
       url: `${SITE_URL}/about`,
@@ -89,5 +96,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Error fetching tags for sitemap:', error);
   }
 
-  return [...staticPages, ...categoryPages, ...tagPages, ...productPages];
+  // Get all blog posts
+  let blogPages: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await getPosts({ per_page: 100 });
+    blogPages = posts.map((post) => ({
+      url: `${SITE_URL}/blog/${post.slug}`,
+      lastModified: new Date(post.modified || post.date),
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    }));
+  } catch (error) {
+    console.error('Error fetching blog posts for sitemap:', error);
+  }
+
+  return [...staticPages, ...categoryPages, ...tagPages, ...blogPages, ...productPages];
 }

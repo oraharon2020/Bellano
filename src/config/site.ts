@@ -18,6 +18,73 @@ export const siteConfig = {
   wordpressUrl: process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://bellano.co.il',
   vercelUrl: 'https://bellano.vercel.app',
   
+  // ============================================================
+  // NAVIGATION - תפריט הניווט
+  // ============================================================
+  navigation: {
+    // תפריט ראשי - מחשב (מוצג ב-Header)
+    main: [
+      { name: 'דף הבית', href: '/' },
+      { name: 'SALE', slug: 'sale', highlight: true },
+      {
+        name: 'סלון',
+        href: '/categories',
+        children: [
+          { name: 'מזנונים לסלון', slug: 'living-room-sideboards' },
+          { name: 'שולחנות סלון', slug: 'living-room-tables' },
+          { name: 'כורסאות לסלון', slug: 'designed-armchairs' },
+          { name: 'ספריות', slug: 'libraries' },
+        ],
+      },
+      {
+        name: 'חדר שינה',
+        href: '/categories',
+        children: [
+          { name: 'מיטות', slug: 'beds' },
+          { name: 'קומודות', slug: 'dresser' },
+          { name: 'שידות לילה', slug: 'bedside-tables' },
+        ],
+      },
+      {
+        name: 'פינת אוכל',
+        href: '/categories',
+        children: [
+          { name: 'פינות אוכל', slug: 'dining' },
+          { name: 'כיסאות לפינת אוכל', slug: 'dining-room-chairs' },
+          { name: 'שולחנות בר', slug: 'bar-tables' },
+        ],
+      },
+      {
+        name: 'כניסה ומסדרון',
+        href: '/categories',
+        children: [
+          { name: 'קונסולות', slug: 'consoles' },
+          { name: 'מראות', slug: 'mirrors' },
+        ],
+      },
+    ],
+    
+    // קישורים מהירים (ללא dropdown)
+    quickLinks: [
+      { name: 'מזנונים', slug: 'living-room-sideboards' },
+      { name: 'שולחנות סלון', slug: 'living-room-tables' },
+      { name: 'קומודות', slug: 'dresser' },
+      { name: 'קונסולות', slug: 'consoles' },
+      { name: 'שידות לילה', slug: 'bedside-tables' },
+      { name: 'מיטות', slug: 'beds' },
+      { name: 'כורסאות', slug: 'designed-armchairs' },
+    ],
+    
+    // דפי מידע
+    info: [
+      { name: 'בלוג', href: '/blog' },
+      { name: 'אודותינו', href: '/page/about-us' },
+      { name: 'צרו קשר', href: '/contact' },
+      { name: 'שאלות נפוצות', href: '/faq' },
+      { name: 'הצהרת נגישות', href: '/accessibility' },
+    ],
+  },
+
   // Contact
   email: 'info@bellano.co.il',
   phone: '054-9942466',

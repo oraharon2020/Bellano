@@ -5,6 +5,7 @@ import "./globals.css";
 import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { OrganizationJsonLd, WebsiteJsonLd, LocalBusinessJsonLd } from "@/components/seo";
 import { siteConfig } from "@/config/site";
+import PromoPopup from "@/components/PromoPopup";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -151,6 +152,7 @@ export default function RootLayout({
         <main className="min-h-screen">{children}</main>
         <Footer />
         <FloatingButtons />
+        <PromoPopup />
       </body>
     </html>
   );
