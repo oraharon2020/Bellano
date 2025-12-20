@@ -3,6 +3,11 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Fix iOS 300ms tap delay and improve touch responsiveness */
+* {
+  touch-action: manipulation;
+}
+
 /* Custom Fonts - Ping Hebrew & Amandine (English) */
 @font-face {
   font-family: 'Ping';
