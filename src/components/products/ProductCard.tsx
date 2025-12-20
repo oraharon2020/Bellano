@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Heart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -190,11 +191,22 @@ export function ProductCard({ product }: ProductCardProps) {
     <div ref={cardRef} className="group">
       {/* Image Container */}
       <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3">
-        {/* Clickable overlay - native <a> for instant response */}
-        <a 
+        {/* Clickable overlay - prefetch only on hover/touch for instant navigation */}
+        <Link 
           href={`/product/${product.slug}`}
           className="absolute inset-0 z-10"
           aria-label={`צפה במוצר ${product.name}`}
+          prefetch={false}
+          onMouseEnter={(e) => {
+            // Prefetch on hover for desktop
+            const link = e.currentTarget;
+            link.setAttribute('data-prefetch', 'true');
+          }}
+          onTouchStart={(e) => {
+            // Prefetch on touch for mobile - starts loading immediately
+            const link = e.currentTarget;
+            link.setAttribute('data-prefetch', 'true');
+          }}
         />
         
         {/* Product Image */}
@@ -263,11 +275,11 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Product Info */}
       <div className="text-center space-y-2">
         {/* Product Name */}
-        <a href={`/product/${product.slug}`}>
+        <Link href={`/product/${product.slug}`} prefetch={false}>
           <h3 className="font-medium text-base hover:text-primary transition-colors line-clamp-2">
             {product.name}
           </h3>
-        </a>
+        </Link>
 
         {/* Price */}
         <div className="flex items-center justify-center gap-2">
