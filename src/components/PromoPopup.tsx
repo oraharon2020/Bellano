@@ -15,13 +15,11 @@ export default function PromoPopup() {
   useEffect(() => {
     if (!enabled) return;
 
-    // Check if already shown this session
     if (showOncePerSession) {
       const hasSeenPopup = sessionStorage.getItem('bellano_promo_popup_seen');
       if (hasSeenPopup) return;
     }
 
-    // Show popup after delay
     const timer = setTimeout(() => {
       setIsOpen(true);
       if (showOncePerSession) {
@@ -46,7 +44,6 @@ export default function PromoPopup() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const textArea = document.createElement('textarea');
       textArea.value = content.couponCode;
       document.body.appendChild(textArea);
@@ -64,7 +61,7 @@ export default function PromoPopup() {
     <>
       {/* Backdrop */}
       <div 
-        className={`fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] transition-opacity duration-300 ${
+        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-300 ${
           isClosing ? 'opacity-0' : 'opacity-100'
         }`}
         onClick={handleClose}
@@ -77,67 +74,72 @@ export default function PromoPopup() {
         }`}
       >
         <div 
-          className="relative w-full max-w-sm bg-white overflow-hidden shadow-2xl rounded-3xl rounded-bl-none"
+          className="relative w-full max-w-[360px] bg-white overflow-hidden shadow-2xl rounded-2xl"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Top Gold Accent Bar */}
+          <div className="h-1 w-full bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-400" />
+          
           {/* Close Button */}
           <button
             onClick={handleClose}
-            className="absolute top-4 left-4 p-1.5 hover:bg-gray-100 rounded-full transition-colors z-10"
+            className="absolute top-3 left-3 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 rounded-full transition-colors z-10"
             aria-label="סגור"
           >
-            <X className="w-5 h-5 text-gray-400 hover:text-black" />
+            <X className="w-4 h-4 text-gray-500" />
           </button>
 
           {/* Content */}
-          <div className="p-8 pt-12 text-center">
-            {/* Badge */}
-            <div className="inline-block mb-4">
-              <span className="text-[10px] uppercase tracking-[0.2em] text-gray-500 border border-gray-200 px-3 py-1.5 rounded-full">
-                {content.badge}
-              </span>
+          <div className="px-6 pt-8 pb-6">
+            
+            {/* Menorah Icon */}
+            <div className="text-center mb-4">
+              <span className="text-4xl">🕎</span>
             </div>
 
-            {/* Headlines */}
-            <h2 className="text-2xl font-bold text-black mb-1">
-              {content.headline}
-            </h2>
-            <p className="font-english text-lg text-gray-500 font-light tracking-wide mb-8">
-              {content.englishText}
-            </p>
-
-            {/* Discount */}
-            <div className="mb-8">
-              <div className="text-6xl font-bold text-black tracking-tight leading-none">
-                {content.discountNumber}
-              </div>
-              <div className="text-sm text-gray-600 mt-2">
-                {content.discountText}
-              </div>
+            {/* Headlines - Centered & Clean */}
+            <div className="text-center mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-0.5">
+                {content.headline}
+              </h2>
+              <p className="text-sm text-gray-400 font-light tracking-wider">
+                {content.englishText}
+              </p>
             </div>
 
-            {/* Coupon Code */}
-            <div className="mb-6">
-              <p className="text-[10px] uppercase tracking-[0.15em] text-gray-400 mb-2">
+            {/* Discount Box */}
+            <div className="bg-gray-50 rounded-xl p-5 mb-5 text-center">
+              <div className="flex items-baseline justify-center gap-1">
+                <span className="text-5xl font-black text-gray-900">7</span>
+                <span className="text-3xl font-bold text-gray-900">%</span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">{content.discountText}</p>
+            </div>
+
+            {/* Coupon Code Section */}
+            <div className="mb-5">
+              <p className="text-xs text-gray-400 text-center mb-2 uppercase tracking-wider">
                 {content.couponLabel}
               </p>
-              <div className="flex items-center justify-center gap-2">
-                <div className="bg-gray-50 border border-gray-200 px-6 py-3 rounded-xl rounded-bl-none font-english text-lg tracking-[0.1em] font-medium">
-                  {content.couponCode}
+              <div className="flex gap-2">
+                <div className="flex-1 bg-gray-900 text-white px-4 py-3 rounded-lg text-center">
+                  <span className="font-mono text-lg font-bold tracking-widest">
+                    {content.couponCode}
+                  </span>
                 </div>
                 <button
                   onClick={handleCopy}
-                  className={`px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`px-5 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
                     copied 
                       ? 'bg-green-500 text-white' 
-                      : 'bg-black text-white hover:bg-gray-800'
+                      : 'bg-amber-400 text-gray-900 hover:bg-amber-500'
                   }`}
                 >
                   {copied ? '✓' : content.copyButtonText}
                 </button>
               </div>
               {copied && (
-                <p className="text-green-600 text-xs mt-2">
+                <p className="text-green-600 text-xs text-center mt-2 font-medium">
                   {content.copiedText}
                 </p>
               )}
@@ -147,19 +149,16 @@ export default function PromoPopup() {
             <Link
               href={content.ctaLink}
               onClick={handleClose}
-              className="inline-block w-full bg-black text-white py-4 px-8 rounded-xl font-medium text-sm tracking-wide hover:bg-gray-900 transition-colors"
+              className="block w-full bg-gray-900 text-white py-3.5 rounded-lg font-semibold text-center hover:bg-gray-800 transition-colors"
             >
-              {content.ctaText}
+              {content.ctaText} ←
             </Link>
 
             {/* Footer Note */}
-            <p className="text-gray-400 text-xs mt-4">
+            <p className="text-gray-400 text-[11px] text-center mt-4">
               {content.footerNote}
             </p>
           </div>
-
-          {/* Bottom accent line - follows the rounded corner */}
-          <div className="h-1.5 w-full bg-black rounded-b-3xl rounded-bl-none" />
         </div>
       </div>
     </>
