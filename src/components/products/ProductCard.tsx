@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart } from 'lucide-react';
@@ -119,42 +119,10 @@ export function ProductCard({ product }: ProductCardProps) {
     return fetchPromise;
   };
   
-  // Prefetch all colors when card becomes visible (for mobile)
+  // Reference to card element
   const cardRef = useRef<HTMLDivElement>(null);
-  const hasPrefetched = useRef(false);
   
-  const prefetchAllColors = useCallback(() => {
-    if (hasPrefetched.current) return;
-    hasPrefetched.current = true;
-    
-    // Prefetch first 4 colors (the ones visible on mobile)
-    uniqueColors.slice(0, 4).forEach(v => {
-      if (v.colorName) {
-        fetchVariationImage(v.colorName);
-      }
-    });
-  }, [uniqueColors, fetchVariationImage]);
-  
-  useEffect(() => {
-    const card = cardRef.current;
-    if (!card || uniqueColors.length === 0) return;
-    
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          // Small delay to not block initial render
-          setTimeout(prefetchAllColors, 200);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: '100px' } // Start prefetching before fully visible
-    );
-    
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, [prefetchAllColors, uniqueColors.length]);
-  
-  // Prefetch on hover (for desktop)
+  // Prefetch on hover (for desktop) - removed auto-prefetch to avoid blocking clicks
   const handleColorHover = (colorName: string) => {
     fetchVariationImage(colorName);
   };
