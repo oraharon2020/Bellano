@@ -43,6 +43,9 @@ export async function generateMetadata({ params }: CategoryPageProps) {
     const description = category?.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
       `מבחר רחב של ${name} איכותיים בעיצוב מודרני. משלוח חינם עד הבית!`;
     
+    // Use category image or fallback to site OG image
+    const ogImage = category?.image?.src || `${SITE_URL}/og-image.jpg`;
+    
     return {
       title: name,
       description,
@@ -54,12 +57,18 @@ export async function generateMetadata({ params }: CategoryPageProps) {
         description,
         url: `${SITE_URL}/category/${slug}`,
         type: 'website',
-        images: category?.image?.src ? [{ url: category.image.src }] : [],
+        images: [{ 
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: name,
+        }],
       },
       twitter: {
         card: 'summary_large_image',
         title: `${name} | בלאנו`,
         description,
+        images: [ogImage],
       },
     };
   } catch {
