@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
-import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogIn, LogOut, User, X, FileText, Image as ImageIcon, Loader2, Palette } from 'lucide-react';
+import { ChevronDown, ChevronUp, Calculator, Upload, Settings, LogOut, X, FileText, Image as ImageIcon, Loader2, Palette } from 'lucide-react';
+import { useAdminStore } from '@/lib/store/admin';
 
 // Lazy load the heavy FabricDesignBoard component
 const FabricDesignBoard = lazy(() => import('./design-board/FabricDesignBoard').then(mod => ({ default: mod.FabricDesignBoard })));
@@ -43,29 +44,6 @@ interface AdminFieldsProps {
   onDataChange?: (data: AdminFieldsData) => void;
 }
 
-// Helper to get/set admin token from localStorage
-const getAdminToken = () => {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('bellano_admin_token');
-};
-
-const setAdminToken = (token: string, userName: string) => {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem('bellano_admin_token', token);
-  localStorage.setItem('bellano_admin_name', userName);
-};
-
-const clearAdminToken = () => {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('bellano_admin_token');
-  localStorage.removeItem('bellano_admin_name');
-};
-
-const getAdminName = () => {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem('bellano_admin_name') || '';
-};
-
 export function AdminProductFields({ 
   basePrice, 
   variationPrice, 
@@ -74,17 +52,19 @@ export function AdminProductFields({
   onPriceChange,
   onDataChange 
 }: AdminFieldsProps) {
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminName, setAdminName] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  // Use global admin store
+  const { isAdmin, adminName, adminToken, upgrades, logout } = useAdminStore();
+  
+  // Hydration state - wait for client-side render
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+  
   const [isExpanded, setIsExpanded] = useState(true);
-  const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
   const [selectedUpgrades, setSelectedUpgrades] = useState<Record<number, number>>({});
   const [showUpgradesPopup, setShowUpgradesPopup] = useState(false);
-  const [showLoginForm, setShowLoginForm] = useState(false);
-  const [loginError, setLoginError] = useState('');
-  const [loginLoading, setLoginLoading] = useState(false);
-  const [loginData, setLoginData] = useState({ username: '', password: '' });
   const [isUploading, setIsUploading] = useState(false);
   const [showDesignBoard, setShowDesignBoard] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -102,86 +82,6 @@ export function AdminProductFields({
     uploadedFileName: '',
   });
 
-  // Check if user is admin
-  useEffect(() => {
-    const checkAdmin = async () => {
-      try {
-        const token = getAdminToken();
-        const headers: Record<string, string> = {};
-        
-        if (token) {
-          headers['x-admin-token'] = token;
-        }
-        
-        const response = await fetch('/api/auth/check-admin', {
-          credentials: 'include',
-          headers,
-        });
-        const data = await response.json();
-        setIsAdmin(data.isAdmin);
-        
-        if (data.isAdmin) {
-          setAdminName(data.userName || getAdminName());
-          if (data.upgrades) {
-            setUpgrades(data.upgrades);
-          }
-        } else {
-          // Token might be invalid, clear it
-          if (token) {
-            clearAdminToken();
-          }
-        }
-      } catch (error) {
-        console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAdmin();
-  }, []);
-
-  // Handle login
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    setLoginLoading(true);
-    
-    try {
-      const response = await fetch('/api/auth/check-admin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(loginData),
-      });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setAdminToken(data.token, data.userName);
-        setIsAdmin(true);
-        setAdminName(data.userName);
-        setUpgrades(data.upgrades || []);
-        setShowLoginForm(false);
-        setLoginData({ username: '', password: '' });
-      } else {
-        setLoginError(data.message || 'שגיאה בהתחברות');
-      }
-    } catch (error) {
-      setLoginError('שגיאה בהתחברות');
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-  
-  // Handle logout
-  const handleLogout = () => {
-    clearAdminToken();
-    setIsAdmin(false);
-    setAdminName('');
-    setUpgrades([]);
-  };
-  
   // Handle file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -192,7 +92,7 @@ export function AdminProductFields({
     try {
       const formDataUpload = new FormData();
       formDataUpload.append('file', file);
-      formDataUpload.append('adminToken', getAdminToken() || '');
+      formDataUpload.append('adminToken', adminToken || '');
       
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -293,88 +193,10 @@ export function AdminProductFields({
     }).format(price);
   };
 
-  if (isLoading) return null;
-  
-  // Show login button if not admin
-  if (!isAdmin) {
-    return (
-      <>
-        <button
-          onClick={() => setShowLoginForm(true)}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-4"
-        >
-          <LogIn className="w-4 h-4" />
-          <span>כניסת נציג מכירות</span>
-        </button>
-        
-        {/* Login Modal */}
-        {showLoginForm && (
-          <>
-            <div 
-              className="fixed inset-0 bg-black/50 z-50"
-              onClick={() => setShowLoginForm(false)}
-            />
-            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg shadow-xl z-50 w-full max-w-sm p-6">
-              <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                <User className="w-5 h-5" />
-                כניסת נציג מכירות
-              </h3>
-              
-              <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    שם משתמש
-                  </label>
-                  <input
-                    type="text"
-                    value={loginData.username}
-                    onChange={(e) => setLoginData(prev => ({ ...prev, username: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
-                    placeholder="שם משתמש ב-WordPress"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    סיסמה
-                  </label>
-                  <input
-                    type="password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData(prev => ({ ...prev, password: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:border-transparent"
-                    placeholder="סיסמה"
-                    required
-                  />
-                </div>
-                
-                {loginError && (
-                  <p className="text-red-500 text-sm">{loginError}</p>
-                )}
-                
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={loginLoading}
-                    className="flex-1 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50"
-                  >
-                    {loginLoading ? 'מתחבר...' : 'התחבר'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowLoginForm(false)}
-                    className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    ביטול
-                  </button>
-                </div>
-              </form>
-            </div>
-          </>
-        )}
-      </>
-    );
+  // Don't show anything if not admin - login is in footer
+  // Wait for hydration to avoid flash
+  if (!isHydrated || !isAdmin) {
+    return null;
   }
 
   return (
@@ -398,12 +220,12 @@ export function AdminProductFields({
               tabIndex={0}
               onClick={(e) => {
                 e.stopPropagation();
-                handleLogout();
+                logout();
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.stopPropagation();
-                  handleLogout();
+                  logout();
                 }
               }}
               className="text-xs text-gray-500 hover:text-red-500 flex items-center gap-1 cursor-pointer"

@@ -6,6 +6,7 @@ import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { OrganizationJsonLd, WebsiteJsonLd, LocalBusinessJsonLd } from "@/components/seo";
 import { siteConfig } from "@/config/site";
 import PromoPopup from "@/components/PromoPopup";
+import { AdminLoginModal } from "@/components/layout/AdminLoginModal";
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -153,6 +154,7 @@ export default function RootLayout({
         <Footer />
         <FloatingButtons />
         <PromoPopup />
+        <AdminLoginModal />
       </body>
     </html>
   );

@@ -1,7 +1,10 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
-import { Phone, Mail, Clock, Instagram, Facebook } from 'lucide-react';
+import { Phone, Mail, Clock, Instagram, Facebook, LogIn, LogOut, User } from 'lucide-react';
 import { siteConfig } from '@/config/site';
+import { useAdminStore } from '@/lib/store/admin';
 
 const categories = [
   { name: 'מזנונים לסלון', slug: 'living-room-sideboards' },
@@ -20,6 +23,8 @@ const links = [
 ];
 
 export function Footer() {
+  const { isAdmin, adminName, openLoginModal, logout } = useAdminStore();
+  
   return (
     <footer className="bg-gray-100 mt-16">
       {/* Newsletter Section */}
@@ -118,8 +123,30 @@ export function Footer() {
 
       {/* Copyright */}
       <div className="border-t border-gray-200">
-        <div className="container mx-auto px-4 py-4 text-center text-xs text-gray-500">
-          כל הזכויות שמורות ל{siteConfig.name} © {new Date().getFullYear()}
+        <div className="container mx-auto px-4 py-4 flex flex-col md:flex-row items-center justify-between gap-2">
+          <span className="text-xs text-gray-500">
+            כל הזכויות שמורות ל{siteConfig.name} © {new Date().getFullYear()}
+          </span>
+          
+          {/* Admin Login/Logout Button */}
+          {isAdmin ? (
+            <button
+              onClick={logout}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>{adminName}</span>
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <button
+              onClick={openLoginModal}
+              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>כניסת נציגים</span>
+            </button>
+          )}
         </div>
       </div>
     </footer>
