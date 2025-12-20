@@ -3,6 +3,7 @@ import { getProductBySlug, getProductVariations, transformProduct, getColorSwatc
 import { notFound } from 'next/navigation';
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from '@/components/seo';
 import { siteConfig, getApiEndpoint } from '@/config/site';
+import { getYoastSEO, yoastToMetadata } from '@/lib/wordpress/seo';
 
 const SITE_URL = siteConfig.url;
 
@@ -94,28 +95,43 @@ export async function generateMetadata({ params }: ProductPageProps) {
   const { slug } = await params;
   
   try {
+    // Try to get Yoast SEO data from WordPress first
+    const yoastData = await getYoastSEO(`/product/${slug}/`);
+    
     const wooProduct = await getProductBySlug(slug);
     if (!wooProduct) {
       return { title: 'מוצר לא נמצא | בלאנו' };
     }
     
     const product = transformProduct(wooProduct);
-    const description = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
+    const fallbackDescription = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
       `${product.name} - רהיט מעוצב באיכות גבוהה. משלוח חינם עד הבית!`;
+    const fallbackImage = product.image?.sourceUrl;
     
+    // If Yoast data exists, use it (what you configure in WordPress)
+    if (yoastData) {
+      return yoastToMetadata(yoastData, {
+        title: `${product.name} | בלאנו`,
+        description: fallbackDescription,
+        url: `${SITE_URL}/product/${slug}`,
+        image: fallbackImage,
+      });
+    }
+    
+    // Fallback to auto-generated metadata
     return {
       title: product.name,
-      description,
+      description: fallbackDescription,
       alternates: {
         canonical: `${SITE_URL}/product/${slug}`,
       },
       openGraph: {
         title: `${product.name} | בלאנו`,
-        description,
+        description: fallbackDescription,
         url: `${SITE_URL}/product/${slug}`,
         type: 'website',
-        images: product.image?.sourceUrl ? [{ 
-          url: product.image.sourceUrl,
+        images: fallbackImage ? [{ 
+          url: fallbackImage,
           width: 800,
           height: 600,
           alt: product.name,
@@ -124,8 +140,8 @@ export async function generateMetadata({ params }: ProductPageProps) {
       twitter: {
         card: 'summary_large_image',
         title: `${product.name} | בלאנו`,
-        description,
-        images: product.image?.sourceUrl ? [product.image.sourceUrl] : [],
+        description: fallbackDescription,
+        images: fallbackImage ? [fallbackImage] : [],
       },
     };
   } catch (error) {
