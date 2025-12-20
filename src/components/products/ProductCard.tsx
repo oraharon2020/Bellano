@@ -191,23 +191,29 @@ export function ProductCard({ product }: ProductCardProps) {
     <div ref={cardRef} className="group">
       {/* Image Container */}
       <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3">
-        <Link href={`/product/${product.slug}`}>
-          {displayImage ? (
-            <Image
-              src={displayImage}
-              alt={displayImageAlt}
-              fill
-              className={`object-cover transition-all duration-300 group-hover:scale-105 ${isLoadingImage ? 'opacity-50' : ''}`}
-              sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 300px"
-              quality={75}
-              priority={false}
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              אין תמונה
-            </div>
-          )}
-        </Link>
+        {/* Clickable overlay - always on top for instant clicks */}
+        <Link 
+          href={`/product/${product.slug}`}
+          className="absolute inset-0 z-10"
+          aria-label={`צפה במוצר ${product.name}`}
+        />
+        
+        {/* Product Image */}
+        {displayImage ? (
+          <Image
+            src={displayImage}
+            alt={displayImageAlt}
+            fill
+            className={`object-cover transition-all duration-300 group-hover:scale-105 ${isLoadingImage ? 'opacity-50' : ''}`}
+            sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 300px"
+            quality={75}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+            אין תמונה
+          </div>
+        )}
         
         {/* Loading indicator */}
         {isLoadingImage && (
@@ -238,7 +244,7 @@ export function ProductCard({ product }: ProductCardProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="absolute bottom-3 left-3 bg-transparent hover:bg-transparent p-0"
+          className="absolute bottom-3 left-3 bg-transparent hover:bg-transparent p-0 z-20"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
