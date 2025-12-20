@@ -463,7 +463,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                   fill
                   className="object-contain"
                   priority
+                  fetchPriority="high"
                   sizes="(max-width: 768px) 100vw, 50vw"
+                  quality={85}
                 />
               )}
               {hasDiscount && discountPercentage > 0 && (
@@ -528,6 +530,8 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                           fill
                           className="object-contain pointer-events-none"
                           sizes="80px"
+                          loading="lazy"
+                          quality={60}
                           draggable={false}
                         />
                       )}

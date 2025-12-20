@@ -35,7 +35,7 @@ export const promoPopupConfig = {
     
     // CTA button
     ctaText: 'לקנייה עכשיו',
-    ctaLink: '/category/sale',
+    ctaLink: '/categories',
     
     // Footer note
     footerNote: 'המבצע בתוקף עד סוף החג',
