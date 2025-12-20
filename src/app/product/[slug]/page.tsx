@@ -89,11 +89,14 @@ async function getProductVideo(productId: number) {
 // First visit generates the page, then served from cache
 export const revalidate = 1800;
 
-// Pre-generate all product pages at build time
+// Pre-generate only popular products at build time
+// Rest will be generated on-demand with ISR (fast after first visit)
 export async function generateStaticParams() {
   try {
-    // Fetch all products (up to 100)
-    const products = await getProducts({ per_page: 100 });
+    // Only build top 30 most popular products at build time
+    // This keeps build fast (~1 min) even with 1000+ products
+    // Other products are built on first visit and cached
+    const products = await getProducts({ per_page: 30, orderby: 'popularity' });
     return products.map((product) => ({
       slug: product.slug,
     }));
