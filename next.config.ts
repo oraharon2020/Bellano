@@ -141,7 +141,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'bellano.co.il',
+        hostname: 'admin.bellano.co.il',
         pathname: '/wp-content/**',
       },
       {
