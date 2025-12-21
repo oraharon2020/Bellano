@@ -226,10 +226,6 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
   const attributes = useMemo(() => {
     const attrMap = new Map<string, Set<string>>();
     
-    // Debug: log what we receive
-    console.log('Product attributes:', product.attributes?.nodes);
-    console.log('Variations:', variations);
-    
     // First, add attributes from product definition (this includes ALL attribute options)
     if (product.attributes?.nodes) {
       product.attributes.nodes.forEach(attr => {

@@ -81,9 +81,10 @@ export async function POST(request: NextRequest) {
       // Initialize meta_data array
       lineItem.meta_data = [];
       
-      // Only add variation attributes as meta data if there's NO variation_id
-      // When variation_id exists, WooCommerce automatically shows the variation attributes
-      if (!item.variation_id && item.variation_attributes && item.variation_attributes.length > 0) {
+      // Always add variation attributes as meta data to ensure all selected options are visible
+      // Even when variation_id exists, we add them because WooCommerce only shows attributes
+      // that are defined on the variation itself. If some attributes are "Any", they won't appear.
+      if (item.variation_attributes && item.variation_attributes.length > 0) {
         item.variation_attributes.forEach(attr => {
           lineItem.meta_data.push({ key: attr.name, value: attr.value });
         });
