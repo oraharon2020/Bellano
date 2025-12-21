@@ -760,6 +760,12 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               </div>
             </div>
 
+            {/* Return policy notice */}
+            <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-700">
+              <span className="font-medium">📦 </span>
+              במידה והפריט אינו מגיע כפי שמתואר, ניתן להחזירו במעמד האספקה.
+            </div>
+
             {/* FAQ Section - Below info badges */}
             {faqs && faqs.length > 0 && (
               <div className="pt-4 border-t border-gray-100">
