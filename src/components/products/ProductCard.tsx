@@ -313,18 +313,16 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
 
-        {/* Discount Badge */}
+        {/* Discount Badge - Left side */}
         {hasDiscount && discountPercentage > 0 && (
-          <Badge className="absolute top-3 right-3 bg-red-500 hover:bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium" aria-label={`הנחה של ${discountPercentage} אחוז`}>
+          <Badge className="absolute top-3 left-3 bg-red-500 hover:bg-red-500 text-white px-3 py-1 rounded-full text-sm font-medium" aria-label={`הנחה של ${discountPercentage} אחוז`}>
             {discountPercentage}%-
           </Badge>
         )}
 
-        {/* Availability Badge */}
+        {/* Availability Badge - Right side */}
         <span 
           className={`absolute top-3 right-3 text-xs font-medium px-2 py-1 rounded-full ${
-            hasDiscount && discountPercentage > 0 ? 'top-10' : 'top-3'
-          } ${
             product.availabilityType === 'custom_order' 
               ? 'bg-amber-100 text-amber-700' 
               : 'bg-green-100 text-green-700'
