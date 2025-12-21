@@ -65,6 +65,28 @@ export default function CheckoutPage() {
     notes: '',
   });
 
+  // Load saved customer data from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('bellano_checkout_customer');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setCustomerData(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error('Failed to parse saved customer data');
+      }
+    }
+  }, []);
+
+  // Save customer data to localStorage whenever it changes
+  useEffect(() => {
+    // Only save if at least one field has a value
+    const hasData = Object.values(customerData).some(v => v.trim() !== '');
+    if (hasData) {
+      localStorage.setItem('bellano_checkout_customer', JSON.stringify(customerData));
+    }
+  }, [customerData]);
+
   const [shippingMethods] = useState<ShippingMethod[]>([
     { id: 'free_shipping', title: 'משלוח חינם', cost: 0 },
   ]);
@@ -249,6 +271,16 @@ export default function CheckoutPage() {
       
       // Calculate total from items
       const itemsTotal = paymentItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Add discount line item if coupon is applied
+      if (appliedCoupon && appliedCoupon.discount > 0) {
+        paymentItems.push({
+          name: `הנחה - קופון ${appliedCoupon.code}`,
+          price: -appliedCoupon.discount,
+          quantity: 1,
+          sku: 'discount',
+        });
+      }
       
       // Apply discount if coupon exists - use finalTotal which already has discount applied
       const amountToCharge = appliedCoupon ? finalTotal : itemsTotal;
