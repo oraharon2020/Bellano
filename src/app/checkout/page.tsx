@@ -250,55 +250,31 @@ export default function CheckoutPage() {
       }
 
       // Step 2: Get Meshulam payment URL
-      // Calculate items for payment - use the cart prices with variation info
-      const paymentItems = items.map(item => {
-        // Build product name with variation details
-        let productName = item.name;
+      // Build order description with all products
+      const productNames = items.map(item => {
+        let name = item.name;
         if (item.variation?.attributes && item.variation.attributes.length > 0) {
           const attrs = item.variation.attributes
             .map(attr => `${attr.name}: ${attr.value}`)
             .join(', ');
-          productName += ` (${attrs})`;
+          name += ` (${attrs})`;
         }
-        
-        // item.price is the unit price, not line total
-        const unitPrice = parseFloat(item.price.replace(/[^\d.]/g, ''));
-        
-        return {
-          name: productName,
-          price: unitPrice,
-          quantity: item.quantity,
-          sku: item.variation?.id?.toString() || item.databaseId.toString(),
-        };
-      });
-      
-      // Calculate total from items (unit price * quantity for each)
-      const itemsTotal = paymentItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
-      // Determine final items to send to Meshulam
-      let finalPaymentItems = paymentItems;
-      let amountToCharge = itemsTotal;
-      
-      // If coupon is applied, we need to adjust the prices proportionally
-      // so that items sum equals finalTotal
-      if (appliedCoupon && appliedCoupon.discount > 0) {
-        amountToCharge = finalTotal;
-        // Calculate discount ratio
-        const discountRatio = finalTotal / itemsTotal;
-        // Apply proportional discount to each item
-        finalPaymentItems = paymentItems.map(item => ({
-          ...item,
-          price: Math.round(item.price * discountRatio * 100) / 100, // Round to 2 decimals
-        }));
-        
-        // Adjust last item to ensure exact sum (handle rounding)
-        const adjustedTotal = finalPaymentItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        const diff = amountToCharge - adjustedTotal;
-        if (Math.abs(diff) > 0.01 && finalPaymentItems.length > 0) {
-          const lastItem = finalPaymentItems[finalPaymentItems.length - 1];
-          lastItem.price = Math.round((lastItem.price + diff / lastItem.quantity) * 100) / 100;
+        if (item.quantity > 1) {
+          name += ` x${item.quantity}`;
         }
-      }
+        return name;
+      }).join(', ');
+      
+      // Amount to charge (with coupon discount if applied)
+      const amountToCharge = appliedCoupon ? finalTotal : subtotal;
+      
+      // Send single item with total amount to avoid Meshulam sum mismatch issues
+      const finalPaymentItems = [{
+        name: productNames.length > 100 ? productNames.substring(0, 97) + '...' : productNames,
+        price: amountToCharge,
+        quantity: 1,
+        sku: `order-${orderData.order_id}`,
+      }];
       
       // For Bit, don't send installments
       const paymentsToSend = paymentMethod === 'bit' ? 1 : selectedPayments;
