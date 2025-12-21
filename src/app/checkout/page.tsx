@@ -234,7 +234,7 @@ export default function CheckoutPage() {
         let productName = item.name;
         if (item.variation?.attributes && item.variation.attributes.length > 0) {
           const attrs = item.variation.attributes
-            .map(attr => `${attr.label}: ${attr.value}`)
+            .map(attr => `${attr.name}: ${attr.value}`)
             .join(', ');
           productName += ` (${attrs})`;
         }
