@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Play, X } from 'lucide-react';
+import { Play, X, Volume2, VolumeX } from 'lucide-react';
 
 interface ProductVideoProps {
   video: {
@@ -17,6 +17,19 @@ interface ProductVideoProps {
 export function ProductVideo({ video, productName }: ProductVideoProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const fullscreenVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Try to play video when it loads
+  useEffect(() => {
+    const videoElement = isFullscreen ? fullscreenVideoRef.current : videoRef.current;
+    if (videoElement && isPlaying) {
+      videoElement.play().catch(() => {
+        // If autoplay fails, we'll show play button
+      });
+    }
+  }, [isPlaying, isFullscreen]);
 
   // Get YouTube thumbnail if no custom thumbnail
   const thumbnailUrl = video.thumbnail || 
@@ -97,11 +110,13 @@ export function ProductVideo({ video, productName }: ProductVideoProps) {
               />
             ) : (
               <video
+                ref={videoRef}
                 src={video.url}
                 autoPlay
+                muted={isMuted}
                 playsInline
                 controls
-                preload="metadata"
+                preload="auto"
                 className="w-full h-full object-contain bg-black"
               />
             )}
@@ -111,7 +126,12 @@ export function ProductVideo({ video, productName }: ProductVideoProps) {
 
       {/* Fullscreen modal */}
       {isFullscreen && (
-        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleClose();
+          }}
+        >
           {/* Close button */}
           <button
             onClick={handleClose}
@@ -120,6 +140,17 @@ export function ProductVideo({ video, productName }: ProductVideoProps) {
           >
             <X className="w-6 h-6" />
           </button>
+
+          {/* Mute/Unmute button for file videos */}
+          {video.type !== 'youtube' && (
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className="absolute top-4 right-4 z-50 w-11 h-11 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white transition-colors"
+              aria-label={isMuted ? "הפעל צליל" : "השתק"}
+            >
+              {isMuted ? <VolumeX className="w-6 h-6" /> : <Volume2 className="w-6 h-6" />}
+            </button>
+          )}
 
           {/* Video container */}
           <div className="w-full max-w-5xl mx-4 aspect-video">
@@ -133,11 +164,13 @@ export function ProductVideo({ video, productName }: ProductVideoProps) {
               />
             ) : (
               <video
+                ref={fullscreenVideoRef}
                 src={video.url}
                 autoPlay
+                muted={isMuted}
                 playsInline
                 controls
-                preload="metadata"
+                preload="auto"
                 className="w-full h-full object-contain rounded-lg"
               />
             )}

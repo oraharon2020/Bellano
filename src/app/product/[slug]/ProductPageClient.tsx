@@ -283,13 +283,17 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     if (!variations.length) return null;
     
     return variations.find(variation => {
-      return variation.attributes.every(attr => {
+      // Filter out empty attributes (any option allowed)
+      const relevantAttrs = variation.attributes.filter(attr => attr.option && attr.option.trim() !== '');
+      
+      return relevantAttrs.every(attr => {
         // Try to match with normalized names
         const normalizedName = attr.name.replace(/^pa_/, '');
         const matchedValue = selectedAttributes[attr.name] || 
                             selectedAttributes[normalizedName] ||
                             Object.entries(selectedAttributes).find(
-                              ([key]) => key.toLowerCase() === normalizedName.toLowerCase()
+                              ([key]) => key.toLowerCase() === normalizedName.toLowerCase() ||
+                                         key.toLowerCase() === attr.name.toLowerCase()
                             )?.[1];
         return matchedValue === attr.option;
       });
@@ -582,7 +586,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               {(() => {
                 const priceNum = parseFloat(currentPrice.replace(/[^\d.]/g, ''));
                 if (priceNum >= 300) {
-                  const installments = 6;
+                  const installments = 12;
                   const monthlyPayment = Math.ceil(priceNum / installments);
                   return (
                     <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
