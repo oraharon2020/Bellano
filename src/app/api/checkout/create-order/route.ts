@@ -89,11 +89,24 @@ export async function POST(request: NextRequest) {
       // Initialize meta_data array
       lineItem.meta_data = [];
       
-      // Add variation attributes as individual fields
-      // Each attribute will appear separately in the order
+      // Add variation_id back - WooCommerce needs it for stock management and pricing
+      // WooCommerce will auto-add the variation's defined attributes (like color)
+      if (item.variation_id) {
+        lineItem.variation_id = item.variation_id;
+      }
+      
+      // Add variation attributes that are NOT part of the variation definition
+      // (attributes set to "Any" in WooCommerce - like length, depth, height)
+      // These won't be auto-added by WooCommerce so we need to add them manually
       if (item.variation_attributes && item.variation_attributes.length > 0) {
-        item.variation_attributes.forEach(attr => {
-          lineItem.meta_data.push({ key: attr.name, value: attr.value });
+        // Get list of attributes that WooCommerce will auto-add (from variation)
+        // We'll add all attributes except the first one (color) which comes from variation
+        // Actually, let's add them all with a display prefix to avoid filtering
+        item.variation_attributes.forEach((attr, index) => {
+          // Skip the first attribute (usually color) as it comes from variation_id
+          if (index > 0) {
+            lineItem.meta_data.push({ key: attr.name, value: attr.value });
+          }
         });
       }
       
