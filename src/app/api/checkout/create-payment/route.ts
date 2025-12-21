@@ -80,6 +80,15 @@ export async function POST(request: NextRequest) {
     // Get the correct page code for the payment method
     const pageCode = config.pageCodes[payment_type] || PAGE_CODES.credit_card;
 
+    // Log config for debugging
+    console.log('Meshulam config:', {
+      isSandbox,
+      apiUrl,
+      pageCode,
+      userId: config.userId,
+      hasApiKey: !!apiKey
+    });
+
     // Build form data for Meshulam API
     const formData = new URLSearchParams();
     formData.append('pageCode', pageCode);
@@ -126,7 +135,39 @@ export async function POST(request: NextRequest) {
       body: formData.toString(),
     });
 
-    const data = await response.json();
+    // Get response as text first to handle HTML errors
+    const responseText = await response.text();
+    
+    // Log for debugging
+    console.log('Meshulam response status:', response.status);
+    console.log('Meshulam response (first 500 chars):', responseText.substring(0, 500));
+    
+    // Check if response is HTML (error page)
+    if (responseText.startsWith('<') || responseText.startsWith('<!')) {
+      console.error('Meshulam returned HTML instead of JSON:', responseText.substring(0, 1000));
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'שגיאה בחיבור למשולם - נסה שוב מאוחר יותר',
+          debug: process.env.NODE_ENV === 'development' ? responseText.substring(0, 500) : undefined
+        },
+        { status: 502 }
+      );
+    }
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse Meshulam response:', responseText.substring(0, 500));
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'תשובה לא תקינה ממשולם'
+        },
+        { status: 502 }
+      );
+    }
 
     if (data.status !== 1 || !data.data?.url) {
       console.error('Meshulam API error:', data);
