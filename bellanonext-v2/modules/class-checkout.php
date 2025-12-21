@@ -199,4 +199,96 @@ class Bellano_Checkout {
             'items_count' => count($items)
         ];
     }
-}
+    
+    /**
+     * Proxy Meshulam API call (to avoid Imperva blocking Vercel)
+     */
+    public function proxy_meshulam_payment($request) {
+        $data = $request->get_json_params();
+        
+        // Get Meshulam config
+        $userId = get_option('meshulam_bit_payment_code', '');
+        $isSandbox = isset($data['sandbox']) && $data['sandbox'];
+        $apiKey = $isSandbox ? '305a9a777e42' : 'ae67b1668109';
+        $apiUrl = $isSandbox 
+            ? 'https://sandbox.meshulam.co.il/api/light/server/1.0/createPaymentProcess'
+            : 'https://secure.meshulam.co.il/api/light/server/1.0/createPaymentProcess';
+        
+        if (empty($userId)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Meshulam userId not configured'
+            ], 500);
+        }
+        
+        // Build form data
+        $formData = [
+            'pageCode' => sanitize_text_field($data['pageCode'] ?? ''),
+            'apiKey' => $apiKey,
+            'userId' => $userId,
+            'sum' => floatval($data['sum'] ?? 0),
+            'pageField[fullName]' => sanitize_text_field($data['fullName'] ?? ''),
+            'pageField[phone]' => sanitize_text_field($data['phone'] ?? ''),
+            'pageField[email]' => sanitize_email($data['email'] ?? ''),
+            'paymentNum' => intval($data['payments'] ?? 1),
+            'chargeType' => '1',
+            'cField1' => sanitize_text_field($data['orderId'] ?? ''),
+            'description' => sanitize_text_field($data['description'] ?? ''),
+            'successUrl' => esc_url_raw($data['successUrl'] ?? ''),
+            'cancelUrl' => esc_url_raw($data['cancelUrl'] ?? ''),
+            'notifyUrl' => esc_url_raw($data['notifyUrl'] ?? ''),
+        ];
+        
+        // Add product data if provided
+        if (!empty($data['items']) && is_array($data['items'])) {
+            foreach ($data['items'] as $index => $item) {
+                $formData["productData[{$index}][catalogNumber]"] = sanitize_text_field($item['sku'] ?? '');
+                $formData["productData[{$index}][price]"] = floatval($item['price'] ?? 0);
+                $formData["productData[{$index}][itemDescription]"] = sanitize_text_field($item['name'] ?? '');
+                $formData["productData[{$index}][quantity]"] = intval($item['quantity'] ?? 1);
+            }
+        }
+        
+        // Make request to Meshulam
+        $response = wp_remote_post($apiUrl, [
+            'timeout' => 30,
+            'body' => $formData,
+            'headers' => [
+                'Content-Type' => 'application/x-www-form-urlencoded',
+            ],
+        ]);
+        
+        if (is_wp_error($response)) {
+            error_log('Meshulam proxy error: ' . $response->get_error_message());
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'שגיאה בחיבור למשולם'
+            ], 502);
+        }
+        
+        $body = wp_remote_retrieve_body($response);
+        $result = json_decode($body, true);
+        
+        if (!$result) {
+            error_log('Meshulam proxy: Invalid response - ' . substr($body, 0, 500));
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'תשובה לא תקינה ממשולם'
+            ], 502);
+        }
+        
+        if ($result['status'] !== 1 || empty($result['data']['url'])) {
+            error_log('Meshulam proxy: API error - ' . json_encode($result));
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => $result['err']['message'] ?? 'שגיאה ביצירת תהליך התשלום'
+            ], 400);
+        }
+        
+        return new WP_REST_Response([
+            'success' => true,
+            'payment_url' => $result['data']['url'],
+            'process_id' => $result['data']['processId'],
+            'process_token' => $result['data']['processToken'],
+        ], 200);
+    }

@@ -71,6 +71,13 @@ class Bellano_REST_API {
             'permission_callback' => '__return_true'
         ]);
         
+        // Meshulam payment proxy (for Vercel - bypasses Imperva blocking)
+        register_rest_route('bellano/v1', '/meshulam-proxy', [
+            'methods' => 'POST',
+            'callback' => [$this->plugin->checkout, 'proxy_meshulam_payment'],
+            'permission_callback' => '__return_true'
+        ]);
+        
         // Check admin
         register_rest_route('bellano/v1', '/check-admin', [
             'methods' => 'GET',

@@ -71,11 +71,6 @@ export async function POST(request: NextRequest) {
     
     // Determine if sandbox mode
     const isSandbox = siteConfig.meshulam.isSandbox;
-    const apiUrl = isSandbox 
-      ? 'https://sandbox.meshulam.co.il/api/light/server/1.0/createPaymentProcess'
-      : 'https://secure.meshulam.co.il/api/light/server/1.0/createPaymentProcess';
-    
-    const apiKey = isSandbox ? siteConfig.meshulam.sandboxApiKey : siteConfig.meshulam.apiKey;
     
     // Get the correct page code for the payment method
     const pageCode = config.pageCodes[payment_type] || PAGE_CODES.credit_card;
@@ -83,113 +78,64 @@ export async function POST(request: NextRequest) {
     // Log config for debugging
     console.log('Meshulam config:', {
       isSandbox,
-      apiUrl,
       pageCode,
       userId: config.userId,
-      hasApiKey: !!apiKey
     });
 
-    // Build form data for Meshulam API
-    const formData = new URLSearchParams();
-    formData.append('pageCode', pageCode);
-    formData.append('apiKey', apiKey);
-    formData.append('userId', config.userId);
+    // Use WordPress proxy to bypass Imperva blocking on Vercel
+    const proxyUrl = getApiEndpoint('meshulam-proxy');
     
-    // Amount
-    formData.append('sum', amount.toFixed(2));
-    
-    // Customer details
-    formData.append('pageField[fullName]', `${customer.firstName} ${customer.lastName}`);
-    formData.append('pageField[phone]', customer.phone);
-    formData.append('pageField[email]', customer.email);
-    
-    // Payment configuration
-    formData.append('paymentNum', payments.toString());
-    formData.append('chargeType', '1'); // 1 = Regular charge
-    
-    // Order reference
-    formData.append('cField1', order_id.toString()); // Store WC order ID
-    formData.append('description', `הזמנה #${order_id} - ${siteConfig.name}`);
-    
-    // Callback URLs
-    formData.append('successUrl', `${SITE_URL}/checkout/success?order_id=${order_id}`);
-    formData.append('cancelUrl', `${SITE_URL}/checkout?cancelled=true`);
-    
-    // Webhook URL - goes to WordPress to update order status
-    formData.append('notifyUrl', getApiEndpoint('meshulam-webhook'));
-    
-    // Product data
-    items.forEach((item, index) => {
-      formData.append(`productData[${index}][catalogNumber]`, item.sku);
-      formData.append(`productData[${index}][price]`, item.price.toFixed(2));
-      formData.append(`productData[${index}][itemDescription]`, item.name);
-      formData.append(`productData[${index}][quantity]`, item.quantity.toString());
-    });
+    const proxyData = {
+      sandbox: isSandbox,
+      pageCode,
+      sum: amount,
+      fullName: `${customer.firstName} ${customer.lastName}`,
+      phone: customer.phone,
+      email: customer.email,
+      payments,
+      orderId: order_id.toString(),
+      description: `הזמנה #${order_id} - ${siteConfig.name}`,
+      successUrl: `${SITE_URL}/checkout/success?order_id=${order_id}`,
+      cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
+      notifyUrl: getApiEndpoint('meshulam-webhook'),
+      items: items.map(item => ({
+        sku: item.sku,
+        price: item.price,
+        name: item.name,
+        quantity: item.quantity,
+      })),
+    };
 
-    // Call Meshulam API
-    const response = await fetch(apiUrl, {
+    console.log('Calling WordPress proxy:', proxyUrl);
+
+    // Call WordPress proxy instead of Meshulam directly
+    const response = await fetch(proxyUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Origin': 'https://www.bellano.co.il',
-        'Referer': 'https://www.bellano.co.il/',
+        'Content-Type': 'application/json',
       },
-      body: formData.toString(),
+      body: JSON.stringify(proxyData),
     });
 
-    // Get response as text first to handle HTML errors
-    const responseText = await response.text();
+    const data = await response.json();
     
-    // Log for debugging
-    console.log('Meshulam response status:', response.status);
-    console.log('Meshulam response (first 500 chars):', responseText.substring(0, 500));
-    
-    // Check if response is HTML (error page)
-    if (responseText.startsWith('<') || responseText.startsWith('<!')) {
-      console.error('Meshulam returned HTML instead of JSON:', responseText.substring(0, 1000));
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: 'שגיאה בחיבור למשולם - נסה שוב מאוחר יותר',
-          debug: process.env.NODE_ENV === 'development' ? responseText.substring(0, 500) : undefined
-        },
-        { status: 502 }
-      );
-    }
+    console.log('Proxy response:', data);
 
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse Meshulam response:', responseText.substring(0, 500));
+    if (!data.success) {
       return NextResponse.json(
         { 
           success: false, 
-          message: 'תשובה לא תקינה ממשולם'
+          message: data.message || 'שגיאה ביצירת תהליך התשלום' 
         },
-        { status: 502 }
-      );
-    }
-
-    if (data.status !== 1 || !data.data?.url) {
-      console.error('Meshulam API error:', data);
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: data.err?.message || 'שגיאה ביצירת תהליך התשלום' 
-        },
-        { status: 400 }
+        { status: response.status }
       );
     }
 
     return NextResponse.json({
       success: true,
-      payment_url: data.data.url,
-      process_id: data.data.processId,
-      process_token: data.data.processToken,
+      payment_url: data.payment_url,
+      process_id: data.process_id,
+      process_token: data.process_token,
     });
 
   } catch (error) {
