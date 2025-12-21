@@ -81,13 +81,21 @@ export async function POST(request: NextRequest) {
       // Initialize meta_data array
       lineItem.meta_data = [];
       
-      // Add variation attributes as a single combined field to avoid conflicts with WooCommerce
-      // WooCommerce may filter/override meta_data keys that match variation attribute names
+      // Add variation attributes in two formats:
+      // 1. As a single combined field for display (to avoid WooCommerce duplicating built-in variation attributes)
+      // 2. As individual fields for the illustration plugin to read (plugin needs separate fields for dimensions)
       if (item.variation_attributes && item.variation_attributes.length > 0) {
+        // Combined field for display
         const attributesString = item.variation_attributes
           .map(attr => `${attr.name}: ${attr.value}`)
           .join(' | ');
         lineItem.meta_data.push({ key: 'פרטי הזמנה', value: attributesString });
+        
+        // Individual fields for plugin processing
+        // Using original Hebrew names so the illustration plugin can read them
+        item.variation_attributes.forEach(attr => {
+          lineItem.meta_data.push({ key: attr.name, value: attr.value });
+        });
       }
       
       // If admin fields are present, add them as meta data and override price
