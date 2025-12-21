@@ -1017,13 +1017,13 @@ export default function CheckoutPage() {
                 </button>
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-                  {paymentMethod === 'credit_card' ? (
+                  {paymentMethod === 'phone_order' ? (
+                    <span>נציג יצור קשר להשלמת התשלום</span>
+                  ) : (
                     <>
                       <ShieldCheck className="w-4 h-4" />
                       <span>תשלום מאובטח SSL</span>
                     </>
-                  ) : (
-                    <span>נציג יצור קשר להשלמת התשלום</span>
                   )}
                 </div>
               </div>
