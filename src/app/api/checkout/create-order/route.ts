@@ -57,6 +57,17 @@ export async function POST(request: NextRequest) {
     const body: CreateOrderRequest = await request.json();
     const { customer, items, shipping_method, payment_method = 'credit_card', coupon_code } = body;
 
+    // Debug: Log received items with variation attributes
+    console.log('=== CREATE ORDER DEBUG ===');
+    items.forEach((item, idx) => {
+      console.log(`Item ${idx}:`, {
+        product_id: item.product_id,
+        variation_id: item.variation_id,
+        variation_attributes: item.variation_attributes,
+      });
+    });
+    console.log('=== END DEBUG ===');
+
     if (!WC_KEY || !WC_SECRET) {
       return NextResponse.json(
         { success: false, message: 'WooCommerce credentials not configured' },
