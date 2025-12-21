@@ -261,9 +261,13 @@ export default function CheckoutPage() {
           productName += ` (${attrs})`;
         }
         
+        // Parse the price and calculate unit price (item.price might be total line price)
+        const parsedPrice = parseFloat(item.price.replace(/[^\d.]/g, ''));
+        const unitPrice = parsedPrice / item.quantity;
+        
         return {
           name: productName,
-          price: parseFloat(item.price.replace(/[^\d.]/g, '')),
+          price: unitPrice,
           quantity: item.quantity,
           sku: item.variation?.id?.toString() || item.databaseId.toString(),
         };
