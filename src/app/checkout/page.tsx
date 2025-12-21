@@ -201,15 +201,6 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
-      // Debug: Log cart items with their variation attributes
-      const debugData = items.map((item, idx) => ({
-        name: item.name,
-        variation_id: item.variation?.id,
-        attributes: item.variation?.attributes,
-      }));
-      console.log('=== CHECKOUT DEBUG ===', debugData);
-      alert('Sending attributes: ' + JSON.stringify(debugData[0]?.attributes));
-
       // Step 1: Create order in WooCommerce
       const orderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',

@@ -150,6 +150,13 @@ export async function POST(request: NextRequest) {
       return lineItem;
     });
     
+    // Debug: Log what we're sending to WooCommerce
+    console.log('=== LINE ITEMS TO WOOCOMMERCE ===');
+    lineItems.forEach((item, idx) => {
+      console.log(`Line Item ${idx}:`, JSON.stringify(item, null, 2));
+    });
+    console.log('=== END LINE ITEMS ===');
+    
     // Create the order in WooCommerce
     const orderData = {
       payment_method: isPhoneOrder ? 'cod' : 'meshulam',
