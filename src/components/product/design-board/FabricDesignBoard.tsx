@@ -58,6 +58,8 @@ export function FabricDesignBoard({
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [isRemovingBackground, setIsRemovingBackground] = useState(false);
   const [showCropMode, setShowCropMode] = useState(false);
+  const [showMeasurementInput, setShowMeasurementInput] = useState(false);
+  const [measurementValue, setMeasurementValue] = useState('100');
 
   // Generate unique ID for layers
   const generateId = () => `layer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -140,16 +142,47 @@ export function FabricDesignBoard({
 
     fabricRef.current = canvas;
 
-    // Load initial product image
+    // Load initial product image directly here
     if (productImage) {
-      addImageToCanvas(productImage, true);
+      const loadInitialImage = async () => {
+        try {
+          const fixedSrc = fixMediaUrl(productImage);
+          // Use proxy to avoid CORS issues
+          const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(fixedSrc)}`;
+          console.log('Loading initial product image via proxy:', proxyUrl);
+          const img = await fabric.FabricImage.fromURL(proxyUrl, { crossOrigin: 'anonymous' });
+          
+          // Scale if too large
+          const maxSize = 500;
+          const scale = Math.min(maxSize / img.width!, maxSize / img.height!, 1);
+          
+          img.set({
+            left: 50,
+            top: 50,
+            scaleX: scale,
+            scaleY: scale,
+            cornerStyle: 'circle',
+            cornerColor: '#7c3aed',
+            cornerStrokeColor: '#7c3aed',
+            borderColor: '#7c3aed',
+            transparentCorners: false,
+          });
+
+          canvas.add(img);
+          canvas.renderAll();
+          setTimeout(updateLayers, 100);
+        } catch (error) {
+          console.error('Error loading initial image:', error);
+        }
+      };
+      loadInitialImage();
     }
 
     return () => {
       canvas.dispose();
       fabricRef.current = null;
     };
-  }, [isOpen, productImage]);
+  }, [isOpen, productImage, updateLayers]);
 
   // Paste from clipboard
   useEffect(() => {
@@ -240,9 +273,13 @@ export function FabricDesignBoard({
     if (!canvas) return;
 
     try {
-      // Fix the media URL to use admin.bellano.co.il
+      // Fix the media URL and use proxy to avoid CORS
       const fixedSrc = fixMediaUrl(src);
-      const img = await fabric.FabricImage.fromURL(fixedSrc, { crossOrigin: 'anonymous' });
+      // Only use proxy for admin.bellano.co.il images, not for data URLs (pasted images)
+      const imageUrl = fixedSrc.startsWith('data:') 
+        ? fixedSrc 
+        : `/api/proxy-image?url=${encodeURIComponent(fixedSrc)}`;
+      const img = await fabric.FabricImage.fromURL(imageUrl, { crossOrigin: 'anonymous' });
       
       // Scale if too large
       const maxSize = isInitial ? 500 : 300;
@@ -440,59 +477,99 @@ export function FabricDesignBoard({
     updateLayers();
   };
 
-  // Add measurement ruler (line with arrows and dimension text)
-  const addMeasurementRuler = () => {
+  // Add measurement ruler - creates a line with arrows and separate text
+  const addMeasurementRuler = (dimension: string) => {
     const canvas = fabricRef.current;
     if (!canvas) return;
 
-    // Create line
-    const line = new fabric.Line([0, 0, 200, 0], {
+    const lineWidth = 200;
+    const startX = 200;
+    const startY = 200;
+
+    // Create main line with arrow markers using a simple approach
+    // Left arrow head (triangle pointing left)
+    const leftArrow = new fabric.Polygon(
+      [
+        { x: 0, y: 0 },
+        { x: 12, y: -6 },
+        { x: 12, y: 6 },
+      ],
+      {
+        left: startX,
+        top: startY,
+        fill: shapeColor,
+        originX: 'left',
+        originY: 'center',
+        selectable: false,
+        evented: false,
+      }
+    );
+
+    // Main line
+    const line = new fabric.Line([12, 0, lineWidth - 12, 0], {
+      left: startX + 12,
+      top: startY,
       stroke: shapeColor,
       strokeWidth: 2,
+      originY: 'center',
       selectable: false,
+      evented: false,
     });
 
-    // Create left arrow
-    const leftArrow = new fabric.Path('M 0 0 L 10 -5 L 10 5 Z', {
-      fill: shapeColor,
-      left: 0,
-      top: 0,
-      selectable: false,
+    // Right arrow head (triangle pointing right)
+    const rightArrow = new fabric.Polygon(
+      [
+        { x: 0, y: 0 },
+        { x: -12, y: -6 },
+        { x: -12, y: 6 },
+      ],
+      {
+        left: startX + lineWidth,
+        top: startY,
+        fill: shapeColor,
+        originX: 'right',
+        originY: 'center',
+        selectable: false,
+        evented: false,
+      }
+    );
+
+    // Group only the arrow elements (not stretchable)
+    const arrowGroup = new fabric.Group([leftArrow, line, rightArrow], {
+      left: startX,
+      top: startY,
+      cornerStyle: 'circle',
+      cornerColor: '#7c3aed',
+      borderColor: '#7c3aed',
+      transparentCorners: false,
+      lockScalingX: true,
+      lockScalingY: true,
     });
 
-    // Create right arrow
-    const rightArrow = new fabric.Path('M 10 0 L 0 -5 L 0 5 Z', {
-      fill: shapeColor,
-      left: 200,
-      top: 0,
-      selectable: false,
-    });
-
-    // Create dimension text
-    const dimensionText = new fabric.IText('200 ס"מ', {
-      left: 100,
-      top: -25,
-      fontSize: 16,
+    // Create dimension text as separate editable element
+    const dimensionText = new fabric.IText(`${dimension} ס"מ`, {
+      left: startX + lineWidth / 2,
+      top: startY - 25,
+      fontSize: 18,
       fill: shapeColor,
       fontFamily: 'Arial',
       textAlign: 'center',
       originX: 'center',
-    });
-
-    // Group all elements
-    const group = new fabric.Group([line, leftArrow, rightArrow, dimensionText], {
-      left: 200,
-      top: 200,
+      originY: 'center',
       cornerStyle: 'circle',
       cornerColor: '#7c3aed',
       borderColor: '#7c3aed',
       transparentCorners: false,
     });
 
-    canvas.add(group);
-    canvas.setActiveObject(group);
+    canvas.add(arrowGroup);
+    canvas.add(dimensionText);
+    canvas.setActiveObject(dimensionText);
     canvas.renderAll();
     updateLayers();
+    
+    setShowMeasurementInput(false);
+    setMeasurementValue('100');
   };
 
   // Add quick text template
@@ -968,7 +1045,7 @@ export function FabricDesignBoard({
               </div>
 
               <button
-                onClick={addMeasurementRuler}
+                onClick={() => setShowMeasurementInput(true)}
                 className="w-full flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 rounded-lg text-sm text-blue-700"
               >
                 <Minus className="w-4 h-4" />
@@ -1247,6 +1324,44 @@ export function FabricDesignBoard({
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   הוסף
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Measurement Ruler Input Modal */}
+        {showMeasurementInput && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 w-96 shadow-xl">
+              <h3 className="font-bold text-lg mb-4">📏 הוסף סרגל מידות</h3>
+              <div className="flex items-center gap-2 mb-4">
+                <input
+                  type="number"
+                  value={measurementValue}
+                  onChange={(e) => setMeasurementValue(e.target.value)}
+                  placeholder="הקלד מידה..."
+                  className="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg"
+                  autoFocus
+                  onKeyDown={(e) => e.key === 'Enter' && addMeasurementRuler(measurementValue)}
+                />
+                <span className="text-gray-600 font-medium">ס"מ</span>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                💡 הטקסט ניתן לעריכה גם אחרי ההוספה
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setShowMeasurementInput(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  ביטול
+                </button>
+                <button
+                  onClick={() => addMeasurementRuler(measurementValue)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  הוסף סרגל
                 </button>
               </div>
             </div>
