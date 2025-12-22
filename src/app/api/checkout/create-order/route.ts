@@ -120,23 +120,25 @@ export async function POST(request: NextRequest) {
       // Initialize meta_data array
       lineItem.meta_data = [];
       
-      // Add variation_id - WooCommerce should handle displaying the variation attributes
+      // Add variation_id - WooCommerce needs this for pricing and stock
       if (item.variation_id) {
         lineItem.variation_id = item.variation_id;
       }
       
-      // Send variation attributes through the proper 'variation' field
-      // This is how WooCommerce natively handles variation data (like the regular WC checkout)
+      // Add variation attributes as meta_data with special display key
+      // WooCommerce REST API requires meta_data for displaying attributes in emails
       if (item.variation_attributes && item.variation_attributes.length > 0) {
-        lineItem.variation = {};
         item.variation_attributes.forEach((attr) => {
-          // Use the attribute slug format: "attribute_pa_צבע" or "attribute_צבע"
-          const attrKey = `attribute_${attr.name}`;
-          lineItem.variation[attrKey] = attr.value;
-        });
-        
-        // Also add hidden meta for illustration plugin
-        item.variation_attributes.forEach((attr) => {
+          // Add visible attribute for email display
+          // Using the attribute name directly - WooCommerce will display these in emails
+          lineItem.meta_data.push({ 
+            key: attr.name,
+            value: attr.value,
+            display_key: attr.name,
+            display_value: attr.value
+          });
+          
+          // Also add hidden meta for illustration plugin (non-color only)
           if (attr.name !== 'צבע' && attr.name.toLowerCase() !== 'color') {
             lineItem.meta_data.push({ 
               key: `_${attr.name}`, 
