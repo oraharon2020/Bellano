@@ -111,12 +111,12 @@ export default function RootLayout({
         <LocalBusinessJsonLd />
       </head>
       <body className={`${rubik.variable} ${inter.variable} font-sans antialiased`}>
-        {/* Google Ads & GA4 - gtag.js - loads after page is fully loaded */}
+        {/* Google Ads & GA4 - gtag.js - loads after page becomes interactive */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${siteConfig.analytics.googleAds}`}
-          strategy="lazyOnload"
+          strategy="afterInteractive"
         />
-        <Script id="gtag-init" strategy="lazyOnload">
+        <Script id="gtag-init" strategy="afterInteractive">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -125,8 +125,8 @@ export default function RootLayout({
           `}
         </Script>
         
-        {/* Meta Pixel (Facebook) - loads after page is fully loaded */}
-        <Script id="meta-pixel" strategy="lazyOnload">
+        {/* Meta Pixel (Facebook) - loads after page becomes interactive */}
+        <Script id="meta-pixel" strategy="afterInteractive">
           {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
