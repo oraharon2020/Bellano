@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Rubik, Inter } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { OrganizationJsonLd, WebsiteJsonLd, LocalBusinessJsonLd } from "@/components/seo";
@@ -155,6 +156,7 @@ export default function RootLayout({
         <FloatingButtons />
         <PromoPopup />
         <AdminLoginModal />
+        <Analytics />
       </body>
     </html>
   );
