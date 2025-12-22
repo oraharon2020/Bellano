@@ -86,9 +86,14 @@ export async function POST(request: NextRequest) {
       }
       
       // Add variation attributes with underscore prefix (hidden from display)
-      // This is for the illustration plugin to read - WooCommerce handles the display from variation_id
+      // Skip color (צבע) as WooCommerce already displays it from variation_id
+      // This is for the illustration plugin to read the other attributes
       if (item.variation_attributes && item.variation_attributes.length > 0) {
         item.variation_attributes.forEach((attr) => {
+          // Skip color attribute - WooCommerce handles it
+          if (attr.name === 'צבע' || attr.name.toLowerCase() === 'color') {
+            return;
+          }
           lineItem.meta_data.push({ 
             key: `_${attr.name}`, 
             value: attr.value
