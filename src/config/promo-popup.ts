@@ -15,13 +15,13 @@ export const promoPopupConfig = {
   // Popup content
   content: {
     // Small badge at top
-    badge: 'מבצע מיוחד',
+    badge: 'מבצע סוף שנה',
     
     // Hebrew headline
-    headline: 'חג חנוכה שמח 🕎',
+    headline: 'סוף שנה בבלאנו 🎉',
     
     // English text
-    englishText: 'Happy Hanukkah',
+    englishText: 'End of Year Sale',
     
     // Discount display
     discountNumber: '7%',
@@ -29,7 +29,7 @@ export const promoPopupConfig = {
     
     // Coupon section
     couponLabel: 'קוד קופון',
-    couponCode: 'Bellano7',
+    couponCode: 'END7',
     copyButtonText: 'העתק',
     copiedText: 'הועתק!',
     
@@ -38,6 +38,6 @@ export const promoPopupConfig = {
     ctaLink: '/categories',
     
     // Footer note
-    footerNote: 'המבצע בתוקף עד סוף החג',
+    footerNote: 'המבצע בתוקף עד 31.12',
   },
 };
