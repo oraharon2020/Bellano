@@ -57,13 +57,6 @@ export async function POST(request: NextRequest) {
     const body: CreateOrderRequest = await request.json();
     const { customer, items, shipping_method, payment_method = 'credit_card', coupon_code } = body;
 
-    // DEBUG: Log received items
-    console.log('=== CREATE ORDER DEBUG ===');
-    items.forEach((item, idx) => {
-      console.log(`Item ${idx} variation_attributes:`, JSON.stringify(item.variation_attributes));
-    });
-    console.log('=== END DEBUG ===');
-
     if (!WC_KEY || !WC_SECRET) {
       return NextResponse.json(
         { success: false, message: 'WooCommerce credentials not configured' },
@@ -81,15 +74,13 @@ export async function POST(request: NextRequest) {
     const lineItems = items.map((item) => {
       const lineItem: any = {
         product_id: item.product_id,
-        // Don't send variation_id - WooCommerce auto-adds variation attributes which causes duplicates
-        // We'll send all attributes as meta_data instead for full control over display
         quantity: item.quantity,
       };
       
       // Initialize meta_data array
       lineItem.meta_data = [];
       
-      // Add variation_id back - WooCommerce needs it for stock management and pricing
+      // Add variation_id for stock management and pricing
       // WooCommerce will auto-add the variation's defined attributes (like color)
       if (item.variation_id) {
         lineItem.variation_id = item.variation_id;
@@ -97,18 +88,15 @@ export async function POST(request: NextRequest) {
       
       // Add variation attributes that are NOT part of the variation definition
       // (attributes set to "Any" in WooCommerce - like length, depth, height)
-      // These won't be auto-added by WooCommerce so we need to add them manually
+      // WooCommerce filters meta_data keys that match product attribute names,
+      // so we add underscore prefix to bypass the filter
       if (item.variation_attributes && item.variation_attributes.length > 0) {
         item.variation_attributes.forEach((attr, index) => {
           // Skip the first attribute (usually color) as it comes from variation_id
           if (index > 0) {
-            // Use underscore prefix to prevent WooCommerce from filtering
-            // Also add display_key for proper display
             lineItem.meta_data.push({ 
               key: `_${attr.name}`, 
-              value: attr.value,
-              display_key: attr.name,
-              display_value: attr.value
+              value: attr.value
             });
           }
         });
@@ -162,13 +150,6 @@ export async function POST(request: NextRequest) {
       
       return lineItem;
     });
-    
-    // DEBUG: Log what we're sending to WooCommerce
-    console.log('=== LINE ITEMS TO WOOCOMMERCE ===');
-    lineItems.forEach((item, idx) => {
-      console.log(`Line Item ${idx} meta_data:`, JSON.stringify(item.meta_data));
-    });
-    console.log('=== END LINE ITEMS ===');
     
     // Create the order in WooCommerce
     const orderData = {
