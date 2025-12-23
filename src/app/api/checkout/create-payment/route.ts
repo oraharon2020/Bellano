@@ -9,7 +9,8 @@ const PAGE_CODES = {
   google_pay: siteConfig.meshulam.pageCodes.googlePay,
 };
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || siteConfig.vercelUrl;
+// Always use the main domain for redirects, not Vercel URL
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url;
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 
 interface CustomerData {
