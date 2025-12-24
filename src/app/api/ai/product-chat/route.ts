@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 תיאור: ${product.description || 'אין תיאור'}
 מחיר: ${product.price}
 קטגוריות: ${product.categories?.join(', ') || 'כללי'}
-הרכבה: ${product.assemblyIncluded !== false ? 'המוצר מגיע מורכב ללקוח - לא נדרשת הרכבה עצמית' : 'המוצר דורש הרכבה עצמית'}
+הרכבה: ${product.assemblyIncluded !== false ? 'המוצר מגיע מורכב ללקוח - לא נדרשת הרכבה' : 'המוצר דורש הרכבה - אפשר להרכיב עצמאית או להזמין הרכבה דרכינו בתשלום'}
 ${product.attributes?.length ? `מאפיינים: ${product.attributes.map(a => `${a.name}: ${a.options.join(', ')}`).join('; ')}` : ''}
 ${product.dimensions ? `מידות: רוחב ${product.dimensions.width || 'לא צוין'}, עומק ${product.dimensions.depth || 'לא צוין'}, גובה ${product.dimensions.height || 'לא צוין'}` : ''}
 `;
