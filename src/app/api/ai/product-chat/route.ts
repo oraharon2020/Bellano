@@ -167,17 +167,21 @@ ${product.dimensions ? `מידות: רוחב ${product.dimensions.width || 'לא
       ? response.content[0].text 
       : 'סליחה, לא הצלחתי לענות. נסו לשאול שוב או פנו אלינו 03-5566696';
 
-    // Log to Google Sheets (fire and forget - don't wait)
+    // Log to Google Sheets
     const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyQDsUCTmZ7Tuw5-r929qasOmUzh-TKkhKiBUeX0-SFuCEed86A4JKEPwAYP45iJwuH/exec';
-    fetch(GOOGLE_SHEETS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({
-        product: product.name,
-        question: message,
-        answer: assistantMessage,
-      }),
-    }).catch(() => {}); // Ignore errors - don't affect user experience
+    try {
+      await fetch(GOOGLE_SHEETS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({
+          product: product.name,
+          question: message,
+          answer: assistantMessage,
+        }),
+      });
+    } catch (e) {
+      console.error('Failed to log to Google Sheets:', e);
+    }
 
     return NextResponse.json({
       success: true,
