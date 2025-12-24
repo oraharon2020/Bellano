@@ -53,6 +53,7 @@ interface ProductInfo {
     height?: string;
   };
   assemblyIncluded?: boolean;
+  availabilityType?: 'in_stock' | 'custom_order';
 }
 
 interface Message {
@@ -136,8 +137,12 @@ export async function POST(request: NextRequest) {
 תיאור: ${product.description || 'אין תיאור'}
 מחיר: ${product.price}
 קטגוריות: ${product.categories?.join(', ') || 'כללי'}
+זמינות: ${product.availabilityType === 'custom_order' ? 'מוצר בהזמנה אישית - לא ניתן לביטול לאחר ההזמנה' : 'מוצר במלאי - ניתן לביטול'}
 הרכבה: ${product.assemblyIncluded !== false ? 'המוצר מגיע מורכב ללקוח - לא נדרשת הרכבה' : 'המוצר דורש הרכבה - אפשר להרכיב עצמאית או להזמין הרכבה דרכינו בתשלום'}
-${product.attributes?.length ? `מאפיינים: ${product.attributes.map(a => `${a.name}: ${a.options.join(', ')}`).join('; ')}` : ''}
+משלוח: משלוח חינם עד הבית
+אחריות: שנה אחריות
+תשלום: עד 12 תשלומים ללא ריבית
+${product.attributes?.length ? `מאפיינים זמינים: ${product.attributes.map(a => `${a.name}: ${a.options.join(', ')}`).join('; ')}` : ''}
 ${product.dimensions ? `מידות: רוחב ${product.dimensions.width || 'לא צוין'}, עומק ${product.dimensions.depth || 'לא צוין'}, גובה ${product.dimensions.height || 'לא צוין'}` : ''}
 `;
 

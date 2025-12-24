@@ -15,6 +15,7 @@ interface ProductInfo {
     height?: string;
   };
   assemblyIncluded?: boolean;
+  availabilityType?: 'in_stock' | 'custom_order';
 }
 
 interface Message {

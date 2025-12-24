@@ -562,16 +562,29 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               <h1 className="text-lg md:text-xl lg:text-2xl font-medium text-gray-900">
                 {product.name}
               </h1>
-              {/* Availability Badge */}
-              <span 
-                className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
-                  product.availabilityType === 'custom_order' 
-                    ? 'bg-amber-100 text-amber-700' 
-                    : 'bg-green-100 text-green-700'
-                }`}
-              >
-                {product.availabilityType === 'custom_order' ? 'בהזמנה אישית' : 'במלאי'}
-              </span>
+              {/* Badges */}
+              <div className="flex flex-col md:flex-row gap-1 shrink-0">
+                {/* Availability Badge */}
+                <span 
+                  className={`text-xs font-medium px-2 py-1 rounded-full text-center ${
+                    product.availabilityType === 'custom_order' 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : 'bg-green-100 text-green-700'
+                  }`}
+                >
+                  {product.availabilityType === 'custom_order' ? 'בהזמנה אישית' : 'במלאי'}
+                </span>
+                {/* Assembly Badge */}
+                <span 
+                  className={`text-xs font-medium px-2 py-1 rounded-full text-center ${
+                    product.assemblyIncluded !== false 
+                      ? 'bg-blue-100 text-blue-700' 
+                      : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {product.assemblyIncluded !== false ? 'מגיע מורכב' : 'הרכבה עצמאית'}
+                </span>
+              </div>
             </div>
             
             <p className="text-xs text-gray-400 mb-3 md:mb-4">מק״ט: {product.databaseId}</p>
@@ -761,12 +774,6 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 <CreditCard className="w-4 h-4" />
                 <span>עד 12 תשלומים</span>
               </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{product.assemblyIncluded !== false ? 'מגיע מורכב' : 'הרכבה עצמאית / דרכינו'}</span>
-              </div>
             </div>
 
             {/* AI Product Chat */}
@@ -782,6 +789,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                     options: a.options || [],
                   })) || [],
                   assemblyIncluded: product.assemblyIncluded !== false,
+                  availabilityType: product.availabilityType,
                 }}
               />
             )}
