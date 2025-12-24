@@ -104,37 +104,37 @@ function SuccessContent() {
         const response = await fetch(`/api/checkout/order-status?order_id=${orderId}&include_details=true`);
         const data = await response.json();
         
+        console.log(`Attempt ${attempt}: Order status =`, data.status, 'items =', data.order?.items?.length);
+        
         if (data.success && data.order) {
+          // Update order data
           setOrderData(data.order);
           
-          // Check if payment is complete
-          if (data.status === 'processing' || data.status === 'completed' || data.status === 'on-hold') {
+          // Check if payment is complete AND we have items
+          const isPaid = ['processing', 'completed', 'on-hold'].includes(data.status);
+          const hasItems = data.order.items && data.order.items.length > 0;
+          
+          if (isPaid && hasItems) {
             setOrderStatus('success');
             return;
           }
         }
         
-        // If still pending and we have more attempts, retry
+        // If still pending/no items and we have more attempts, retry
+        if (attempt < 8) {
+          setTimeout(() => checkOrder(attempt + 1), 1000);
+        } else {
+          // Show success anyway after max attempts
+          setOrderStatus('success');
+        }
+      } catch (error) {
+        console.error('Error checking order:', error);
+        // On error, retry a few times before giving up
         if (attempt < 5) {
           setTimeout(() => checkOrder(attempt + 1), 1500);
         } else {
-          // Show success anyway after max attempts - we got here from payment page
           setOrderStatus('success');
-          // Set minimal order data if we don't have it
-          if (!orderData) {
-            setOrderData({
-              id: orderId,
-              status: 'pending',
-              total: '0',
-              currency: 'ILS',
-              items: [],
-              billing: { first_name: '', last_name: '', email: '', phone: '' }
-            });
-          }
         }
-      } catch {
-        // On error, show success anyway - we got here from payment page
-        setOrderStatus('success');
       }
     };
 

@@ -14,6 +14,8 @@ import { AdminProductFields } from '@/components/product/AdminProductFields';
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
+import ProductAIChat from '@/components/product/ProductAIChat';
+import featureFlags from '@/config/features';
 
 // Color mapping for visual display
 const colorMap: Record<string, string> = {
@@ -759,6 +761,22 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 <span>עד 12 תשלומים</span>
               </div>
             </div>
+
+            {/* AI Product Chat */}
+            {featureFlags.aiProductChat && (
+              <ProductAIChat 
+                product={{
+                  name: product.name,
+                  description: product.description || product.shortDescription || '',
+                  price: currentPrice,
+                  categories: [],
+                  attributes: product.attributes?.nodes?.map((a: { name: string; options: string[] }) => ({
+                    name: a.name,
+                    options: a.options || [],
+                  })) || [],
+                }}
+              />
+            )}
 
             {/* Return policy notice */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-700">
