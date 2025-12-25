@@ -5,6 +5,41 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
+// Save conversation to Google Sheets via Apps Script
+async function saveConversationToSheets(
+  sessionId: string,
+  userMessage: string,
+  assistantResponse: string,
+  recommendedProducts: string[],
+  detectedCategory: string | undefined
+) {
+  try {
+    const webhookUrl = 'https://script.google.com/macros/s/AKfycbzx0HSxk7bLWeF80NSCIIeB_MuCDsoiOhXm0drgoUcCD8JiCtnmm1Bs1k6gFk1W79levw/exec';
+
+    const now = new Date();
+    const timestamp = now.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    const date = now.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+    
+    await fetch(webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        timestamp,
+        sessionId,
+        category: detectedCategory || 'כללי',
+        userMessage: userMessage.substring(0, 500),
+        assistantResponse: assistantResponse.substring(0, 1000),
+        products: recommendedProducts.join(', '),
+      }),
+    });
+    
+    console.log('✅ Conversation saved to Google Sheets');
+  } catch (error) {
+    console.error('Error saving to Google Sheets:', error);
+  }
+}
+
 interface WooCommerceProduct {
   id: number;
   name: string;
@@ -25,15 +60,19 @@ interface FormattedProduct {
   allCategories?: string[];
 }
 
-// Category mapping for better understanding
+// Category mapping - using EXACT WooCommerce category names!
 const CATEGORY_MAP: { [key: string]: string[] } = {
-  'שולחן אוכל': ['שולחנות אוכל', 'שולחן אוכל'],
-  'פינת אוכל': ['שולחנות אוכל', 'שולחן אוכל', 'כיסאות אוכל'],
-  'שולחן סלון': ['שולחנות סלון', 'שולחן קפה'],
-  'סלון': ['מזנונים', 'שולחנות סלון', 'ספריות'],
-  'חדר שינה': ['מיטות', 'קומודות', 'שידות לילה'],
-  'כניסה': ['קונסולות', 'מראות'],
-  'אחסון': ['מזנונים', 'ספריות', 'קומודות'],
+  'שולחן אוכל': ['פינות אוכל', 'כיסאות לפינת אוכל'],
+  'פינת אוכל': ['פינות אוכל', 'כיסאות לפינת אוכל'],
+  'שולחן סלון': ['שולחנות סלון'],
+  'סלון': ['מזנונים לסלון', 'שולחנות סלון', 'ספריות', 'כורסאות לסלון'],
+  'מזנון': ['מזנונים לסלון'],
+  'חדר שינה': ['מיטות לחדר שינה', 'קומודות', 'שידות לצד המיטה'],
+  'מיטה': ['מיטות לחדר שינה'],
+  'כניסה': ['קונסולות', 'מראות', 'כניסה לבית'],
+  'קונסולה': ['קונסולות', 'כניסה לבית'],
+  'אחסון': ['מזנונים לסלון', 'ספריות', 'קומודות'],
+  'כורסה': ['כורסאות לסלון'],
 };
 
 // Fetch products from WooCommerce
@@ -132,10 +171,14 @@ export async function POST(request: NextRequest) {
 
     // Detect category from user message
     const detectedCategory = detectCategory(message);
+    console.log('🎯 Detected category:', detectedCategory, 'from message:', message);
     
     // Fetch products - filtered by category if detected
     const relevantProducts = await fetchProducts(detectedCategory);
     const allProducts = detectedCategory ? await fetchProducts() : relevantProducts;
+    
+    console.log('📦 Relevant products count:', relevantProducts.length);
+    console.log('📦 Relevant product categories:', [...new Set(relevantProducts.map(p => p.category))]);
     
     // Create product catalog for AI context - show relevant products first
     const productCatalog = relevantProducts.map(p => 
@@ -152,6 +195,7 @@ export async function POST(request: NextRequest) {
 1. להבין את צרכי הלקוח - גודל החדר, סגנון, תקציב, צבעים
 2. להמליץ על רהיטים מתאימים **רק** מהקטלוג שלנו
 3. לתת טיפים מעשיים לעיצוב וצבעים
+4. להניע לפעולה בעדינות ובחום
 ${categoryContext}
 
 🚨 קטלוג המוצרים (המלץ **רק** על מוצרים מהרשימה הזו!):
@@ -165,16 +209,23 @@ ${productCatalog}
 - השתמש **בשמות המדויקים** מהרשימה
 
 💡 טיפים לעיצוב וצבעים - תמיד תן טיפ אחד לפחות:
-- הצע שילובי צבעים לקירות שיתאימו לרהיט (למשל: "אם תבחרו רהיט בעץ אלון טבעי, קירות בגוון אפור-כחלחל או לבן שבור יבליטו אותו יפה")
-- תן טיפים על תאורה ("תאורה חמה תשדרג את מראה העץ")
+- הצע שילובי צבעים לקירות שיתאימו לרהיט
+- תן טיפים על תאורה
 - הצע אביזרים משלימים (שטיחים, כריות, עציצים)
-- דבר על פרופורציות ("שולחן אוכל ל-6 צריך מינימום 180 ס"מ אורך")
+- דבר על פרופורציות
 
 🎨 שילובי צבעים מומלצים:
 - עץ אלון טבעי/בהיר: קירות לבנים, אפור בהיר, תכלת עדין
 - עץ אגוז כהה: קירות קרם, ירוק זית, אפור חם
 - שחור מט: קירות לבנים עם אלמנט צבעוני (חרדל, כתום חמרה)
 - לבן/שמנת: קירות בכל גוון - נותן גמישות מקסימלית
+
+📞 הנעה לפעולה - חשוב מאוד!
+אחרי כל המלצה או כשהשיחה מתקדמת, הזמן בעדינות וחום ליצור קשר:
+- "אשמח לעזור לך עוד! אם תרצה לראות את הרהיטים או לשמוע עוד פרטים, הצוות שלנו זמין בטלפון 03-5566696 או בוואטסאפ 📱"
+- "רוצה שאחד מהמעצבים שלנו יחזור אליך עם הצעה מותאמת? השאר פרטים או שלח הודעה בוואטסאפ"
+- "מוזמן/ת לבקר באולם התצוגה שלנו ברחוב הברזל 38 ת"א לראות את הרהיטים מקרוב ✨"
+- תשלב את ההזמנה בצורה טבעית, לא דוחפנית
 
 דבר בעברית חמה וידידותית. שאל שאלות כדי להבין טוב יותר.
 הצע 2-4 מוצרים מתאימים מהקטגוריה הנכונה בלבד.
@@ -248,6 +299,18 @@ ${productCatalog}
 
     // Clean the response (remove the PRODUCTS tag)
     const cleanResponse = assistantMessage.replace(/\[PRODUCTS?:\s*[^\]]+\]/gi, '').trim();
+
+    // Generate session ID from conversation length (simple approach)
+    const sessionId = `session_${Date.now()}_${history.length}`;
+    
+    // Save to Google Sheets (async, don't wait)
+    saveConversationToSheets(
+      sessionId,
+      message,
+      cleanResponse,
+      recommendedProducts.map(p => p.name),
+      detectedCategory
+    ).catch(err => console.error('Sheets save error:', err));
 
     return NextResponse.json({
       success: true,
