@@ -14,7 +14,7 @@ async function saveConversationToSheets(
   detectedCategory: string | undefined
 ) {
   try {
-    const webhookUrl = 'https://script.google.com/macros/s/AKfycbx9lEH93SYq_irwvsMeihCaDyTbPYR10xwleXVI8MqHnaEnN03YznKqyjNmKJGu5KFGRw/exec';
+    const webhookUrl = 'https://script.google.com/macros/s/AKfycbziWAkdFQKyNFAY35BpzaZHyb9_i1er-i-T6eLw5TZb1DoN9Ot0V6HKt8Kd-7iJmtwFbg/exec';
 
     const now = new Date();
     const timestamp = now.toLocaleString('he-IL', { timeZone: 'Asia/Jerusalem' });

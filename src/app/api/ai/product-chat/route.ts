@@ -175,12 +175,13 @@ ${product.dimensions ? `מידות: רוחב ${product.dimensions.width || 'לא
       : 'סליחה, לא הצלחתי לענות. נסו לשאול שוב או פנו אלינו 03-5566696';
 
     // Log to Google Sheets
-    const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyQDsUCTmZ7Tuw5-r929qasOmUzh-TKkhKiBUeX0-SFuCEed86A4JKEPwAYP45iJwuH/exec';
+    const GOOGLE_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbziWAkdFQKyNFAY35BpzaZHyb9_i1er-i-T6eLw5TZb1DoN9Ot0V6HKt8Kd-7iJmtwFbg/exec';
     try {
       await fetch(GOOGLE_SHEETS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'product_chat',
           product: product.name,
           question: message,
           answer: assistantMessage,
