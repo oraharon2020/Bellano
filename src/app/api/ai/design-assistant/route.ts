@@ -22,19 +22,30 @@ interface FormattedProduct {
   image: string;
   slug: string;
   category: string;
+  allCategories?: string[];
 }
 
+// Category mapping for better understanding
+const CATEGORY_MAP: { [key: string]: string[] } = {
+  'שולחן אוכל': ['שולחנות אוכל', 'שולחן אוכל'],
+  'פינת אוכל': ['שולחנות אוכל', 'שולחן אוכל', 'כיסאות אוכל'],
+  'שולחן סלון': ['שולחנות סלון', 'שולחן קפה'],
+  'סלון': ['מזנונים', 'שולחנות סלון', 'ספריות'],
+  'חדר שינה': ['מיטות', 'קומודות', 'שידות לילה'],
+  'כניסה': ['קונסולות', 'מראות'],
+  'אחסון': ['מזנונים', 'ספריות', 'קומודות'],
+};
+
 // Fetch products from WooCommerce
-async function fetchProducts(searchQuery?: string, category?: string): Promise<FormattedProduct[]> {
+async function fetchProducts(categoryFilter?: string): Promise<FormattedProduct[]> {
   const baseUrl = process.env.NEXT_PUBLIC_WOOCOMMERCE_URL || 'https://admin.bellano.co.il';
   const consumerKey = process.env.WOOCOMMERCE_CONSUMER_KEY;
   const consumerSecret = process.env.WOOCOMMERCE_CONSUMER_SECRET;
 
   const params = new URLSearchParams({
-    per_page: '50',
+    per_page: '100',
     status: 'publish',
     orderby: 'popularity',
-    ...(searchQuery && { search: searchQuery }),
   });
 
   try {
@@ -55,18 +66,60 @@ async function fetchProducts(searchQuery?: string, category?: string): Promise<F
 
     const products: WooCommerceProduct[] = await response.json();
     
-    return products.map(p => ({
+    let formattedProducts = products.map(p => ({
       id: p.id.toString(),
       name: p.name,
       price: `₪${parseFloat(p.price).toLocaleString()}`,
       image: p.images?.[0]?.src || '',
       slug: p.slug,
       category: p.categories?.[0]?.name || '',
+      allCategories: p.categories?.map(c => c.name) || [],
     }));
+
+    // Filter by category if provided
+    if (categoryFilter) {
+      const relevantCategories = CATEGORY_MAP[categoryFilter] || [];
+      if (relevantCategories.length > 0) {
+        formattedProducts = formattedProducts.filter(p => 
+          relevantCategories.some(cat => 
+            p.category.includes(cat) || 
+            p.allCategories.some((c: string) => c.includes(cat))
+          )
+        );
+      }
+    }
+
+    return formattedProducts;
   } catch (error) {
     console.error('Error fetching products:', error);
     return [];
   }
+}
+
+// Detect category from user message
+function detectCategory(message: string): string | undefined {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('שולחן אוכל') || lowerMessage.includes('פינת אוכל') || lowerMessage.includes('סועדים')) {
+    return 'שולחן אוכל';
+  }
+  if (lowerMessage.includes('שולחן סלון') || lowerMessage.includes('שולחן קפה')) {
+    return 'שולחן סלון';
+  }
+  if (lowerMessage.includes('מזנון') || (lowerMessage.includes('סלון') && !lowerMessage.includes('שולחן'))) {
+    return 'סלון';
+  }
+  if (lowerMessage.includes('מיטה') || lowerMessage.includes('חדר שינה') || lowerMessage.includes('קומודה') || lowerMessage.includes('שידת לילה')) {
+    return 'חדר שינה';
+  }
+  if (lowerMessage.includes('קונסולה') || lowerMessage.includes('כניסה')) {
+    return 'כניסה';
+  }
+  if (lowerMessage.includes('ספריה') || lowerMessage.includes('אחסון')) {
+    return 'אחסון';
+  }
+  
+  return undefined;
 }
 
 export async function POST(request: NextRequest) {
@@ -77,43 +130,59 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Message required' }, { status: 400 });
     }
 
-    // Fetch available products
-    const allProducts = await fetchProducts();
+    // Detect category from user message
+    const detectedCategory = detectCategory(message);
     
-    // Create product catalog for AI context
-    const productCatalog = allProducts.map(p => 
-      `- ${p.name} (${p.category}) - ${p.price}`
+    // Fetch products - filtered by category if detected
+    const relevantProducts = await fetchProducts(detectedCategory);
+    const allProducts = detectedCategory ? await fetchProducts() : relevantProducts;
+    
+    // Create product catalog for AI context - show relevant products first
+    const productCatalog = relevantProducts.map(p => 
+      `- ${p.name} [קטגוריה: ${p.category}] - ${p.price}`
     ).join('\n');
 
-    const systemPrompt = `אתה יועץ עיצוב פנים מקצועי של בלאנו - חנות רהיטים איכותיים.
+    const categoryContext = detectedCategory 
+      ? `\n🎯 הלקוח מחפש: ${detectedCategory}\nהמוצרים הרלוונטיים ביותר מסומנים למטה.`
+      : '';
+
+    const systemPrompt = `אתה יועץ עיצוב פנים מקצועי ואדיב של בלאנו - חנות רהיטים איכותיים.
 
 התפקיד שלך:
 1. להבין את צרכי הלקוח - גודל החדר, סגנון, תקציב, צבעים
 2. להמליץ על רהיטים מתאימים **רק** מהקטלוג שלנו
-3. לתת טיפים לעיצוב
+3. לתת טיפים מעשיים לעיצוב וצבעים
+${categoryContext}
 
-🚨 קטלוג המוצרים שלנו (אלה המוצרים היחידים שאתה יכול להמליץ עליהם):
+🚨 קטלוג המוצרים (המלץ **רק** על מוצרים מהרשימה הזו!):
 ${productCatalog}
 
-כללים קריטיים - חובה לעקוב:
-- המלץ **רק** על מוצרים שמופיעים ברשימה למעלה!
-- **אסור בתכלית האיסור להמציא מוצרים** - אם מוצר לא ברשימה, הוא לא קיים
-- אם הלקוח מבקש משהו שאין לנו (למשל ספות, כורסאות ספציפיות) - אמור בכנות שאין לנו כרגע והצע לבדוק אצלנו בעתיד או הצע מוצר דומה שכן קיים
-- דבר בעברית טבעית וידידותית
-- תמיד שאל שאלות כדי להבין טוב יותר את הצרכים
-- כשאתה ממליץ על מוצרים, השתמש **בשמות המדויקים** מהרשימה - לא לשנות או לקצר שמות
-- הצע 2-4 מוצרים מתאימים בכל המלצה
-- תן הסברים קצרים למה כל מוצר מתאים
+📋 כללים קריטיים - חובה לעקוב:
+- המלץ **רק** על מוצרים מאותה קטגוריה שהלקוח מחפש!
+- אם הלקוח מבקש שולחן אוכל - המלץ רק על שולחנות אוכל, לא שולחנות סלון!
+- אם הלקוח מבקש מזנון - המלץ רק על מזנונים, לא שולחנות!
+- **אסור להמציא מוצרים** - אם מוצר לא ברשימה, הוא לא קיים
+- השתמש **בשמות המדויקים** מהרשימה
 
-הקטגוריות העיקריות שלנו: מזנונים, שולחנות סלון, קונסולות, מיטות, קומודות, שידות לילה, ספריות, כיסאות
-(שים לב: אין לנו כרגע ספות או כורסאות מרופדות במלאי)
+💡 טיפים לעיצוב וצבעים - תמיד תן טיפ אחד לפחות:
+- הצע שילובי צבעים לקירות שיתאימו לרהיט (למשל: "אם תבחרו רהיט בעץ אלון טבעי, קירות בגוון אפור-כחלחל או לבן שבור יבליטו אותו יפה")
+- תן טיפים על תאורה ("תאורה חמה תשדרג את מראה העץ")
+- הצע אביזרים משלימים (שטיחים, כריות, עציצים)
+- דבר על פרופורציות ("שולחן אוכל ל-6 צריך מינימום 180 ס"מ אורך")
 
-סגנונות פופולריים: מודרני, סקנדינבי, תעשייתי, קלאסי, מינימליסטי
+🎨 שילובי צבעים מומלצים:
+- עץ אלון טבעי/בהיר: קירות לבנים, אפור בהיר, תכלת עדין
+- עץ אגוז כהה: קירות קרם, ירוק זית, אפור חם
+- שחור מט: קירות לבנים עם אלמנט צבעוני (חרדל, כתום חמרה)
+- לבן/שמנת: קירות בכל גוון - נותן גמישות מקסימלית
 
-כשאתה ממליץ על מוצרים, סיים עם שורה בפורמט:
+דבר בעברית חמה וידידותית. שאל שאלות כדי להבין טוב יותר.
+הצע 2-4 מוצרים מתאימים מהקטגוריה הנכונה בלבד.
+
+כשאתה ממליץ על מוצרים, סיים עם:
 [PRODUCTS: שם מוצר מדויק 1, שם מוצר מדויק 2]
 
-חשוב: השמות חייבים להיות זהים לחלוטין לשמות שברשימה למעלה!`;
+⚠️ השמות חייבים להיות זהים לחלוטין לשמות שברשימה!`;
 
     // Build conversation history
     const conversationHistory = history
@@ -129,7 +198,7 @@ ${productCatalog}
     // Call Claude
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
-      max_tokens: 1000,
+      max_tokens: 1200,
       system: systemPrompt,
       messages: conversationHistory,
     });
@@ -145,7 +214,8 @@ ${productCatalog}
     if (productMatch) {
       const productNames = productMatch[1].split(',').map(s => s.trim().toLowerCase());
       
-      recommendedProducts = allProducts.filter(product => {
+      // First try to find in relevant products (correct category)
+      recommendedProducts = relevantProducts.filter(product => {
         const productNameLower = product.name.toLowerCase();
         return productNames.some(searchName => 
           productNameLower.includes(searchName) || 
@@ -153,11 +223,21 @@ ${productCatalog}
         );
       }).slice(0, 6);
 
-      // If no exact matches, do fuzzy search
+      // If no matches in relevant products, try all products but only as fallback
       if (recommendedProducts.length === 0) {
-        // Extract keywords from AI response and find matches
-        const keywords = productNames.flatMap(n => n.split(' '));
         recommendedProducts = allProducts.filter(product => {
+          const productNameLower = product.name.toLowerCase();
+          return productNames.some(searchName => 
+            productNameLower.includes(searchName) || 
+            searchName.includes(productNameLower.split(' ')[0])
+          );
+        }).slice(0, 4);
+      }
+
+      // Fuzzy search as last resort
+      if (recommendedProducts.length === 0) {
+        const keywords = productNames.flatMap(n => n.split(' '));
+        recommendedProducts = relevantProducts.filter(product => {
           const productNameLower = product.name.toLowerCase();
           return keywords.some(keyword => 
             keyword.length > 2 && productNameLower.includes(keyword)
