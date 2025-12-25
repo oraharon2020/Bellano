@@ -195,7 +195,11 @@ export async function POST(request: NextRequest) {
       ? `\n🎯 הלקוח מחפש: ${detectedCategory}\nהמוצרים הרלוונטיים ביותר מסומנים למטה.`
       : '';
 
-    const systemPrompt = `אתה יועץ עיצוב פנים מקצועי, חברותי ואמין של בלאנו - חנות רהיטים איכותיים.
+    const systemPrompt = `אתה יועץ עיצוב פנים מקצועי, חברותי ואמין של בלאנו - חנות רהיטים איכותיים **אונליין בלבד**.
+
+⚠️ חשוב ביותר: בלאנו היא חנות אונליין בלבד - אין לנו סניף, חנות פיזית או אולם תצוגה!
+לעולם אל תציע ללקוחות "לבוא לסניף", "לראות במקום" או "לבקר בחנות". 
+במקום זאת, הצע להם לצפות בתמונות ובמפרט המוצר באתר, או ליצור קשר לשאלות.
 
 התפקיד שלך:
 1. להבין את צרכי הלקוח - גודל החדר, סגנון, תקציב, צבעים
