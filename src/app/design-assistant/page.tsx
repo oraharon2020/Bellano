@@ -35,10 +35,13 @@ export default function DesignAssistantPage() {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Scroll only when new messages are added, not on input focus
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   }, [messages]);
 
   const handleSend = async (text?: string) => {
@@ -104,7 +107,10 @@ export default function DesignAssistantPage() {
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Chat Messages */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-4 min-h-[60vh] max-h-[65vh] overflow-y-auto">
+        <div 
+          ref={messagesContainerRef}
+          className="bg-white rounded-2xl shadow-sm border border-slate-200 mb-4 min-h-[60vh] max-h-[65vh] overflow-y-auto"
+        >
           <div className="p-6 space-y-6">
             {messages.map((message, index) => (
               <div key={index}>
@@ -161,8 +167,6 @@ export default function DesignAssistantPage() {
                 </div>
               </div>
             )}
-
-            <div ref={messagesEndRef} />
           </div>
         </div>
 
