@@ -16,6 +16,15 @@ interface ProductInfo {
   };
   assemblyIncluded?: boolean;
   availabilityType?: 'in_stock' | 'custom_order';
+  bundleInfo?: {
+    enabled: boolean;
+    discount: number;
+    products: Array<{ name: string; price: string }>;
+    variationBundles?: Record<string, {
+      products: number[];
+      discount: number | null;
+    }>;
+  } | null;
 }
 
 interface Message {

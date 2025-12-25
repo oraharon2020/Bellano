@@ -185,6 +185,10 @@ interface RelatedData {
   enabled: boolean;
   discount: number;
   products: RelatedProductData[];
+  variation_bundles?: Record<string, {
+    products: number[];
+    discount: number | null;
+  }> | null;
 }
 
 interface ProductPageClientProps {
@@ -822,6 +826,12 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                   })) || [],
                   assemblyIncluded: product.assemblyIncluded !== false,
                   availabilityType: product.availabilityType,
+                  bundleInfo: relatedData ? {
+                    enabled: relatedData.enabled,
+                    discount: relatedData.discount,
+                    products: relatedData.products.map(p => ({ name: p.name, price: `₪${p.price}` })),
+                    variationBundles: relatedData.variation_bundles || undefined,
+                  } : null,
                 }}
               />
             )}

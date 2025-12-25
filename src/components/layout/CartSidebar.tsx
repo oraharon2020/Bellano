@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
 interface AppliedCoupon {
@@ -19,6 +19,7 @@ export function CartSidebar() {
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCoupon | null>(null);
   const [couponError, setCouponError] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const [showCouponInput, setShowCouponInput] = useState(false);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('he-IL', {
@@ -250,110 +251,100 @@ export function CartSidebar() {
               ))}
             </div>
 
-            {/* Cart Footer */}
-            <div className="border-t p-4 space-y-3 bg-white shrink-0 pb-safe">
-              {/* Coupon Section */}
-              <div className="space-y-2">
-                {!appliedCoupon ? (
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Tag className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            {/* Cart Footer - Compact */}
+            <div className="border-t px-3 py-2 space-y-1.5 bg-white shrink-0 pb-safe">
+              {/* Coupon Section - Collapsible */}
+              {!appliedCoupon ? (
+                <div>
+                  <button
+                    onClick={() => setShowCouponInput(!showCouponInput)}
+                    className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors py-1"
+                  >
+                    <Tag className="w-3 h-3" />
+                    <span>יש לך קוד קופון?</span>
+                    <ChevronDown className={`w-3 h-3 transition-transform ${showCouponInput ? 'rotate-180' : ''}`} />
+                  </button>
+                  {showCouponInput && (
+                    <div className="flex gap-1.5 mt-1">
                       <input
                         type="text"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
-                        placeholder="קוד קופון"
-                        className="w-full pr-10 pl-3 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-black"
+                        placeholder="הזן קוד"
+                        className="flex-1 px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-black"
                         onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
                       />
+                      <button
+                        onClick={validateCoupon}
+                        disabled={isValidating}
+                        className="px-3 py-1.5 bg-gray-100 text-xs font-medium rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
+                      >
+                        {isValidating ? <Loader2 className="w-3 h-3 animate-spin" /> : 'החל'}
+                      </button>
                     </div>
-                    <button
-                      onClick={validateCoupon}
-                      disabled={isValidating}
-                      className="px-4 py-2 bg-gray-100 text-sm font-medium rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
-                    >
-                      {isValidating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'החל'}
-                    </button>
+                  )}
+                  {couponError && <p className="text-red-500 text-[10px] mt-0.5">{couponError}</p>}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between bg-green-50 px-2 py-1.5 rounded text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3 h-3 text-green-600" />
+                    <span className="text-green-700">{appliedCoupon.code} ({appliedCoupon.discountDisplay})</span>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between bg-green-50 p-2.5 rounded-md">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-green-600" />
-                      <span className="text-sm text-green-700">
-                        {appliedCoupon.code} ({appliedCoupon.discountDisplay})
-                      </span>
-                    </div>
-                    <button
-                      onClick={removeCoupon}
-                      className="text-red-500 hover:text-red-600 text-sm"
-                    >
-                      הסר
-                    </button>
-                  </div>
-                )}
-                {couponError && (
-                  <p className="text-red-500 text-xs">{couponError}</p>
-                )}
-              </div>
-
-              {/* Bundle Savings Info - show original price and savings */}
-              {bundleSavings > 0 && (
-                <>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-500">מחיר מלא</span>
-                    <span className="text-gray-400 line-through">{formatPrice(subtotal + bundleSavings)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-amber-600">
-                    <span className="flex items-center gap-1">
-                      <Sparkles className="w-3.5 h-3.5" />
-                      הנחת באנדל
-                    </span>
-                    <span className="font-medium">-{formatPrice(bundleSavings)}</span>
-                  </div>
-                </>
-              )}
-
-              {/* Subtotal (after bundle discount) */}
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">{bundleSavings > 0 ? 'סה״כ אחרי הנחה' : 'סה״כ ביניים'}</span>
-                <span>{formatPrice(subtotal)}</span>
-              </div>
-              
-              {/* Coupon Discount */}
-              {appliedCoupon && (
-                <div className="flex justify-between items-center text-sm text-green-600">
-                  <span>הנחת קופון</span>
-                  <span>-{formatPrice(discount)}</span>
+                  <button onClick={removeCoupon} className="text-red-500 hover:text-red-600 text-[10px]">הסר</button>
                 </div>
               )}
 
-              {/* Total */}
-              <div className="flex justify-between items-center pt-2 border-t">
-                <span className="font-bold">סה״כ לתשלום</span>
-                <span className="font-bold text-lg">{formatPrice(finalTotal)}</span>
+              {/* Price Summary - Compact */}
+              <div className="space-y-0.5 text-xs">
+                {bundleSavings > 0 && (
+                  <>
+                    <div className="flex justify-between text-gray-400">
+                      <span>מחיר מלא</span>
+                      <span className="line-through">{formatPrice(subtotal + bundleSavings)}</span>
+                    </div>
+                    <div className="flex justify-between text-amber-600">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        הנחת באנדל
+                      </span>
+                      <span>-{formatPrice(bundleSavings)}</span>
+                    </div>
+                  </>
+                )}
+                
+                {appliedCoupon && (
+                  <div className="flex justify-between text-green-600">
+                    <span>הנחת קופון</span>
+                    <span>-{formatPrice(discount)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Total + Shipping */}
+              <div className="flex justify-between items-center pt-1.5 border-t">
+                <div>
+                  <span className="font-bold text-sm">{formatPrice(finalTotal)}</span>
+                  <span className="text-[10px] text-green-600 mr-1.5">+ משלוח חינם 🚚</span>
+                </div>
               </div>
               
-              {/* Free shipping notice */}
-              <div className="bg-green-50 text-green-700 text-sm p-2.5 rounded-md text-center">
-                🚚 משלוח חינם לכל הארץ!
+              {/* Buttons - Stacked */}
+              <div className="space-y-2 pt-1">
+                <Link 
+                  href={`/checkout${appliedCoupon ? `?coupon=${appliedCoupon.code}` : ''}`}
+                  onClick={closeCart}
+                  className="block w-full py-3 bg-black text-white text-center text-sm font-medium rounded-md hover:bg-gray-800 transition-colors active:scale-[0.98]"
+                >
+                  לתשלום
+                </Link>
+                <button 
+                  onClick={closeCart}
+                  className="w-full py-2.5 border border-gray-300 text-center text-sm font-medium rounded-md hover:bg-gray-50 transition-colors active:scale-[0.98]"
+                >
+                  המשך לקנות
+                </button>
               </div>
-              
-              {/* Checkout Button - Link to Next.js checkout page */}
-              <Link 
-                href={`/checkout${appliedCoupon ? `?coupon=${appliedCoupon.code}` : ''}`}
-                onClick={closeCart}
-                className="block w-full py-3.5 bg-black text-white text-center font-medium rounded-md hover:bg-gray-800 transition-colors active:scale-[0.98]"
-              >
-                מעבר לתשלום
-              </Link>
-              
-              {/* Continue Shopping */}
-              <button 
-                onClick={closeCart}
-                className="w-full py-3 border border-gray-300 text-center font-medium rounded-md hover:bg-gray-50 transition-colors active:scale-[0.98]"
-              >
-                המשך לקנות
-              </button>
             </div>
           </>
         )}

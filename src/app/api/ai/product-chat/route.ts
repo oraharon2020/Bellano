@@ -54,6 +54,15 @@ interface ProductInfo {
   };
   assemblyIncluded?: boolean;
   availabilityType?: 'in_stock' | 'custom_order';
+  bundleInfo?: {
+    enabled: boolean;
+    discount: number;
+    products: Array<{ name: string; price: string }>;
+    variationBundles?: Record<string, {
+      products: number[];
+      discount: number | null;
+    }>;
+  } | null;
 }
 
 interface Message {
@@ -72,12 +81,13 @@ const SYSTEM_PROMPT = `אתה יועץ וירטואלי של בלאנו - חנו
 כללים חשובים:
 1. ענה רק על שאלות שקשורות למוצר הספציפי או לריהוט בכלל
 2. אל תמציא מידע - אם אתה לא יודע, אמור "לגבי זה כדאי לדבר ישירות עם הצוות שלנו בטלפון 03-5566696"
-3. אל תבטיח מחירים, הנחות או זמני אספקה ספציפיים
+3. אל תבטיח מחירים, הנחות או זמני אספקה ספציפיים (מלבד הנחת באנדל שמופיעה במידע המוצר)
 4. היה ידידותי, מקצועי וקצר - תשובות של 2-3 משפטים מספיקות
 5. עודד פניה לצוות בשאלות מורכבות - תן את המספר 03-5566696
 6. ענה בעברית בלבד
 7. אם שואלים על מוצרים אחרים - הצע לעיין בקטלוג או לדבר עם הצוות
 8. תמיד סיים את התשובה במשפט שלם - אל תחתוך באמצע
+9. כשיש באנדל - הזכר אותו בהזדמנות מתאימה! למשל: "אגב, יש באנדל עם X% הנחה שכולל מוצרים משלימים"
 
 מידע שאתה יכול לעזור בו:
 - התאמת מידות לחדר
@@ -85,6 +95,7 @@ const SYSTEM_PROMPT = `אתה יועץ וירטואלי של בלאנו - חנו
 - הסבר על תכונות המוצר
 - טיפים לעיצוב ושילוב רהיטים
 - הסבר על תהליך ההתאמה האישית
+- המלצה על באנדלים והנחות (אם יש)
 
 פרטי התקשרות:
 - טלפון/וואטסאפ: 03-5566696
@@ -132,6 +143,16 @@ export async function POST(request: NextRequest) {
     }
 
     // Build product context
+    const bundleText = product.bundleInfo?.enabled && product.bundleInfo.products.length > 0
+      ? `
+באנדל "השלימו את הלוק": יש הצעת באנדל עם ${product.bundleInfo.discount}% הנחה!
+המוצרים בבאנדל: ${product.bundleInfo.products.map(p => `${p.name} (${p.price})`).join(', ')}
+${product.bundleInfo.variationBundles && Object.keys(product.bundleInfo.variationBundles).length > 0 
+  ? 'הבאנדל משתנה לפי הווריאציה שנבחרת - לכל שילוב צבע/גודל יש באנדל משלו.' 
+  : ''}
+טיפ: כשלקוח שואל על צבע או גודל מסוים, הזכר לו שיש באנדל עם הנחה למוצרים משלימים!`
+      : '';
+
     const productContext = `
 מוצר נוכחי: ${product.name}
 תיאור: ${product.description || 'אין תיאור'}
@@ -144,6 +165,7 @@ export async function POST(request: NextRequest) {
 תשלום: עד 12 תשלומים ללא ריבית
 ${product.attributes?.length ? `מאפיינים זמינים: ${product.attributes.map(a => `${a.name}: ${a.options.join(', ')}`).join('; ')}` : ''}
 ${product.dimensions ? `מידות: רוחב ${product.dimensions.width || 'לא צוין'}, עומק ${product.dimensions.depth || 'לא צוין'}, גובה ${product.dimensions.height || 'לא צוין'}` : ''}
+${bundleText}
 `;
 
     // Build conversation history (limit to last 6 messages)
