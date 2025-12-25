@@ -14,6 +14,23 @@ class Bellano_Related_Products {
         add_action('add_meta_boxes', array($this, 'add_meta_box'));
         add_action('save_post_product', array($this, 'save_meta_box'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_scripts'));
+        // Expose in REST API
+        add_action('rest_api_init', array($this, 'register_rest_field'));
+    }
+    
+    /**
+     * Register REST API field for products
+     */
+    public function register_rest_field() {
+        register_rest_field('product', 'bellano_related', array(
+            'get_callback' => function($product) {
+                return self::get_related_products_data($product['id']);
+            },
+            'schema' => array(
+                'description' => 'Related products for Complete The Look bundle',
+                'type' => 'object',
+            ),
+        ));
     }
     
     /**
