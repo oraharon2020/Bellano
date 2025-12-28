@@ -43,6 +43,7 @@ export const siteConfig = {
           { name: 'מיטות', slug: 'beds' },
           { name: 'קומודות', slug: 'dresser' },
           { name: 'שידות לילה', slug: 'bedside-tables' },
+          { name: 'שולחנות איפור', slug: 'makeup-tables' },
         ],
       },
       {

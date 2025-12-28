@@ -13,6 +13,7 @@ const categories = [
   { name: 'שידות לילה', slug: 'bedside-tables' },
   { name: 'כורסאות', slug: 'designed-armchairs' },
   { name: 'קומודות', slug: 'dresser' },
+  { name: 'שולחנות איפור', slug: 'makeup-tables' },
 ];
 
 const links = [
@@ -84,6 +85,14 @@ export function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link
+                  href="/categories"
+                  className="text-primary font-medium hover:text-primary/80"
+                >
+                  כל הקטגוריות ←
+                </Link>
+              </li>
             </ul>
           </div>
 

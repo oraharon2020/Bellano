@@ -252,6 +252,8 @@ export default function CheckoutPage() {
               uploaded_file_name: item.adminFields.uploadedFileName,
               original_price: item.adminFields.originalPrice,
               final_price: item.adminFields.finalPrice,
+              tambour_color: item.adminFields.tambourColor,
+              tambour_price: item.adminFields.tambourPrice,
             } : undefined,
           })),
           shipping_method: selectedShipping,
@@ -892,6 +894,16 @@ export default function CheckoutPage() {
                           {item.variation && (
                             <p className="text-xs text-gray-500">
                               {item.variation.attributes.map((attr) => attr.value).join(' • ')}
+                            </p>
+                          )}
+                          
+                          {/* Tambour Color */}
+                          {item.adminFields?.tambourColor && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              צבע טמבור: {item.adminFields.tambourColor}
+                              {item.adminFields.tambourPrice && (
+                                <span className="text-gray-400"> (+{item.adminFields.tambourPrice}₪)</span>
+                              )}
                             </p>
                           )}
                           

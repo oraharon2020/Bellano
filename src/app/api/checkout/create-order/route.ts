@@ -18,6 +18,8 @@ interface AdminFields {
   uploaded_file_name?: string;
   original_price?: string;
   final_price?: string;
+  tambour_color?: string;
+  tambour_price?: number;
 }
 
 interface VariationAttribute {
@@ -177,6 +179,13 @@ export async function POST(request: NextRequest) {
         }
         if (item.admin_fields.original_price) {
           lineItem.meta_data.push({ key: 'מחיר מקורי', value: item.admin_fields.original_price });
+        }
+        // Tambour color - add to order meta
+        if (item.admin_fields.tambour_color) {
+          lineItem.meta_data.push({ 
+            key: 'צבע טמבור', 
+            value: item.admin_fields.tambour_color + (item.admin_fields.tambour_price ? ` (+${item.admin_fields.tambour_price}₪)` : '')
+          });
         }
         if (item.admin_fields.final_price) {
           // Use the final price from admin fields

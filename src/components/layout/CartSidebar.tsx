@@ -183,6 +183,16 @@ export function CartSidebar() {
                       </div>
                     )}
                     
+                    {/* Tambour Color - show separately above admin fields */}
+                    {item.adminFields?.tambourColor && (
+                      <p className="text-xs text-gray-600 mt-1">
+                        צבע טמבור: {item.adminFields.tambourColor}
+                        {item.adminFields.tambourPrice && (
+                          <span className="text-gray-400"> (+{item.adminFields.tambourPrice}₪)</span>
+                        )}
+                      </p>
+                    )}
+                    
                     {/* Admin Fields Display - only show if there's actual content */}
                     {item.adminFields && (
                       item.adminFields.width || 

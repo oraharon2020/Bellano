@@ -547,6 +547,18 @@ class Bellano_REST_API {
         $assembly = get_post_meta($product->get_id(), '_bellano_assembly', true);
         $data['bellano_assembly'] = ($assembly === '' || $assembly === '1') ? true : false;
         
+        // Add bellano_tambour (Tambour color option)
+        $tambour_enabled = get_post_meta($product->get_id(), '_bellano_tambour_enabled', true);
+        $tambour_price = get_post_meta($product->get_id(), '_bellano_tambour_price', true);
+        if ($tambour_enabled === '1') {
+            $data['bellano_tambour'] = [
+                'enabled' => true,
+                'price' => $tambour_price !== '' ? (int) $tambour_price : 300,
+            ];
+        } else {
+            $data['bellano_tambour'] = null;
+        }
+        
         // Add bellano_related (Complete The Look) data
         $data['bellano_related'] = Bellano_Related_Products::get_related_products_data($product->get_id());
         

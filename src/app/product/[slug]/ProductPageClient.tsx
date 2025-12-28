@@ -205,6 +205,7 @@ interface ProductPageClientProps {
     onSale: boolean;
     availabilityType?: 'in_stock' | 'custom_order';
     assemblyIncluded?: boolean;
+    tambourColor?: { enabled: boolean; price: number } | null;
     image?: { sourceUrl: string; altText?: string };
     galleryImages?: { sourceUrl: string; altText?: string }[];
     attributes?: {
@@ -229,6 +230,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
   // Admin fields state
   const [adminPrice, setAdminPrice] = useState<number | null>(null);
   const [adminFieldsData, setAdminFieldsData] = useState<any>(null);
+  
+  // Tambour color state
+  const [tambourColor, setTambourColor] = useState<string>('');
 
   const { addItem } = useCartStore();
   const { toggleItem, isInWishlist, isHydrated: wishlistHydrated } = useWishlistStore();
@@ -380,9 +384,16 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
       .map(([key, value]) => `${key}: ${value}`)
       .join(' / ');
     
-    // Use admin price if set, otherwise use regular price
-    const finalPrice = adminPrice !== null ? `${adminPrice} ₪` : currentPrice;
-    const priceValue = parseFloat(finalPrice.replace(/[^\d.]/g, '')) || 0;
+    // Calculate tambour price addition
+    const tambourPriceAdd = tambourColor.trim() && product.tambourColor?.enabled 
+      ? product.tambourColor.price 
+      : 0;
+    
+    // Use admin price if set, otherwise use regular price + tambour
+    const basePrice = adminPrice !== null ? adminPrice : parseFloat(currentPrice.replace(/[^\d.]/g, '')) || 0;
+    const finalPriceValue = basePrice + tambourPriceAdd;
+    const finalPrice = `${finalPriceValue} ₪`;
+    const priceValue = finalPriceValue;
     
     // Track Add to Cart - Facebook Pixel
     if (typeof window !== 'undefined' && (window as any).fbq) {
@@ -417,20 +428,27 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
       });
     }
     
-    const adminFieldsToSave = adminFieldsData ? {
-      width: adminFieldsData.width,
-      depth: adminFieldsData.depth,
-      height: adminFieldsData.height,
-      additionalFee: adminFieldsData.additionalFee,
-      additionalFeeReason: adminFieldsData.additionalFeeReason,
-      discountType: adminFieldsData.discountType,
-      discountValue: adminFieldsData.discountValue,
-      freeComments: adminFieldsData.freeComments,
-      uploadedFile: adminFieldsData.uploadedFile,
-      uploadedFileName: adminFieldsData.uploadedFileName,
+    const adminFieldsToSave = {
+      ...(adminFieldsData ? {
+        width: adminFieldsData.width,
+        depth: adminFieldsData.depth,
+        height: adminFieldsData.height,
+        additionalFee: adminFieldsData.additionalFee,
+        additionalFeeReason: adminFieldsData.additionalFeeReason,
+        discountType: adminFieldsData.discountType,
+        discountValue: adminFieldsData.discountValue,
+        freeComments: adminFieldsData.freeComments,
+        uploadedFile: adminFieldsData.uploadedFile,
+        uploadedFileName: adminFieldsData.uploadedFileName,
+      } : {}),
       originalPrice: currentPrice,
       finalPrice: finalPrice,
-    } : undefined;
+      // Tambour color data
+      ...(tambourColor.trim() ? {
+        tambourColor: tambourColor.trim(),
+        tambourPrice: tambourPriceAdd,
+      } : {}),
+    };
     
     // Always use addItem - it handles duplicates by increasing quantity
     addItem({
@@ -447,7 +465,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         name: variationName || 'ללא וריאציה',
         attributes: Object.entries(selectedAttributes).map(([name, value]) => ({ name, value })),
       } : undefined,
-      adminFields: adminFieldsToSave,
+      adminFields: Object.keys(adminFieldsToSave).length > 2 ? adminFieldsToSave : undefined,
     }, quantity);
   };
 
@@ -725,6 +743,29 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 setAdminFieldsData(data);
               }}
             />
+
+            {/* Tambour Color Option */}
+            {product.tambourColor?.enabled && (
+              <div className="mb-4 md:mb-6">
+                <label className="block text-xs font-medium text-gray-700 mb-2">
+                  צבע טמבור מיוחד
+                  <span className="text-gray-400 font-normal mr-2">
+                    (+{product.tambourColor.price.toLocaleString()}₪)
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  value={tambourColor}
+                  onChange={(e) => setTambourColor(e.target.value)}
+                  placeholder="הקלד מספר צבע (לדוגמה: 2534)"
+                  className="w-full max-w-xs text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-black"
+                  dir="rtl"
+                />
+                <p className="mt-1.5 text-xs text-gray-400">
+                  אופציונלי - השאר ריק אם לא צריך צבע מיוחד
+                </p>
+              </div>
+            )}
 
             {/* Add to Cart */}
             <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">

@@ -15,6 +15,8 @@ export interface AdminFieldsData {
   uploadedFileName?: string;
   originalPrice?: string;
   finalPrice?: string;
+  tambourColor?: string;
+  tambourPrice?: number;
 }
 
 export interface CartItem {
