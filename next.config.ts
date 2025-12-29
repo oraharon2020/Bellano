@@ -182,6 +182,20 @@ const nextConfig: NextConfig = {
   // Headers for caching
   async headers() {
     return [
+      // CRITICAL: Allow iframe embedding for Meshulam payment callbacks
+      {
+        source: '/api/checkout/meshulam-callback',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'ALLOWALL',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "frame-ancestors 'self' https://*.meshulam.co.il https://secure.meshulam.co.il https://sandbox.meshulam.co.il",
+          },
+        ],
+      },
       {
         source: '/:all*(svg|jpg|jpeg|png|webp|avif|ico|css|js)',
         headers: [

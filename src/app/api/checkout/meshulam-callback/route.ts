@@ -89,7 +89,10 @@ export async function GET(request: NextRequest) {
     
     return new NextResponse(html, {
       status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: { 
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Frame-Options': 'ALLOWALL',
+      },
     });
   }
   
@@ -123,7 +126,10 @@ export async function GET(request: NextRequest) {
     
     return new NextResponse(html, {
       status: 200,
-      headers: { 'Content-Type': 'text/html; charset=utf-8' },
+      headers: { 
+        'Content-Type': 'text/html; charset=utf-8',
+        'X-Frame-Options': 'ALLOWALL',
+      },
     });
   }
   
@@ -184,7 +190,10 @@ export async function POST(request: NextRequest) {
       
       return new NextResponse(html, {
         status: 200,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' },
+        headers: { 
+          'Content-Type': 'text/html; charset=utf-8',
+          'X-Frame-Options': 'ALLOWALL',
+        },
       });
     }
     
