@@ -12,6 +12,8 @@ const PAGE_CODES = {
 // Always use the main domain for redirects, not Vercel URL
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url;
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
+// Use Vercel URL for Meshulam callbacks (bypasses Cloudflare blocking)
+const VERCEL_URL = siteConfig.vercelUrl || 'https://bellano.vercel.app';
 
 interface CustomerData {
   firstName: string;
@@ -86,9 +88,10 @@ export async function POST(request: NextRequest) {
     // Use WordPress proxy to bypass Imperva blocking on Vercel
     const proxyUrl = getApiEndpoint('meshulam-proxy');
     
-    // IMPORTANT: Use Next.js endpoint for successUrl (not WordPress)
-    // This fixes the issue where Meshulam couldn't connect to admin.bellano.co.il
-    const successUrl = `${SITE_URL}/api/checkout/meshulam-callback`;
+    // Use WordPress wc-api endpoints - EXACTLY like the official Meshulam plugin does!
+    // This is the format that works: ?wc-api=meshulam_payment_gateway_direct_j4execute
+    const wpSuccessUrl = `${WP_URL}/?wc-api=bellano_meshulam_success`;
+    const wpNotifyUrl = `${WP_URL}/?wc-api=bellano_meshulam_notify`;
     
     const proxyData = {
       sandbox: isSandbox,
@@ -100,11 +103,10 @@ export async function POST(request: NextRequest) {
       payments,
       orderId: order_id.toString(),
       description: `הזמנה #${order_id} - ${siteConfig.name}`,
-      // Use Next.js callback for success redirect, WordPress for webhook
-      successUrl: successUrl,
+      // Use WordPress wc-api endpoints (like official Meshulam plugin)
+      successUrl: wpSuccessUrl,
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
-      // Webhook goes to WordPress to update order status
-      notifyUrl: getApiEndpoint('meshulam-webhook'),
+      notifyUrl: wpNotifyUrl,
       items: items.map(item => ({
         sku: item.sku,
         price: item.price,
@@ -114,7 +116,8 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Calling WordPress proxy:', proxyUrl);
-    console.log('Success URL:', successUrl);
+    console.log('Success URL:', wpSuccessUrl);
+    console.log('Notify URL:', wpNotifyUrl);
 
     // Call WordPress proxy instead of Meshulam directly
     const response = await fetch(proxyUrl, {

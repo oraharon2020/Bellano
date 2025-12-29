@@ -12,6 +12,110 @@ class Bellano_Checkout {
     private $fallback_userId = '6f6cab2bd0c86083';
     
     /**
+     * Constructor - register WC-API hooks (like official Meshulam plugin)
+     */
+    public function __construct() {
+        // Register wc-api handlers for Meshulam callbacks
+        // This format is what Meshulam expects: ?wc-api=bellano_meshulam_success
+        add_action('woocommerce_api_bellano_meshulam_success', [$this, 'handle_wc_api_success']);
+        add_action('woocommerce_api_bellano_meshulam_notify', [$this, 'handle_wc_api_notify']);
+    }
+    
+    /**
+     * Handle success redirect via WC-API (like official Meshulam plugin)
+     * URL: ?wc-api=bellano_meshulam_success
+     */
+    public function handle_wc_api_success() {
+        error_log('Bellano WC-API Success - GET: ' . print_r($_GET, true));
+        error_log('Bellano WC-API Success - POST: ' . print_r($_POST, true));
+        
+        $order_id = isset($_REQUEST['cField1']) ? intval($_REQUEST['cField1']) : 0;
+        $response_status = isset($_REQUEST['response']) ? sanitize_text_field($_REQUEST['response']) : '';
+        
+        // Get Next.js site URL
+        $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://www.bellano.co.il';
+        
+        if ($order_id && $response_status === 'success') {
+            $redirect_url = $nextjs_url . '/checkout/success?order_id=' . $order_id;
+        } elseif ($order_id) {
+            $redirect_url = $nextjs_url . '/checkout?cancelled=true&order_id=' . $order_id;
+        } else {
+            $redirect_url = $nextjs_url;
+        }
+        
+        error_log('Bellano WC-API Success: Redirecting to ' . $redirect_url);
+        
+        // Use window.top to break out of iframe (like Meshulam's official plugin)
+        header('Content-Type: text/html; charset=utf-8');
+        echo '<html><head><script>window.top.location.href = "' . esc_js($redirect_url) . '";</script></head></html>';
+        exit;
+    }
+    
+    /**
+     * Handle notify webhook via WC-API (like official Meshulam plugin)
+     * URL: ?wc-api=bellano_meshulam_notify
+     */
+    public function handle_wc_api_notify() {
+        error_log('Bellano WC-API Notify - POST: ' . print_r($_POST, true));
+        error_log('Bellano WC-API Notify - RAW: ' . file_get_contents('php://input'));
+        
+        $status = isset($_POST['status']) ? intval($_POST['status']) : 0;
+        $order_id = 0;
+        $transaction_id = '';
+        $transaction_token = '';
+        
+        // Parse Meshulam format
+        if (isset($_POST['data']['customFields']['cField1'])) {
+            $order_id = intval($_POST['data']['customFields']['cField1']);
+            $transaction_id = isset($_POST['data']['asmachta']) ? sanitize_text_field($_POST['data']['asmachta']) : '';
+            $transaction_token = isset($_POST['data']['transactionToken']) ? sanitize_text_field($_POST['data']['transactionToken']) : '';
+        } elseif (isset($_POST['cField1'])) {
+            $order_id = intval($_POST['cField1']);
+            $transaction_id = isset($_POST['asmachta']) ? sanitize_text_field($_POST['asmachta']) : '';
+        }
+        
+        if (!$order_id) {
+            error_log('Bellano WC-API Notify: No order ID found');
+            echo 'error: no order id';
+            exit;
+        }
+        
+        $order = wc_get_order($order_id);
+        if (!$order) {
+            error_log('Bellano WC-API Notify: Order not found: ' . $order_id);
+            echo 'error: order not found';
+            exit;
+        }
+        
+        // Check if already processed
+        $current_status = $order->get_status();
+        if (in_array($current_status, ['processing', 'completed'])) {
+            error_log('Bellano WC-API Notify: Order already processed');
+            echo 'ok: already processed';
+            exit;
+        }
+        
+        if ($status == 1) {
+            $order->payment_complete($transaction_id);
+            $order->add_order_note('תשלום התקבל בהצלחה (Next.js checkout)' . ($transaction_id ? " - אסמכתא: $transaction_id" : ''));
+            if ($transaction_id) {
+                $order->update_meta_data('_meshulam_transaction_id', $transaction_id);
+            }
+            if ($transaction_token) {
+                $order->update_meta_data('_meshulam_transaction_token', $transaction_token);
+            }
+            $order->save();
+            error_log('Bellano WC-API Notify: Order ' . $order_id . ' marked as paid');
+            echo 'ok';
+        } else {
+            $order->update_status('failed', 'תשלום משולם נכשל');
+            error_log('Bellano WC-API Notify: Payment failed for order ' . $order_id);
+            echo 'failed';
+        }
+        exit;
+    }
+    
+    /**
      * Get Meshulam configuration for Next.js checkout
      */
     public function get_meshulam_config() {
