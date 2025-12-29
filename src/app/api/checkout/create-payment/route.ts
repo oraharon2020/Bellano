@@ -86,6 +86,10 @@ export async function POST(request: NextRequest) {
     // Use WordPress proxy to bypass Imperva blocking on Vercel
     const proxyUrl = getApiEndpoint('meshulam-proxy');
     
+    // IMPORTANT: Use Next.js endpoint for successUrl (not WordPress)
+    // This fixes the issue where Meshulam couldn't connect to admin.bellano.co.il
+    const successUrl = `${SITE_URL}/api/checkout/meshulam-callback`;
+    
     const proxyData = {
       sandbox: isSandbox,
       pageCode,
@@ -96,9 +100,10 @@ export async function POST(request: NextRequest) {
       payments,
       orderId: order_id.toString(),
       description: `הזמנה #${order_id} - ${siteConfig.name}`,
-      // Use WordPress endpoints for both success and notify (Meshulam can reach WordPress)
-      successUrl: getApiEndpoint('meshulam-success'),
+      // Use Next.js callback for success redirect, WordPress for webhook
+      successUrl: successUrl,
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
+      // Webhook goes to WordPress to update order status
       notifyUrl: getApiEndpoint('meshulam-webhook'),
       items: items.map(item => ({
         sku: item.sku,
@@ -109,6 +114,7 @@ export async function POST(request: NextRequest) {
     };
 
     console.log('Calling WordPress proxy:', proxyUrl);
+    console.log('Success URL:', successUrl);
 
     // Call WordPress proxy instead of Meshulam directly
     const response = await fetch(proxyUrl, {
