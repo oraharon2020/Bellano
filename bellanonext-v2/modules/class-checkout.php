@@ -15,6 +15,10 @@ class Bellano_Checkout {
      * Constructor - register WC-API hooks
      */
     public function __construct() {
+        // CRITICAL: Remove X-Frame-Options for WC-API requests (Meshulam uses iframe!)
+        // This must run early, before WordPress sends headers
+        add_action('init', [$this, 'remove_frame_options_for_wc_api'], 1);
+        
         // Hook into the OFFICIAL Meshulam plugin's callbacks with HIGH priority
         // This way we intercept them BEFORE the official plugin and redirect to Next.js
         add_action('woocommerce_api_meshulam_payment_gateway_direct_j4execute', [$this, 'intercept_meshulam_success'], 1);
@@ -23,6 +27,26 @@ class Bellano_Checkout {
         // Also keep our custom hooks as backup
         add_action('woocommerce_api_bellano_meshulam_success', [$this, 'handle_wc_api_success']);
         add_action('woocommerce_api_bellano_meshulam_notify', [$this, 'handle_wc_api_notify']);
+    }
+    
+    /**
+     * Remove X-Frame-Options header for WC-API requests
+     * Meshulam loads the success URL in an iframe, so we need to allow it
+     */
+    public function remove_frame_options_for_wc_api() {
+        if (isset($_GET['wc-api']) && strpos($_GET['wc-api'], 'meshulam') !== false) {
+            // Remove X-Frame-Options header that blocks iframe loading
+            header_remove('X-Frame-Options');
+            
+            // Also set headers to explicitly allow framing
+            header('X-Frame-Options: ALLOWALL');
+            
+            // Remove any other restrictive headers
+            remove_action('send_headers', 'send_frame_options_header');
+            remove_action('admin_init', 'send_frame_options_header');
+            
+            error_log('Bellano: Removed X-Frame-Options for Meshulam callback');
+        }
     }
     
     /**
