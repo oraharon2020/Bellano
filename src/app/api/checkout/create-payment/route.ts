@@ -88,10 +88,10 @@ export async function POST(request: NextRequest) {
     // Use WordPress proxy to bypass Imperva blocking on Vercel
     const proxyUrl = getApiEndpoint('meshulam-proxy');
     
-    // Use WordPress wc-api endpoints - EXACTLY like the official Meshulam plugin does!
-    // This is the format that works: ?wc-api=meshulam_payment_gateway_direct_j4execute
-    const wpSuccessUrl = `${WP_URL}/?wc-api=bellano_meshulam_success`;
-    const wpNotifyUrl = `${WP_URL}/?wc-api=bellano_meshulam_notify`;
+    // Use the OFFICIAL Meshulam plugin's URLs that are already whitelisted/working
+    // These are the exact URLs the official plugin uses
+    const wpSuccessUrl = `${WP_URL}/?wc-api=meshulam_payment_gateway_direct_j4execute`;
+    const wpNotifyUrl = `${WP_URL}/?wc-api=meshulam_server_response_direct_j4execute`;
     
     const proxyData = {
       sandbox: isSandbox,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       payments,
       orderId: order_id.toString(),
       description: `הזמנה #${order_id} - ${siteConfig.name}`,
-      // Use WordPress wc-api endpoints (like official Meshulam plugin)
+      // Use official Meshulam plugin URLs
       successUrl: wpSuccessUrl,
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
       notifyUrl: wpNotifyUrl,

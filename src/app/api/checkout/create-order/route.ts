@@ -270,6 +270,10 @@ export async function POST(request: NextRequest) {
           key: 'bellano_created_via',
           value: 'bellano_nextjs_checkout',
         },
+        {
+          key: '_bellano_nextjs_order',
+          value: 'yes',
+        },
         ...(hasAdminFields ? [{ key: 'bellano_sales_rep_order', value: 'yes' }] : []),
         // Traffic source tracking
         {

@@ -12,13 +12,68 @@ class Bellano_Checkout {
     private $fallback_userId = '6f6cab2bd0c86083';
     
     /**
-     * Constructor - register WC-API hooks (like official Meshulam plugin)
+     * Constructor - register WC-API hooks
      */
     public function __construct() {
-        // Register wc-api handlers for Meshulam callbacks
-        // This format is what Meshulam expects: ?wc-api=bellano_meshulam_success
+        // Hook into the OFFICIAL Meshulam plugin's callbacks with HIGH priority
+        // This way we intercept them BEFORE the official plugin and redirect to Next.js
+        add_action('woocommerce_api_meshulam_payment_gateway_direct_j4execute', [$this, 'intercept_meshulam_success'], 1);
+        add_action('woocommerce_api_meshulam_server_response_direct_j4execute', [$this, 'intercept_meshulam_notify'], 1);
+        
+        // Also keep our custom hooks as backup
         add_action('woocommerce_api_bellano_meshulam_success', [$this, 'handle_wc_api_success']);
         add_action('woocommerce_api_bellano_meshulam_notify', [$this, 'handle_wc_api_notify']);
+    }
+    
+    /**
+     * Intercept official Meshulam success callback
+     * Check if this order came from Next.js and redirect accordingly
+     */
+    public function intercept_meshulam_success() {
+        error_log('Bellano Intercept Meshulam Success - GET: ' . print_r($_GET, true));
+        
+        $order_id = isset($_REQUEST['cField1']) ? intval($_REQUEST['cField1']) : 0;
+        
+        if ($order_id) {
+            $order = wc_get_order($order_id);
+            if ($order) {
+                // Check if order was created via Next.js checkout
+                $paid_via = $order->get_meta('_paid_via');
+                $is_nextjs = ($paid_via === 'bellano_nextjs_checkout') || $order->get_meta('_bellano_nextjs_order');
+                
+                // Also check payment method - 'meshulam' is what we set in Next.js
+                $payment_method = $order->get_payment_method();
+                if ($payment_method === 'meshulam' || $is_nextjs) {
+                    // This is a Next.js order - redirect to Next.js success page
+                    $response_status = isset($_REQUEST['response']) ? sanitize_text_field($_REQUEST['response']) : '';
+                    $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://www.bellano.co.il';
+                    
+                    if ($response_status === 'success') {
+                        $redirect_url = $nextjs_url . '/checkout/success?order_id=' . $order_id;
+                    } else {
+                        $redirect_url = $nextjs_url . '/checkout?cancelled=true&order_id=' . $order_id;
+                    }
+                    
+                    error_log('Bellano Intercept: Redirecting Next.js order to ' . $redirect_url);
+                    
+                    header('Content-Type: text/html; charset=utf-8');
+                    echo '<html><head><script>window.top.location.href = "' . esc_js($redirect_url) . '";</script></head></html>';
+                    exit;
+                }
+            }
+        }
+        
+        // Not a Next.js order - let the official plugin handle it
+        error_log('Bellano Intercept: Not a Next.js order, letting official plugin handle');
+    }
+    
+    /**
+     * Intercept official Meshulam notify callback
+     */
+    public function intercept_meshulam_notify() {
+        error_log('Bellano Intercept Meshulam Notify - POST: ' . print_r($_POST, true));
+        // Let the official plugin handle the webhook - it will update the order status
+        // We don't need to do anything special here
     }
     
     /**
