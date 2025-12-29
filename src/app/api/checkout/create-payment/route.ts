@@ -88,9 +88,12 @@ export async function POST(request: NextRequest) {
     // Use WordPress proxy to bypass Imperva blocking on Vercel
     const proxyUrl = getApiEndpoint('meshulam-proxy');
     
-    // Use Next.js/Vercel callback since admin.bellano.co.il redirects to Vercel anyway
-    // This handles the success redirect and then updates WordPress via webhook
-    const successUrl = `${SITE_URL}/api/checkout/meshulam-callback`;
+    // Use admin.bellano.co.il for Meshulam callbacks - it's on an Israeli server
+    // and has X-Frame-Options: ALLOWALL set, which allows iframe redirects
+    const WP_CALLBACK_URL = 'https://admin.bellano.co.il';
+    
+    // WordPress wc-api will receive the callback, update the order, and redirect to Next.js success page
+    const successUrl = `${WP_CALLBACK_URL}/?wc-api=bellano_meshulam_success`;
     
     const proxyData = {
       sandbox: isSandbox,
@@ -102,11 +105,11 @@ export async function POST(request: NextRequest) {
       payments,
       orderId: order_id.toString(),
       description: `הזמנה #${order_id} - ${siteConfig.name}`,
-      // Use Next.js callback for success (works since site is on Vercel)
+      // Success callback goes to WordPress (Israeli server - Meshulam allows it)
       successUrl: successUrl,
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
-      // Notify goes to Next.js too, which forwards to WordPress
-      notifyUrl: `${SITE_URL}/api/checkout/meshulam-webhook`,
+      // Notify also goes to WordPress for order status updates
+      notifyUrl: `${WP_CALLBACK_URL}/?wc-api=bellano_meshulam_notify`,
       items: items.map(item => ({
         sku: item.sku,
         price: item.price,
