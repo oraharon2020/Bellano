@@ -29,7 +29,7 @@ export const promoPopupConfig = {
     
     // Coupon section
     couponLabel: 'קוד קופון',
-    couponCode: 'NEW5',
+    couponCode: 'NEW7',
     copyButtonText: 'העתק',
     copiedText: 'הועתק!',
     
