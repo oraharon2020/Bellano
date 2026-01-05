@@ -26,6 +26,23 @@ export function middleware(request: NextRequest) {
   // Handle URLs with orderby/filter parameters on category pages
   // /category/X?orderby=Y → /category/X
   if (pathname.startsWith('/category/')) {
+    // Handle nested/hierarchical category URLs from old WooCommerce
+    // /category/parent/child → /category/child
+    const pathParts = pathname.split('/').filter(Boolean); // ['category', 'parent', 'child']
+    
+    if (pathParts.length > 2) {
+      // Has nested categories - redirect to the last segment (actual category)
+      const lastSlug = pathParts[pathParts.length - 1];
+      const cleanUrl = new URL(`/category/${lastSlug}`, baseUrl);
+      
+      // Only keep pagination if present
+      if (searchParams.has('page')) {
+        cleanUrl.searchParams.set('page', searchParams.get('page')!);
+      }
+      
+      return NextResponse.redirect(cleanUrl, 308);
+    }
+    
     const hasOrderby = searchParams.has('orderby');
     const hasOrder = searchParams.has('order');
     const hasFilter = searchParams.has('filter_color') || 
