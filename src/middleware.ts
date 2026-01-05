@@ -113,7 +113,3 @@ export const config = {
     '/:path*/feed',
   ],
 };
-    // Match category paths with query strings
-    '/category/:path*',
-  ],
-};
