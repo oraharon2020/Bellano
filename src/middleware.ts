@@ -3,25 +3,19 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
+  
+  // Base URL for redirects - always use www
+  const baseUrl = 'https://www.bellano.co.il';
 
   // Handle old WordPress category URLs with query parameters
-  // /product-category/X?orderby=Y → /category/X (remove orderby parameter)
+  // /product-category/X?orderby=Y → https://www.bellano.co.il/category/X (clean, single redirect)
   if (pathname.startsWith('/product-category/')) {
     const newPathname = pathname.replace('/product-category/', '/category/');
     
-    // Remove orderby and other unnecessary parameters that cause duplicate content
-    const cleanUrl = new URL(newPathname, request.url);
+    // Build clean URL without sorting/filtering params (prevents duplicate content)
+    const cleanUrl = new URL(newPathname, baseUrl);
     
-    // Only keep essential parameters if any (currently we remove all sorting params)
-    // This prevents duplicate content issues in Google
-    searchParams.delete('orderby');
-    searchParams.delete('order');
-    searchParams.delete('filter_color');
-    searchParams.delete('min_price');
-    searchParams.delete('max_price');
-    searchParams.delete('paged'); // WordPress pagination
-    
-    // If there are remaining useful params, keep them (like page number for pagination)
+    // Only keep pagination if present
     if (searchParams.has('page')) {
       cleanUrl.searchParams.set('page', searchParams.get('page')!);
     }
@@ -29,12 +23,25 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(cleanUrl, 308); // 308 Permanent Redirect
   }
 
-  // Handle URLs with orderby parameter on category pages
+  // Handle URLs with orderby/filter parameters on category pages
   // /category/X?orderby=Y → /category/X
-  if (pathname.startsWith('/category/') && searchParams.has('orderby')) {
-    const cleanUrl = new URL(pathname, request.url);
-    // Remove orderby to prevent duplicate content
-    return NextResponse.redirect(cleanUrl, 308);
+  if (pathname.startsWith('/category/')) {
+    const hasOrderby = searchParams.has('orderby');
+    const hasOrder = searchParams.has('order');
+    const hasFilter = searchParams.has('filter_color') || 
+                      searchParams.has('min_price') || 
+                      searchParams.has('max_price');
+    
+    if (hasOrderby || hasOrder || hasFilter) {
+      const cleanUrl = new URL(pathname, baseUrl);
+      
+      // Only keep pagination if present
+      if (searchParams.has('page')) {
+        cleanUrl.searchParams.set('page', searchParams.get('page')!);
+      }
+      
+      return NextResponse.redirect(cleanUrl, 308);
+    }
   }
 
   return NextResponse.next();

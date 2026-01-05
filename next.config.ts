@@ -15,12 +15,8 @@ const nextConfig: NextConfig = {
         destination: 'https://admin.bellano.co.il/wp-login.php',
         permanent: false,
       },
-      // Category pages: /product-category/X → /category/X
-      {
-        source: '/product-category/:slug*',
-        destination: '/category/:slug*',
-        permanent: true,
-      },
+      // Category pages: Handled by middleware for better control over query params
+      // /product-category/X → /category/X (with query param cleanup)
       // Shop page
       {
         source: '/shop',
