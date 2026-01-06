@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Rubik, Inter } from "next/font/google";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { AdminBar } from "@/components/layout/AdminBar";
