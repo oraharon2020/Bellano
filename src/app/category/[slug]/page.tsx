@@ -39,7 +39,7 @@ export async function generateMetadata({ params }: CategoryPageProps) {
   const { slug } = await params;
   
   try {
-    // Try to get Yoast SEO data from WordPress first
+    // Get Yoast SEO data from WordPress
     const yoastData = await getYoastSEO(`/product-category/${slug}/`);
     
     const category = await getCategoryBySlug(slug);

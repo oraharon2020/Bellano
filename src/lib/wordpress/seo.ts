@@ -86,9 +86,58 @@ export function yoastToMetadata(yoast: YoastSEOData, fallback: {
       description: yoast.og_description || yoast.description || fallback.description,
       images: ogImage ? [ogImage] : [],
     },
-    robots: yoast.robots ? {
-      index: yoast.robots.index !== 'noindex',
-      follow: yoast.robots.follow !== 'nofollow',
-    } : undefined,
+    // Always allow indexing on Next.js site (ignore Yoast robots from admin subdomain)
+    robots: {
+      index: true,
+      follow: true,
+    },
   };
+}
+
+/**
+ * Fetch Yoast SEO data for a product category using WordPress REST API
+ * This pulls SEO data directly from the product_cat taxonomy
+ */
+export async function getYoastCategorySEO(slug: string): Promise<YoastSEOData | null> {
+  try {
+    const apiUrl = `${siteConfig.wordpressUrl}/wp-json/wp/v2/product_cat?slug=${encodeURIComponent(slug)}`;
+    
+    const response = await fetch(apiUrl, {
+      next: { revalidate: 300 }
+    });
+    
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    if (!data || data.length === 0) {
+      return null;
+    }
+    
+    const category = data[0];
+    const yoastHead = category.yoast_head_json;
+    
+    if (!yoastHead) {
+      return null;
+    }
+    
+    return {
+      title: yoastHead.title,
+      description: yoastHead.description,
+      canonical: yoastHead.canonical,
+      og_title: yoastHead.og_title,
+      og_description: yoastHead.og_description,
+      og_url: yoastHead.og_url,
+      og_type: yoastHead.og_type,
+      og_locale: yoastHead.og_locale,
+      og_site_name: yoastHead.og_site_name,
+      og_image: yoastHead.og_image,
+      twitter_card: yoastHead.twitter_card,
+      robots: yoastHead.robots,
+    };
+  } catch {
+    return null;
+  }
 }
