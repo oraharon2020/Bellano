@@ -124,7 +124,12 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${siteConfig.analytics.googleAds}');
+            gtag('config', '${siteConfig.analytics.googleAds}', {
+              'allow_enhanced_conversions': true,
+              'linker': {
+                'domains': ['bellano.co.il', 'www.bellano.co.il', 'admin.bellano.co.il']
+              }
+            });
           `}
         </Script>
         
