@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CheckCircle, Loader2, ArrowRight, Package, Truck, Phone, Mail, ShoppingBag } from 'lucide-react';
 import { siteConfig, getWhatsAppLink } from '@/config/site';
+import { analytics } from '@/lib/analytics';
 
 interface OrderItem {
   name: string;
@@ -86,6 +87,14 @@ function SuccessContent() {
         });
         console.log(`GA4 ${isPhoneOrder ? 'generate_lead' : 'purchase'} event fired:`, totalValue);
       }
+
+      // Track purchase - Vercel Analytics
+      analytics.purchase({
+        orderId: orderData.id,
+        value: totalValue,
+        itemCount: orderData.items.reduce((sum, item) => sum + item.quantity, 0),
+        isPhoneOrder,
+      });
     }
   }, [orderStatus, orderData, trackingFired]);
 

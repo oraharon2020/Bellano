@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Phone, MessageCircle, X, Accessibility, MessageSquare } from 'lucide-react';
+import { analytics } from '@/lib/analytics';
 
 export function FloatingButtons() {
   const [isContactOpen, setIsContactOpen] = useState(false);
@@ -86,6 +87,7 @@ export function FloatingButtons() {
               href="https://wa.me/97235566696"
               target="_blank"
               rel="noopener noreferrer"
+              onClick={() => analytics.clickWhatsapp('floating_button')}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group"
             >
               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -100,6 +102,7 @@ export function FloatingButtons() {
             {/* Phone */}
             <a
               href="tel:03-5566696"
+              onClick={() => analytics.clickPhone('floating_button')}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group mt-1"
             >
               <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">

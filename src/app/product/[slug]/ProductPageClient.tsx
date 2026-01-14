@@ -17,6 +17,7 @@ import { siteConfig } from '@/config/site';
 import ProductAIChat from '@/components/product/ProductAIChat';
 import CompleteTheLook from '@/components/product/CompleteTheLook';
 import featureFlags from '@/config/features';
+import { analytics } from '@/lib/analytics';
 
 // Color mapping for visual display
 const colorMap: Record<string, string> = {
@@ -399,6 +400,17 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     setManualImageSelect(false);
   }, [selectedAttributes]);
 
+  // Track view_item - Vercel Analytics
+  useEffect(() => {
+    const priceValue = parseFloat(product.price.replace(/[^\d.]/g, '')) || 0;
+    analytics.viewProduct({
+      productId: product.databaseId,
+      productName: product.name,
+      price: priceValue,
+      category: category?.name,
+    });
+  }, [product.databaseId, product.name, product.price, category?.name]);
+
   // Handle thumbnail click
   const handleThumbnailClick = (index: number) => {
     setSelectedImage(index);
@@ -458,6 +470,15 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         currency: 'ILS',
       });
     }
+
+    // Track Add to Cart - Vercel Analytics
+    analytics.addToCart({
+      productId: product.databaseId,
+      productName: product.name,
+      price: priceValue,
+      quantity: quantity,
+      category: category?.name,
+    });
     
     const adminFieldsToSave = {
       ...(adminFieldsData ? {
