@@ -101,6 +101,9 @@ export default function RootLayout({
         {/* Facebook Domain Verification */}
         <meta name="facebook-domain-verification" content={siteConfig.analytics.facebookDomainVerification} />
         
+        {/* Google Search Console Verification */}
+        <meta name="google-site-verification" content="HHa1U7MX3riLVxpvd2A2f_b1kXMaoBIDZ21n_s8QXIQ" />
+        
         {/* Preconnect to external resources */}
         <link rel="preconnect" href={siteConfig.wordpressUrl} />
         <link rel="dns-prefetch" href={siteConfig.wordpressUrl} />
