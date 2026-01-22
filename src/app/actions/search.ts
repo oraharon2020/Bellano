@@ -77,14 +77,14 @@ export async function searchProductsAction(query: string): Promise<SearchResult[
 
   try {
     // Fetch more products for better relevance sorting
-    const products = await searchProducts(query, 30);
+    const products = await searchProducts(query, 50);
     
     // Score, filter low relevance, and sort
     const scoredProducts = products
       .map(p => ({ product: p, score: getRelevanceScore(p, query) }))
       .filter(({ score }) => score >= 50) // Only show products with name match (score >= 50)
       .sort((a, b) => b.score - a.score)
-      .slice(0, 15); // Return top 15 results
+      .slice(0, 20); // Return top 20 results
     
     // If no high-relevance results, fall back to showing top results by score
     if (scoredProducts.length === 0) {
