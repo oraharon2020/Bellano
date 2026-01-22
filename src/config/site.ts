@@ -120,7 +120,7 @@ export const siteConfig = {
     dark: '/images/bellano logo.avif', // Black logo on transparent
     light: '/images/bellano-logo-white.png', // White logo for dark backgrounds
     square: '/images/bellano-logo-square.webp',
-    wordpressUrl: 'https://bellano.co.il/wp-content/uploads/2024/06/Bellano-שחור-על-רקע-שקוף.png',
+    wordpressUrl: 'https://admin.bellano.co.il/wp-content/uploads/2024/06/Bellano-שחור-על-רקע-שקוף.png',
   },
   favicon: {
     ico32: 'https://i0.wp.com/bellano.co.il/wp-content/uploads/2024/06/cropped-Bellano-%D7%A9%D7%97%D7%95%D7%A8-%D7%A2%D7%9C-%D7%A8%D7%A7%D7%A2-%D7%A9%D7%A7%D7%95%D7%A3-1.png?fit=32%2C32&ssl=1',
