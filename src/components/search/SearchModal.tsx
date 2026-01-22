@@ -156,7 +156,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
           {!isLoading && results.length > 0 && (
             <div className="py-4">
               <p className="text-xs text-gray-500 mb-3">{results.length} תוצאות</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                 {results.map((product) => (
                   <Link
                     key={product.id}
@@ -181,6 +181,9 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
                     <h4 className="text-sm font-medium line-clamp-2 group-hover:text-gray-600">
                       {product.name}
                     </h4>
+                    {product.category && (
+                      <p className="text-xs text-gray-400 mt-0.5">{product.category}</p>
+                    )}
                     <p className="text-sm text-gray-500 mt-1">{product.price}</p>
                   </Link>
                 ))}
