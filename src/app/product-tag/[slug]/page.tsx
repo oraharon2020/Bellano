@@ -70,7 +70,7 @@ export default async function TagPage({ params }: TagPageProps) {
   try {
     const [tagData, productsData] = await Promise.all([
       getTagBySlug(slug),
-      getProductsByTagSlugWithSwatches(slug, { per_page: 24 }),
+      getProductsByTagSlugWithSwatches(slug, { per_page: 100 }),
     ]);
     
     tag = tagData;

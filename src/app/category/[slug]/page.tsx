@@ -100,7 +100,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   try {
     const [categoryData, productsData] = await Promise.all([
       getCategoryBySlug(slug),
-      getProductsByCategorySlugWithSwatches(slug, { per_page: 24 }),
+      getProductsByCategorySlugWithSwatches(slug, { per_page: 100 }),
     ]);
     
     category = categoryData;
