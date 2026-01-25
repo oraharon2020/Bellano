@@ -697,7 +697,7 @@ export default function CheckoutPage() {
                     </div>
                   </label>
 
-                  {/* Apple Pay */}
+                  {/* Apple Pay - hidden until domain verification is complete
                   <label
                     className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
                       paymentMethod === 'apple_pay'
@@ -726,6 +726,7 @@ export default function CheckoutPage() {
                       <span className="text-xs text-green-600">מאובטח</span>
                     </div>
                   </label>
+                  */}
 
                   {/* Google Pay */}
                   <label
