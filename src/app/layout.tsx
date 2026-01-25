@@ -111,8 +111,9 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://www.googletagmanager.com" />
         
-        {/* Apple Pay SDK for Meshulam/Grow payment gateway */}
+        {/* Apple Pay SDK - disabled until domain verification is complete
         <script src="https://meshulam.co.il/_media/js/apple_pay_sdk/sdk.min.js" async />
+        */}
         
         {/* JSON-LD Structured Data */}
         <OrganizationJsonLd />
