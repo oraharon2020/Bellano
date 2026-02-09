@@ -1,4 +1,4 @@
-import { ProductGrid } from '@/components/products';
+import { FilterableProductGrid } from '@/components/products';
 import { getProductsByCategorySlugWithSwatches, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
@@ -147,29 +147,9 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           )}
         </div>
 
-        {/* Sort Options */}
-        <div className="flex justify-between items-center mb-6">
-          <p className="text-sm text-muted-foreground">
-            {products.length} מוצרים
-          </p>
-          <div className="flex items-center gap-2">
-            <label htmlFor="sort-select" className="text-sm text-muted-foreground sr-only">מיון לפי</label>
-            <select 
-              id="sort-select"
-              className="border rounded-md px-3 py-2 text-sm bg-background"
-              aria-label="מיין מוצרים"
-            >
-              <option value="default">מיון בחירת מחדל</option>
-              <option value="price-low">מחיר: נמוך לגבוה</option>
-              <option value="price-high">מחיר: גבוה לנמוך</option>
-              <option value="newest">חדשים ביותר</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Products Grid */}
+        {/* Products Grid with Filters & Sort */}
         {products.length > 0 ? (
-          <ProductGrid products={products} />
+          <FilterableProductGrid products={products} />
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">לא נמצאו מוצרים בקטגוריה זו</p>
