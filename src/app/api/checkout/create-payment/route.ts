@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig, getApiEndpoint } from '@/config/site';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
 // Fallback page codes (will be overridden by WordPress settings)
 const PAGE_CODES = {
@@ -65,6 +66,18 @@ async function getMeshulamConfig(): Promise<{ userId: string; pageCodes: typeof 
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: max 5 payment attempts per minute per IP
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { maxRequests: 5, windowSeconds: 60, prefix: 'create-payment' });
+  
+  if (!rateLimit.allowed) {
+    console.warn(`Rate limit exceeded for create-payment from IP: ${ip}`);
+    return NextResponse.json(
+      { success: false, message: 'יותר מדי בקשות. נסו שוב בעוד דקה.' },
+      { status: 429, headers: { 'Retry-After': rateLimit.resetIn.toString() } }
+    );
+  }
+
   try {
     const body: CreatePaymentRequest = await request.json();
     const { order_id, amount, customer, payments, items, payment_type = 'credit_card' } = body;

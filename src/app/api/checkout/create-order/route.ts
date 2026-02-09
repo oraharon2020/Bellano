@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig } from '@/config/site';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -101,6 +102,18 @@ function getTrafficSourceLabel(utm: UtmData | null | undefined): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: max 5 orders per minute per IP
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { maxRequests: 5, windowSeconds: 60, prefix: 'create-order' });
+  
+  if (!rateLimit.allowed) {
+    console.warn(`Rate limit exceeded for create-order from IP: ${ip}`);
+    return NextResponse.json(
+      { success: false, message: 'יותר מדי בקשות. נסו שוב בעוד דקה.' },
+      { status: 429, headers: { 'Retry-After': rateLimit.resetIn.toString() } }
+    );
+  }
+
   try {
     const body: CreateOrderRequest = await request.json();
     const { customer, items, shipping_method, payment_method = 'credit_card', coupon_code, utm_data } = body;

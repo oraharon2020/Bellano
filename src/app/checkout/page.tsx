@@ -800,9 +800,9 @@ export default function CheckoutPage() {
                   {/* Quick Options */}
                   <div className="grid grid-cols-3 gap-3 mb-4">
                     {[
-                      { num: 1, label: 'תשלום אחד', sublabel: formatPrice(getTotal()) },
-                      { num: 3, label: '3 תשלומים', sublabel: formatPrice(getTotal() / 3) + ' לחודש' },
-                      { num: 6, label: '6 תשלומים', sublabel: formatPrice(getTotal() / 6) + ' לחודש' },
+                      { num: 1, label: 'תשלום אחד', sublabel: formatPrice(finalTotal) },
+                      { num: 3, label: '3 תשלומים', sublabel: formatPrice(finalTotal / 3) + ' לחודש' },
+                      { num: 6, label: '6 תשלומים', sublabel: formatPrice(finalTotal / 6) + ' לחודש' },
                     ].map(({ num, label, sublabel }) => (
                       <button
                         key={num}
@@ -836,7 +836,7 @@ export default function CheckoutPage() {
                         <option key={num} value={num}>
                           {num === 1 
                             ? 'תשלום אחד' 
-                            : `${num} תשלומים ללא ריבית - ${formatPrice(getTotal() / num)} לחודש`
+                            : `${num} תשלומים ללא ריבית - ${formatPrice(finalTotal / num)} לחודש`
                           }
                         </option>
                       ))}
@@ -852,7 +852,7 @@ export default function CheckoutPage() {
                   {selectedPayments > 1 && (
                     <div className="mt-4 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
                       <span className="text-gray-600">סה״כ לחודש:</span>
-                      <span className="text-lg font-bold text-primary">{formatPrice(getTotal() / selectedPayments)}</span>
+                      <span className="text-lg font-bold text-primary">{formatPrice(finalTotal / selectedPayments)}</span>
                     </div>
                   )}
                 </div>

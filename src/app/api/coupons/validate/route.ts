@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig } from '@/config/site';
+import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
 const WC_URL = process.env.NEXT_PUBLIC_WOOCOMMERCE_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -27,6 +28,17 @@ interface WooCoupon {
 }
 
 export async function POST(request: NextRequest) {
+  // Rate limit: max 10 coupon checks per minute per IP
+  const ip = getClientIp(request);
+  const rateLimit = checkRateLimit(ip, { maxRequests: 10, windowSeconds: 60, prefix: 'coupon-validate' });
+  
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { success: false, message: 'יותר מדי ניסיונות. נסו שוב בעוד דקה.' },
+      { status: 429, headers: { 'Retry-After': rateLimit.resetIn.toString() } }
+    );
+  }
+
   try {
     const { code, cart_total, product_ids } = await request.json();
 
