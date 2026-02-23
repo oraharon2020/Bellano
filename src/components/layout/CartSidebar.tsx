@@ -11,6 +11,7 @@ interface AppliedCoupon {
   discount: number;
   discountDisplay: string;
   discount_type: string;
+  individual_use?: boolean;
 }
 
 export function CartSidebar() {
@@ -60,6 +61,7 @@ export function CartSidebar() {
           code: couponCode.trim(),
           cart_total: subtotal,
           product_ids: items.map(item => item.databaseId),
+          has_bundle_items: items.some(item => item.bundleDiscount && item.bundleDiscount > 0),
         }),
       });
 
@@ -71,6 +73,7 @@ export function CartSidebar() {
           discount: data.discount,
           discountDisplay: data.discountDisplay,
           discount_type: data.coupon.discount_type,
+          individual_use: data.coupon.individual_use,
         });
         setCouponCode('');
         setCouponError('');

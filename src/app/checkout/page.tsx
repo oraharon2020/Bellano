@@ -30,6 +30,7 @@ interface AppliedCoupon {
   discount: number;
   discountDisplay: string;
   discount_type: string;
+  individual_use?: boolean;
 }
 
 type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order';
@@ -134,6 +135,7 @@ export default function CheckoutPage() {
           code: codeToValidate,
           cart_total: subtotal,
           product_ids: items.map(item => item.databaseId),
+          has_bundle_items: items.some(item => item.bundleDiscount && item.bundleDiscount > 0),
         }),
       });
 
@@ -145,6 +147,7 @@ export default function CheckoutPage() {
           discount: data.discount,
           discountDisplay: data.discountDisplay,
           discount_type: data.coupon.discount_type,
+          individual_use: data.coupon.individual_use,
         });
         setCouponCode('');
         setCouponError('');

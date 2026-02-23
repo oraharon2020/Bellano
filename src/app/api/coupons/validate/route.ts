@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { code, cart_total, product_ids } = await request.json();
+    const { code, cart_total, product_ids, has_bundle_items } = await request.json();
 
     if (!code) {
       return NextResponse.json(
@@ -86,6 +86,18 @@ export async function POST(request: NextRequest) {
     }
 
     const coupon = coupons[0];
+
+    // Check if individual_use coupon is being combined with bundle discounts
+    if (coupon.individual_use && has_bundle_items) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          message: 'קופון זה לא ניתן לשילוב עם הנחת באנדל. הסירו את מוצרי הבאנדל מהסל או השתמשו בקופון אחר.',
+          individual_use: true
+        },
+        { status: 400 }
+      );
+    }
 
     // Check if coupon has expired
     if (coupon.date_expires) {
@@ -187,6 +199,7 @@ export async function POST(request: NextRequest) {
         amount: coupon.amount,
         description: coupon.description,
         free_shipping: coupon.free_shipping,
+        individual_use: coupon.individual_use,
       },
       discount: Math.round(discount * 100) / 100,
       discountDisplay,
