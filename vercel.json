@@ -1,5 +1,5 @@
 {
-  "regions": ["dxb1"],
+  "regions": ["fra1"],
   "headers": [
     {
       "source": "/.well-known/apple-developer-merchantid-domain-association",
