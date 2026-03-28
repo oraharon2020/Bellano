@@ -1,6 +1,18 @@
 // Yoast SEO data fetching
 import { siteConfig } from '@/config/site';
 
+/**
+ * Replace admin subdomain URLs with the public site URL.
+ * Yoast generates URLs with admin.bellano.co.il — these must be rewritten
+ * to www.bellano.co.il before reaching the HTML, or Google sees conflicting canonicals.
+ */
+function sanitizeAdminUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const adminHost = new URL(siteConfig.wordpressUrl).host; // admin.bellano.co.il
+  const publicHost = new URL(siteConfig.url).host;         // www.bellano.co.il
+  return url.replaceAll(adminHost, publicHost);
+}
+
 interface YoastSEOData {
   title?: string;
   description?: string;
@@ -59,18 +71,18 @@ export function yoastToMetadata(yoast: YoastSEOData, fallback: {
   url: string;
   image?: string;
 }) {
-  const ogImage = yoast.og_image?.[0]?.url || fallback.image;
+  const ogImage = sanitizeAdminUrl(yoast.og_image?.[0]?.url) || fallback.image;
   
   return {
     title: yoast.title || fallback.title,
     description: yoast.description || fallback.description,
     alternates: {
-      canonical: yoast.canonical || fallback.url,
+      canonical: sanitizeAdminUrl(yoast.canonical) || fallback.url,
     },
     openGraph: {
       title: yoast.og_title || yoast.title || fallback.title,
       description: yoast.og_description || yoast.description || fallback.description,
-      url: yoast.og_url || fallback.url,
+      url: sanitizeAdminUrl(yoast.og_url) || fallback.url,
       type: (yoast.og_type as 'website' | 'article') || 'website',
       siteName: yoast.og_site_name || siteConfig.name,
       locale: yoast.og_locale || 'he_IL',

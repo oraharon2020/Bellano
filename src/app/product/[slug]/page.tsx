@@ -6,6 +6,14 @@ import { siteConfig } from '@/config/site';
 
 const SITE_URL = siteConfig.url;
 
+/** Replace admin subdomain URLs with public site URL */
+function sanitizeAdminUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const adminHost = new URL(siteConfig.wordpressUrl).host;
+  const publicHost = new URL(siteConfig.url).host;
+  return url.replaceAll(adminHost, publicHost);
+}
+
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -79,7 +87,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
         title: seo.title || `${product.name} | בלאנו`,
         description: seo.description || fallbackDescription,
         alternates: {
-          canonical: seo.canonical || `${SITE_URL}/product/${slug}`,
+          canonical: sanitizeAdminUrl(seo.canonical) || `${SITE_URL}/product/${slug}`,
         },
         openGraph: {
           title: seo.og_title || `${product.name} | בלאנו`,
@@ -87,7 +95,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
           url: `${SITE_URL}/product/${slug}`,
           type: 'article',
           images: seo.og_image ? [{ 
-            url: seo.og_image,
+            url: sanitizeAdminUrl(seo.og_image)!,
             width: 1200,
             height: 630,
             alt: product.name,
@@ -102,7 +110,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
           card: 'summary_large_image',
           title: seo.twitter_title || `${product.name} | בלאנו`,
           description: seo.twitter_description || fallbackDescription,
-          images: seo.twitter_image ? [seo.twitter_image] : fallbackImage ? [fallbackImage] : [],
+          images: seo.twitter_image ? [sanitizeAdminUrl(seo.twitter_image)!] : fallbackImage ? [fallbackImage] : [],
         },
       };
     }
