@@ -1,6 +1,9 @@
 import { getPageBySlug } from '@/lib/woocommerce/pages';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { siteConfig } from '@/config/site';
+
+const SITE_URL = siteConfig.url;
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -30,9 +33,20 @@ export async function generateMetadata({ params }: PageProps) {
   
   // Decode HTML entities in title
   const title = page.title.rendered.replace(/&#8211;/g, '-').replace(/&amp;/g, '&');
+  const description = page.content.rendered.replace(/<[^>]*>/g, '').trim().slice(0, 160) || `${title} - בלאנו רהיטי מעצבים`;
   
   return {
     title: `${title} | בלאנו - רהיטי מעצבים`,
+    description,
+    alternates: {
+      canonical: `${SITE_URL}/page/${slug}`,
+    },
+    openGraph: {
+      title: `${title} | בלאנו`,
+      description,
+      url: `${SITE_URL}/page/${slug}`,
+      type: 'website',
+    },
   };
 }
 

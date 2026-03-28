@@ -70,7 +70,7 @@ class Bellano_Checkout {
                 if ($payment_method === 'meshulam' || $is_nextjs) {
                     // This is a Next.js order - redirect to Next.js success page
                     $response_status = isset($_REQUEST['response']) ? sanitize_text_field($_REQUEST['response']) : '';
-                    $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://www.bellano.co.il';
+                    $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://bellano.co.il';
                     
                     if ($response_status === 'success') {
                         $redirect_url = $nextjs_url . '/checkout/success?order_id=' . $order_id;
@@ -112,7 +112,7 @@ class Bellano_Checkout {
         $response_status = isset($_REQUEST['response']) ? sanitize_text_field($_REQUEST['response']) : '';
         
         // Get Next.js site URL
-        $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://www.bellano.co.il';
+        $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://bellano.co.il';
         
         if ($order_id && $response_status === 'success') {
             $redirect_url = $nextjs_url . '/checkout/success?order_id=' . $order_id;
@@ -335,7 +335,7 @@ class Bellano_Checkout {
         }
         
         // Get Next.js site URL
-        $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://www.bellano.co.il';
+        $nextjs_url = defined('BELLANO_NEXTJS_URL') ? BELLANO_NEXTJS_URL : 'https://bellano.co.il';
         
         if ($order_id && $response_status === 'success') {
             // Payment successful - redirect to Next.js success page
