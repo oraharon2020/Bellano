@@ -12,7 +12,7 @@ interface OrganizationJsonLdProps {
 export function OrganizationJsonLd({
   name = siteConfig.fullName,
   url = siteConfig.url,
-  logo = `${siteConfig.url}/logo.png`,
+  logo = `${siteConfig.url}/_next/image?url=${encodeURIComponent(siteConfig.logo.wordpressUrl)}&w=256&q=75`,
   phone = siteConfig.phone,
   email = siteConfig.email,
 }: OrganizationJsonLdProps) {
@@ -61,7 +61,7 @@ export function WebsiteJsonLd({
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${url}/?s={search_term_string}`,
+        urlTemplate: `${url}/categories?search={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },
@@ -195,21 +195,15 @@ export function LocalBusinessJsonLd({
 }: LocalBusinessJsonLdProps) {
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': siteConfig.business.type,
+    '@type': 'Store',
+    '@id': `${url}/#store`,
     name,
     url,
     telephone: phone,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: address.street,
-      addressLocality: address.city,
-      postalCode: address.postalCode,
       addressCountry: address.country,
-    },
-    geo: {
-      '@type': 'GeoCoordinates',
-      latitude: siteConfig.business.geo.latitude,
-      longitude: siteConfig.business.geo.longitude,
+      addressLocality: address.city,
     },
     openingHoursSpecification: [
       {
@@ -218,8 +212,18 @@ export function LocalBusinessJsonLd({
         opens: '10:00',
         closes: '17:00',
       },
+      {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: ['Friday'],
+        opens: '10:00',
+        closes: '13:00',
+      },
     ],
     priceRange: siteConfig.business.priceRange,
+    potentialAction: {
+      '@type': 'BuyAction',
+      target: url,
+    },
   };
 
   return (

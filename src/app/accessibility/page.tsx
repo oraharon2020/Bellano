@@ -4,6 +4,9 @@ import { siteConfig } from '@/config/site';
 export const metadata: Metadata = {
   title: `הצהרת נגישות | ${siteConfig.name}`,
   description: `הצהרת נגישות של אתר ${siteConfig.fullName}`,
+  alternates: {
+    canonical: `${siteConfig.url}/accessibility`,
+  },
 };
 
 export default function AccessibilityPage() {

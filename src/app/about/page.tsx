@@ -1,8 +1,18 @@
 import { Truck, ShieldCheck, Award, Heart } from 'lucide-react';
+import { siteConfig } from '@/config/site';
 
 export const metadata = {
   title: 'אודותינו | בלאנו - רהיטי מעצבים',
   description: 'הכירו את בלאנו - רהיטי מעצבים. אנחנו מייצרים רהיטים איכותיים בישראל עם תשומת לב לכל פרט',
+  alternates: {
+    canonical: `${siteConfig.url}/about`,
+  },
+  openGraph: {
+    title: 'אודותינו | בלאנו - רהיטי מעצבים',
+    description: 'הכירו את בלאנו - רהיטי מעצבים. אנחנו מייצרים רהיטים איכותיים בישראל עם תשומת לב לכל פרט',
+    url: `${siteConfig.url}/about`,
+    type: 'website' as const,
+  },
 };
 
 export default function AboutPage() {

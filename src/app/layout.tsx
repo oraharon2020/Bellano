@@ -57,8 +57,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: `${siteConfig.url}${siteConfig.ogImage}`,
-        width: 800,
-        height: 800,
+        width: 1200,
+        height: 630,
         alt: siteConfig.fullName,
       },
     ],
@@ -101,8 +101,6 @@ export default function RootLayout({
         {/* Facebook Domain Verification */}
         <meta name="facebook-domain-verification" content={siteConfig.analytics.facebookDomainVerification} />
         
-        {/* Google Search Console Verification */}
-        <meta name="google-site-verification" content="HHa1U7MX3riLVxpvd2A2f_b1kXMaoBIDZ21n_s8QXIQ" />
         
         {/* Preconnect to external resources */}
         <link rel="preconnect" href={siteConfig.wordpressUrl} />

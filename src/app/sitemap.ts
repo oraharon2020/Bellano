@@ -55,7 +55,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Get all products
   let productPages: MetadataRoute.Sitemap = [];
   try {
-    const products = await getProducts({ per_page: 100 });
+    // Fetch products in batches to get all
+    const batch1 = await getProducts({ per_page: 100, page: 1 });
+    const batch2 = await getProducts({ per_page: 100, page: 2 }).catch(() => []);
+    const batch3 = await getProducts({ per_page: 100, page: 3 }).catch(() => []);
+    const products = [...batch1, ...batch2, ...batch3];
     productPages = products.map((product: any) => ({
       url: `${SITE_URL}/product/${product.slug}`,
       lastModified: new Date(product.date_modified || product.date_created || new Date()),

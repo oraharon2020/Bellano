@@ -160,11 +160,9 @@ async function HeroSection() {
       {(title || subtitle || buttonText) && (
         <div className={`relative h-full flex ${textPositionClass} justify-center text-center`}>
           <div className="max-w-3xl px-6">
-            {title && (
-              <h1 className={`text-4xl md:text-6xl lg:text-7xl ${getFontClass(titleFont, titleWeight)} ${textColorClass} mb-6 leading-tight ${titleFont === 'english' ? 'tracking-wider' : ''}`}>
-                {title}
-              </h1>
-            )}
+            <h1 className={`text-4xl md:text-6xl lg:text-7xl ${getFontClass(titleFont, titleWeight)} ${textColorClass} mb-6 leading-tight ${titleFont === 'english' ? 'tracking-wider' : ''}`}>
+              {title || 'בלאנו - רהיטי מעצבים'}
+            </h1>
             {subtitle && (
               <p className={`${getFontClass(subtitleFont, subtitleWeight)} ${textColorMuted} text-lg md:text-xl mb-8 ${subtitleFont === 'english' ? 'tracking-wide' : ''}`}>
                 {subtitle}

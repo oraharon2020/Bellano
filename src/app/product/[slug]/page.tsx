@@ -85,7 +85,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
           title: seo.og_title || `${product.name} | בלאנו`,
           description: seo.og_description || fallbackDescription,
           url: `${SITE_URL}/product/${slug}`,
-          type: seo.og_type || 'website',
+          type: 'article',
           images: seo.og_image ? [{ 
             url: seo.og_image,
             width: 1200,
@@ -118,7 +118,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
         title: `${product.name} | בלאנו`,
         description: fallbackDescription,
         url: `${SITE_URL}/product/${slug}`,
-        type: 'website',
+        type: 'article',
         images: fallbackImage ? [{ 
           url: fallbackImage,
           width: 800,

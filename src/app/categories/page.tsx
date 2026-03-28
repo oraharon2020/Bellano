@@ -6,6 +6,15 @@ import { siteConfig } from '@/config/site';
 export const metadata = {
   title: `כל הקטגוריות | ${siteConfig.fullName}`,
   description: `צפו בכל הקטגוריות של רהיטי ${siteConfig.name} - מזנונים, שולחנות, קומודות, כורסאות ועוד`,
+  alternates: {
+    canonical: `${siteConfig.url}/categories`,
+  },
+  openGraph: {
+    title: `כל הקטגוריות | ${siteConfig.fullName}`,
+    description: `צפו בכל הקטגוריות של רהיטי ${siteConfig.name} - מזנונים, שולחנות, קומודות, כורסאות ועוד`,
+    url: `${siteConfig.url}/categories`,
+    type: 'website' as const,
+  },
 };
 
 export default async function CategoriesPage() {
