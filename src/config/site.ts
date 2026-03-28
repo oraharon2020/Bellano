@@ -131,6 +131,7 @@ export const siteConfig = {
   
   // Analytics & Tracking
   analytics: {
+    ga4: 'G-RKEWQ79QSF',
     googleTagManager: 'GT-WBL97X64',
     googleAds: 'AW-16598610854',
     googleAdsConversionLabel: '8F3sCJ7tmrwZEKbn6uo9', // Purchase conversion

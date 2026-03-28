@@ -119,9 +119,9 @@ export default function RootLayout({
         <LocalBusinessJsonLd />
       </head>
       <body className={`${rubik.variable} ${inter.variable} font-sans antialiased`}>
-        {/* Google Ads & GA4 - gtag.js - loads after page becomes interactive */}
+        {/* GA4 & Google Ads - gtag.js - loads after page becomes interactive */}
         <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${siteConfig.analytics.googleAds}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=${siteConfig.analytics.ga4}`}
           strategy="afterInteractive"
         />
         <Script id="gtag-init" strategy="afterInteractive">
@@ -129,11 +129,13 @@ export default function RootLayout({
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
             gtag('js', new Date());
-            gtag('config', '${siteConfig.analytics.googleAds}', {
-              'allow_enhanced_conversions': true,
+            gtag('config', '${siteConfig.analytics.ga4}', {
               'linker': {
                 'domains': ['bellano.co.il', 'admin.bellano.co.il']
               }
+            });
+            gtag('config', '${siteConfig.analytics.googleAds}', {
+              'allow_enhanced_conversions': true
             });
           `}
         </Script>
