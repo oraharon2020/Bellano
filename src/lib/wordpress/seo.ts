@@ -13,6 +13,22 @@ function sanitizeAdminUrl(url: string | undefined): string | undefined {
   return url.replaceAll(adminHost, publicHost);
 }
 
+/**
+ * Convert admin image URL to publicly accessible URL via Next.js image optimization.
+ * admin.bellano.co.il/wp-content/... → bellano.co.il/_next/image?url=...&w=1200&q=75
+ * This ensures OG images are accessible to WhatsApp, Facebook, Google etc.
+ */
+function sanitizeImageUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const adminHost = new URL(siteConfig.wordpressUrl).host;
+  if (url.includes(adminHost) || url.includes('/wp-content/uploads/')) {
+    // Ensure the URL points to admin (source of truth for images)
+    const adminUrl = url.includes(adminHost) ? url : url.replace(new URL(siteConfig.url).host, adminHost);
+    return `${siteConfig.url}/_next/image?url=${encodeURIComponent(adminUrl)}&w=1200&q=75`;
+  }
+  return url;
+}
+
 interface YoastSEOData {
   title?: string;
   description?: string;
@@ -71,7 +87,7 @@ export function yoastToMetadata(yoast: YoastSEOData, fallback: {
   url: string;
   image?: string;
 }) {
-  const ogImage = sanitizeAdminUrl(yoast.og_image?.[0]?.url) || fallback.image;
+  const ogImage = sanitizeImageUrl(yoast.og_image?.[0]?.url) || sanitizeImageUrl(fallback.image);
   
   return {
     title: yoast.title || fallback.title,

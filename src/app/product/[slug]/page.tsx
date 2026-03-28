@@ -14,6 +14,17 @@ function sanitizeAdminUrl(url: string | undefined): string | undefined {
   return url.replaceAll(adminHost, publicHost);
 }
 
+/** Convert admin image URL to publicly accessible URL via Next.js image proxy */
+function sanitizeImageUrl(url: string | undefined): string | undefined {
+  if (!url) return url;
+  const adminHost = new URL(siteConfig.wordpressUrl).host;
+  if (url.includes(adminHost) || url.includes('/wp-content/uploads/')) {
+    const adminUrl = url.includes(adminHost) ? url : url.replace(new URL(siteConfig.url).host, adminHost);
+    return `${SITE_URL}/_next/image?url=${encodeURIComponent(adminUrl)}&w=1200&q=75`;
+  }
+  return url;
+}
+
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
 }
@@ -95,12 +106,12 @@ export async function generateMetadata({ params }: ProductPageProps) {
           url: `${SITE_URL}/product/${slug}`,
           type: 'article',
           images: seo.og_image ? [{ 
-            url: sanitizeAdminUrl(seo.og_image)!,
+            url: sanitizeImageUrl(seo.og_image)!,
             width: 1200,
             height: 630,
             alt: product.name,
           }] : fallbackImage ? [{ 
-            url: fallbackImage,
+            url: sanitizeImageUrl(fallbackImage)!,
             width: 800,
             height: 600,
             alt: product.name,
@@ -110,7 +121,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
           card: 'summary_large_image',
           title: seo.twitter_title || `${product.name} | בלאנו`,
           description: seo.twitter_description || fallbackDescription,
-          images: seo.twitter_image ? [sanitizeAdminUrl(seo.twitter_image)!] : fallbackImage ? [fallbackImage] : [],
+          images: seo.twitter_image ? [sanitizeImageUrl(seo.twitter_image)!] : fallbackImage ? [sanitizeImageUrl(fallbackImage)!] : [],
         },
       };
     }
@@ -128,7 +139,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
         url: `${SITE_URL}/product/${slug}`,
         type: 'article',
         images: fallbackImage ? [{ 
-          url: fallbackImage,
+          url: sanitizeImageUrl(fallbackImage)!,
           width: 800,
           height: 600,
           alt: product.name,
@@ -138,7 +149,7 @@ export async function generateMetadata({ params }: ProductPageProps) {
         card: 'summary_large_image',
         title: `${product.name} | בלאנו`,
         description: fallbackDescription,
-        images: fallbackImage ? [fallbackImage] : [],
+        images: fallbackImage ? [sanitizeImageUrl(fallbackImage)!] : [],
       },
     };
   } catch (error) {
