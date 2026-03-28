@@ -1,17 +1,15 @@
-import { FilterableProductGrid } from '@/components/products';
+import { CategoryProductGrid } from '@/components/products';
 import { getProductsByCategorySlugPaginated, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 import { siteConfig } from '@/config/site';
 import { getYoastSEO, yoastToMetadata } from '@/lib/wordpress/seo';
-import Link from 'next/link';
 
 const SITE_URL = siteConfig.url;
 const PRODUCTS_PER_PAGE = 24;
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ page?: string }>;
 }
 
 // Generate static pages for all categories at build time
@@ -38,11 +36,9 @@ export const dynamicParams = true;
 // Revalidate every 5 minutes
 export const revalidate = 300;
 
-export async function generateMetadata({ params, searchParams }: CategoryPageProps) {
+export async function generateMetadata({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const { page: pageParam } = await searchParams;
-  const currentPage = parseInt(pageParam || '1', 10) || 1;
-  const canonicalUrl = currentPage > 1 ? `${SITE_URL}/category/${slug}?page=${currentPage}` : `${SITE_URL}/category/${slug}`;
+  const canonicalUrl = `${SITE_URL}/category/${slug}`;
   
   try {
     // Get Yoast SEO data from WordPress
@@ -97,32 +93,27 @@ export async function generateMetadata({ params, searchParams }: CategoryPagePro
   }
 }
 
-export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
+export default async function CategoryPage({ params }: CategoryPageProps) {
   const { slug } = await params;
-  const { page: pageParam } = await searchParams;
-  const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1);
   
   let category = null;
   let products: any[] = [];
-  let totalPages = 1;
   let total = 0;
 
   try {
     const [categoryData, paginatedData] = await Promise.all([
       getCategoryBySlug(slug),
-      getProductsByCategorySlugPaginated(slug, { per_page: PRODUCTS_PER_PAGE, page: currentPage }),
+      getProductsByCategorySlugPaginated(slug, { per_page: PRODUCTS_PER_PAGE, page: 1 }),
     ]);
     
     category = categoryData;
     products = paginatedData.products;
-    totalPages = paginatedData.totalPages;
     total = paginatedData.total;
   } catch (error) {
     console.error('Error fetching category data:', error);
   }
 
   const categoryName = category?.name || slug;
-  const categoryUrl = `${SITE_URL}/category/${slug}`;
 
   return (
     <>
@@ -136,19 +127,11 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
         />
       ))}
       
-      {/* SEO pagination links */}
-      {currentPage > 1 && (
-        <link rel="prev" href={currentPage === 2 ? categoryUrl : `${categoryUrl}?page=${currentPage - 1}`} />
-      )}
-      {currentPage < totalPages && (
-        <link rel="next" href={`${categoryUrl}?page=${currentPage + 1}`} />
-      )}
-      
       {/* JSON-LD Breadcrumb */}
       <BreadcrumbJsonLd 
         items={[
           { name: 'דף הבית', url: SITE_URL },
-          { name: categoryName, url: categoryUrl },
+          { name: categoryName, url: `${SITE_URL}/category/${slug}` },
         ]} 
       />
       
@@ -167,66 +150,22 @@ export default async function CategoryPage({ params, searchParams }: CategoryPag
             <ExpandableDescription description={category.description} />
           )}
           {total > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">{total} מוצרים{currentPage > 1 ? ` · עמוד ${currentPage} מתוך ${totalPages}` : ''}</p>
+            <p className="text-sm text-muted-foreground mt-1">{total} מוצרים</p>
           )}
         </div>
 
-        {/* Products Grid with Filters & Sort */}
+        {/* Products Grid with Load More */}
         {products.length > 0 ? (
-          <FilterableProductGrid products={products} />
+          <CategoryProductGrid
+            initialProducts={products}
+            categorySlug={slug}
+            totalProducts={total}
+            perPage={PRODUCTS_PER_PAGE}
+          />
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">לא נמצאו מוצרים בקטגוריה זו</p>
           </div>
-        )}
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <nav className="flex justify-center items-center gap-2 mt-10" aria-label="ניווט בין עמודים">
-            {currentPage > 1 && (
-              <Link
-                href={currentPage === 2 ? `/category/${slug}` : `/category/${slug}?page=${currentPage - 1}`}
-                className="px-4 py-2 rounded-md border border-border hover:bg-accent transition-colors"
-              >
-                → הקודם
-              </Link>
-            )}
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
-              .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
-                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis');
-                acc.push(p);
-                return acc;
-              }, [])
-              .map((item, i) =>
-                item === 'ellipsis' ? (
-                  <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground">…</span>
-                ) : (
-                  <Link
-                    key={item}
-                    href={item === 1 ? `/category/${slug}` : `/category/${slug}?page=${item}`}
-                    className={`px-3 py-2 rounded-md border transition-colors ${
-                      item === currentPage
-                        ? 'bg-primary text-primary-foreground border-primary font-bold'
-                        : 'border-border hover:bg-accent'
-                    }`}
-                    {...(item === currentPage ? { 'aria-current': 'page' as const } : {})}
-                  >
-                    {item}
-                  </Link>
-                )
-              )}
-            
-            {currentPage < totalPages && (
-              <Link
-                href={`/category/${slug}?page=${currentPage + 1}`}
-                className="px-4 py-2 rounded-md border border-border hover:bg-accent transition-colors"
-              >
-                הבא ←
-              </Link>
-            )}
-          </nav>
         )}
       </div>
     </>
