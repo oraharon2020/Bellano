@@ -67,6 +67,33 @@ export async function getPosts(params?: {
 }
 
 /**
+ * Get paginated blog posts with total count
+ */
+export async function getPostsPaginated(params?: {
+  per_page?: number;
+  page?: number;
+}): Promise<{ posts: WPPost[]; total: number; totalPages: number }> {
+  const searchParams = new URLSearchParams();
+  searchParams.append('per_page', String(params?.per_page || 12));
+  searchParams.append('page', String(params?.page || 1));
+  searchParams.append('_embed', 'true');
+  
+  const response = await fetch(`${WP_URL}/wp-json/wp/v2/posts?${searchParams}`, {
+    next: { revalidate: 300 },
+  });
+  
+  if (!response.ok) {
+    throw new Error(`WordPress API error: ${response.status}`);
+  }
+  
+  const posts = await response.json();
+  const total = parseInt(response.headers.get('X-WP-Total') || '0', 10);
+  const totalPages = parseInt(response.headers.get('X-WP-TotalPages') || '1', 10);
+  
+  return { posts, total, totalPages };
+}
+
+/**
  * Get single post by slug
  */
 export async function getPostBySlug(slug: string): Promise<WPPost | null> {

@@ -1,32 +1,49 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { getPosts, getFeaturedImage, getExcerpt, formatDate } from '@/lib/wordpress';
+import { getPostsPaginated, getFeaturedImage, getExcerpt, formatDate } from '@/lib/wordpress';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
 
 const SITE_URL = siteConfig.url;
+const POSTS_PER_PAGE = 12;
 
 export const revalidate = 300; // 5 minutes
 
-export const metadata = {
-  title: 'בלוג',
-  description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
-  alternates: {
-    canonical: `${SITE_URL}/blog`,
-  },
-  openGraph: {
-    title: 'בלוג | בלאנו',
-    description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
-    url: `${SITE_URL}/blog`,
-    type: 'website',
-  },
-};
+interface BlogPageProps {
+  searchParams: Promise<{ page?: string }>;
+}
 
-export default async function BlogPage() {
+export async function generateMetadata({ searchParams }: BlogPageProps) {
+  const { page: pageParam } = await searchParams;
+  const currentPage = parseInt(pageParam || '1', 10) || 1;
+  const canonicalUrl = currentPage > 1 ? `${SITE_URL}/blog?page=${currentPage}` : `${SITE_URL}/blog`;
+  
+  return {
+    title: currentPage > 1 ? `בלוג | עמוד ${currentPage} | בלאנו` : 'בלוג',
+    description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
+    alternates: {
+      canonical: canonicalUrl,
+    },
+    openGraph: {
+      title: 'בלוג | בלאנו',
+      description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
+      url: canonicalUrl,
+      type: 'website',
+    },
+  };
+}
+
+export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const { page: pageParam } = await searchParams;
+  const currentPage = Math.max(1, parseInt(pageParam || '1', 10) || 1);
+  
   let posts: any[] = [];
+  let totalPages = 1;
   
   try {
-    posts = await getPosts({ per_page: 12 });
+    const data = await getPostsPaginated({ per_page: POSTS_PER_PAGE, page: currentPage });
+    posts = data.posts;
+    totalPages = data.totalPages;
   } catch (error) {
     console.error('Error fetching blog posts:', error);
   }
@@ -126,6 +143,55 @@ export default async function BlogPage() {
           <div className="text-center py-12">
             <p className="text-muted-foreground">אין פוסטים להצגה כרגע</p>
           </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <nav className="flex justify-center items-center gap-2 mt-10" aria-label="ניווט בין עמודים">
+            {currentPage > 1 && (
+              <Link
+                href={currentPage === 2 ? '/blog' : `/blog?page=${currentPage - 1}`}
+                className="px-4 py-2 rounded-md border border-border hover:bg-accent transition-colors"
+              >
+                → הקודם
+              </Link>
+            )}
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+              .reduce<(number | 'ellipsis')[]>((acc, p, i, arr) => {
+                if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push('ellipsis');
+                acc.push(p);
+                return acc;
+              }, [])
+              .map((item, i) =>
+                item === 'ellipsis' ? (
+                  <span key={`ellipsis-${i}`} className="px-2 text-muted-foreground">…</span>
+                ) : (
+                  <Link
+                    key={item}
+                    href={item === 1 ? '/blog' : `/blog?page=${item}`}
+                    className={`px-3 py-2 rounded-md border transition-colors ${
+                      item === currentPage
+                        ? 'bg-primary text-primary-foreground border-primary font-bold'
+                        : 'border-border hover:bg-accent'
+                    }`}
+                    {...(item === currentPage ? { 'aria-current': 'page' as const } : {})}
+                  >
+                    {item}
+                  </Link>
+                )
+              )}
+            
+            {currentPage < totalPages && (
+              <Link
+                href={`/blog?page=${currentPage + 1}`}
+                className="px-4 py-2 rounded-md border border-border hover:bg-accent transition-colors"
+              >
+                הבא ←
+              </Link>
+            )}
+          </nav>
         )}
       </div>
     </>

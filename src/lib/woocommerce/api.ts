@@ -44,6 +44,38 @@ async function wooFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   return response.json();
 }
 
+/** Fetch with pagination headers (X-WP-Total, X-WP-TotalPages) */
+async function wooFetchWithTotal<T>(endpoint: string, options: RequestInit = {}): Promise<{ data: T; total: number; totalPages: number }> {
+  const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3/${endpoint}`);
+  
+  if (CONSUMER_KEY && CONSUMER_SECRET) {
+    url.searchParams.append('consumer_key', CONSUMER_KEY);
+    url.searchParams.append('consumer_secret', CONSUMER_SECRET);
+  }
+
+  const response = await fetch(url.toString(), {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    next: { 
+      revalidate: options.next?.revalidate ?? CACHE_DURATION.PRODUCTS,
+      tags: ['woocommerce'] 
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`WooCommerce API error: ${response.status}`);
+  }
+
+  const total = parseInt(response.headers.get('X-WP-Total') || '0', 10);
+  const totalPages = parseInt(response.headers.get('X-WP-TotalPages') || '0', 10);
+  const data = await response.json();
+
+  return { data, total, totalPages };
+}
+
 // Types
 export interface WooProduct {
   id: number;
@@ -418,6 +450,33 @@ export async function getProductsByCategorySlugWithSwatches(
     order: 'asc',
     ...params,
   });
+}
+
+/**
+ * Get products by category slug with swatches AND pagination info
+ */
+export async function getProductsByCategorySlugPaginated(
+  categorySlug: string,
+  params?: { per_page?: number; page?: number; orderby?: 'date' | 'price' | 'popularity' | 'rating' | 'menu_order'; order?: 'asc' | 'desc' }
+): Promise<{ products: ReturnType<typeof transformProduct>[]; total: number; totalPages: number }> {
+  const category = await getCategoryBySlug(categorySlug);
+  if (!category) return { products: [], total: 0, totalPages: 0 };
+  
+  const searchParams = new URLSearchParams();
+  searchParams.append('per_page', String(params?.per_page || 24));
+  searchParams.append('page', String(params?.page || 1));
+  searchParams.append('status', 'publish');
+  searchParams.append('category', String(category.id));
+  searchParams.append('orderby', params?.orderby || 'menu_order');
+  searchParams.append('order', params?.order || 'asc');
+  
+  const [result, swatches] = await Promise.all([
+    wooFetchWithTotal<WooProduct[]>(`products?${searchParams}`),
+    getColorSwatches(),
+  ]);
+  
+  const products = result.data.map(product => transformProduct(product, undefined, swatches));
+  return { products, total: result.total, totalPages: result.totalPages };
 }
 
 // Transform functions to match our app types
