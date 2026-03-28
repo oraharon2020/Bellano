@@ -14,6 +14,13 @@ export const metadata = {
     description: `צפו בכל הקטגוריות של רהיטי ${siteConfig.name} - מזנונים, שולחנות, קומודות, כורסאות ועוד`,
     url: `${siteConfig.url}/categories`,
     type: 'website' as const,
+    images: [{ url: `${siteConfig.url}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: `כל הקטגוריות | ${siteConfig.fullName}`,
+    description: `צפו בכל הקטגוריות של רהיטי ${siteConfig.name} - מזנונים, שולחנות, קומודות, כורסאות ועוד`,
+    images: [`${siteConfig.url}${siteConfig.ogImage}`],
   },
 };
 

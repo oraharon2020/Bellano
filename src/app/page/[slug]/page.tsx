@@ -22,6 +22,13 @@ const slugMap: Record<string, string> = {
   'terms': 'privacy-policy',
 };
 
+// Map internal slugs to their public-facing URLs
+const publicUrlMap: Record<string, string> = {
+  'about-us': '/about',
+  'privacy-policy': '/privacy-policy',
+  'terms': '/privacy-policy',
+};
+
 export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const wpSlug = slugMap[slug] || slug;
@@ -34,18 +41,26 @@ export async function generateMetadata({ params }: PageProps) {
   // Decode HTML entities in title
   const title = page.title.rendered.replace(/&#8211;/g, '-').replace(/&amp;/g, '&');
   const description = page.content.rendered.replace(/<[^>]*>/g, '').trim().slice(0, 160) || `${title} - בלאנו רהיטי מעצבים`;
+  const publicUrl = publicUrlMap[slug] || `/page/${slug}`;
   
   return {
     title: `${title} | בלאנו - רהיטי מעצבים`,
     description,
     alternates: {
-      canonical: `${SITE_URL}/page/${slug}`,
+      canonical: `${SITE_URL}${publicUrl}`,
     },
     openGraph: {
       title: `${title} | בלאנו`,
       description,
-      url: `${SITE_URL}/page/${slug}`,
+      url: `${SITE_URL}${publicUrl}`,
       type: 'website',
+      images: [{ url: `${SITE_URL}${siteConfig.ogImage}` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${title} | בלאנו`,
+      description,
+      images: [`${SITE_URL}${siteConfig.ogImage}`],
     },
   };
 }

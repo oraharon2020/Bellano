@@ -20,6 +20,13 @@ export const metadata = {
     description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
     url: `${SITE_URL}/blog`,
     type: 'website',
+    images: [{ url: `${SITE_URL}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'בלוג | בלאנו',
+    description: 'טיפים, השראה ומדריכים לעיצוב הבית עם רהיטי מעצבים',
+    images: [`${SITE_URL}${siteConfig.ogImage}`],
   },
 };
 

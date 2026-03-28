@@ -108,6 +108,12 @@ const nextConfig: NextConfig = {
         destination: '/:path+',
         permanent: true,
       },
+      // /terms → /privacy-policy (duplicate content fix)
+      {
+        source: '/terms',
+        destination: '/privacy-policy',
+        permanent: true,
+      },
     ];
   },
 
@@ -122,11 +128,6 @@ const nextConfig: NextConfig = {
       // Privacy policy
       {
         source: '/privacy-policy',
-        destination: '/page/privacy-policy',
-      },
-      // Terms
-      {
-        source: '/terms',
         destination: '/page/privacy-policy',
       },
     ];

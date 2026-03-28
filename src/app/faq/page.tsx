@@ -1,9 +1,10 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, Phone, Mail, MessageCircle, MapPin, Clock } from 'lucide-react';
-import { FAQJsonLd } from '@/components/seo';
+import { Phone, MessageCircle } from 'lucide-react';
+import { FAQJsonLd, BreadcrumbJsonLd } from '@/components/seo';
+import { siteConfig } from '@/config/site';
+import FaqAccordion from '@/components/faq/FaqAccordion';
+
+const SITE_URL = siteConfig.url;
 
 const faqs = [
   {
@@ -45,12 +46,16 @@ const faqs = [
 ];
 
 export default function FAQPage() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
-
   return (
     <div className="bg-white min-h-screen">
       {/* FAQ Schema for Google */}
       <FAQJsonLd questions={faqs} />
+      <BreadcrumbJsonLd 
+        items={[
+          { name: 'דף הבית', url: SITE_URL },
+          { name: 'שאלות נפוצות', url: `${SITE_URL}/faq` },
+        ]} 
+      />
       
       {/* Breadcrumb */}
       <div className="border-b">
@@ -69,32 +74,8 @@ export default function FAQPage() {
           <h1 className="text-2xl md:text-3xl font-bold mb-2 text-center">שאלות נפוצות</h1>
           <p className="text-gray-500 text-center mb-8">מצאו תשובות לשאלות הנפוצות ביותר</p>
           
-          {/* FAQ Accordion */}
-          <div className="space-y-3">
-            {faqs.map((faq, index) => (
-              <div 
-                key={index}
-                className="border border-gray-200 rounded-lg overflow-hidden"
-              >
-                <button
-                  onClick={() => setOpenIndex(openIndex === index ? null : index)}
-                  className="w-full flex items-center justify-between p-4 text-right hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-medium">{faq.question}</span>
-                  <ChevronDown 
-                    className={`w-5 h-5 text-gray-400 transition-transform ${
-                      openIndex === index ? 'rotate-180' : ''
-                    }`} 
-                  />
-                </button>
-                {openIndex === index && (
-                  <div className="px-4 pb-4 text-gray-600 leading-relaxed">
-                    {faq.answer}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {/* FAQ Accordion (client component) */}
+          <FaqAccordion faqs={faqs} />
 
           {/* Contact CTA */}
           <div className="mt-12 text-center p-6 bg-gray-50 rounded-lg">

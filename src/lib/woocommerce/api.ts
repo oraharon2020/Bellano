@@ -230,6 +230,30 @@ export async function getProductsByTagSlugWithSwatches(
   return products.map(product => transformProduct(product, undefined, swatches));
 }
 
+export async function getProductsByTagSlugPaginated(
+  tagSlug: string,
+  params?: { per_page?: number; page?: number; orderby?: 'date' | 'price' | 'popularity' | 'rating' | 'menu_order'; order?: 'asc' | 'desc' }
+): Promise<{ products: ReturnType<typeof transformProduct>[]; total: number; totalPages: number }> {
+  const tag = await getTagBySlug(tagSlug);
+  if (!tag) return { products: [], total: 0, totalPages: 0 };
+  
+  const searchParams = new URLSearchParams();
+  searchParams.append('per_page', String(params?.per_page || 24));
+  searchParams.append('page', String(params?.page || 1));
+  searchParams.append('status', 'publish');
+  searchParams.append('tag', String(tag.id));
+  searchParams.append('orderby', params?.orderby || 'menu_order');
+  searchParams.append('order', params?.order || 'asc');
+  
+  const [result, swatches] = await Promise.all([
+    wooFetchWithTotal<WooProduct[]>(`products?${searchParams}`),
+    getColorSwatches(),
+  ]);
+  
+  const products = result.data.map(product => transformProduct(product, undefined, swatches));
+  return { products, total: result.total, totalPages: result.totalPages };
+}
+
 /**
  * Get products with filters
  */

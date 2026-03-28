@@ -113,6 +113,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               '@type': 'Organization',
               name: 'בלאנו',
               url: SITE_URL,
+              logo: {
+                '@type': 'ImageObject',
+                url: `${SITE_URL}${siteConfig.ogImage}`,
+              },
             },
           }),
         }}

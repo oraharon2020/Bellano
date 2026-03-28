@@ -12,6 +12,13 @@ export const metadata: Metadata = {
     description: `צרו קשר עם ${siteConfig.fullName} - טלפון, וואטסאפ או טופס יצירת קשר`,
     url: `${siteConfig.url}/contact`,
     type: 'website',
+    images: [{ url: `${siteConfig.url}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `צרו קשר | ${siteConfig.fullName}`,
+    description: `צרו קשר עם ${siteConfig.fullName} - טלפון, וואטסאפ או טופס יצירת קשר`,
+    images: [`${siteConfig.url}${siteConfig.ogImage}`],
   },
 };
 

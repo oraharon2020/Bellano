@@ -1,5 +1,5 @@
-import { FilterableProductGrid } from '@/components/products';
-import { getProductsByTagSlugWithSwatches, getTagBySlug, getTags } from '@/lib/woocommerce';
+import { CategoryProductGrid } from '@/components/products/CategoryProductGrid';
+import { getProductsByTagSlugPaginated, getTagBySlug, getTags } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
 
@@ -64,17 +64,20 @@ export async function generateMetadata({ params }: TagPageProps) {
 export default async function TagPage({ params }: TagPageProps) {
   const { slug } = await params;
   
+  const PER_PAGE = 24;
   let tag = null;
   let products: any[] = [];
+  let total = 0;
 
   try {
     const [tagData, productsData] = await Promise.all([
       getTagBySlug(slug),
-      getProductsByTagSlugWithSwatches(slug, { per_page: 100 }),
+      getProductsByTagSlugPaginated(slug, { per_page: PER_PAGE, page: 1 }),
     ]);
     
     tag = tagData;
-    products = productsData;
+    products = productsData.products;
+    total = productsData.total;
   } catch (error) {
     console.error('Error fetching tag data:', error);
   }
@@ -111,9 +114,15 @@ export default async function TagPage({ params }: TagPageProps) {
           )}
         </div>
 
-        {/* Products Grid with Filters & Sort */}
+        {/* Products Grid with Infinite Scroll */}
         {products.length > 0 ? (
-          <FilterableProductGrid products={products} />
+          <CategoryProductGrid 
+            initialProducts={products} 
+            categorySlug={slug}
+            totalProducts={total}
+            perPage={PER_PAGE}
+            apiPath={`/api/products/tag/${encodeURIComponent(slug)}`}
+          />
         ) : (
           <div className="text-center py-12">
             <p className="text-muted-foreground">לא נמצאו מוצרים בתגית זו</p>

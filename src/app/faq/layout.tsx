@@ -12,6 +12,13 @@ export const metadata: Metadata = {
     description: 'תשובות לשאלות נפוצות על משלוחים, אחריות, אפשרויות תשלום, התאמה אישית ועוד',
     url: `${siteConfig.url}/faq`,
     type: 'website',
+    images: [{ url: `${siteConfig.url}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `שאלות נפוצות | ${siteConfig.fullName}`,
+    description: 'תשובות לשאלות נפוצות על משלוחים, אחריות, אפשרויות תשלום, התאמה אישית ועוד',
+    images: [`${siteConfig.url}${siteConfig.ogImage}`],
   },
 };
 

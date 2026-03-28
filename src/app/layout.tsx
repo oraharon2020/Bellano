@@ -132,7 +132,7 @@ export default function RootLayout({
             gtag('config', '${siteConfig.analytics.googleAds}', {
               'allow_enhanced_conversions': true,
               'linker': {
-                'domains': ['bellano.co.il', 'www.bellano.co.il', 'admin.bellano.co.il']
+                'domains': ['bellano.co.il', 'admin.bellano.co.il']
               }
             });
           `}

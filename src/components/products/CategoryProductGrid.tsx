@@ -9,9 +9,10 @@ interface CategoryProductGridProps {
   categorySlug: string;
   totalProducts: number;
   perPage: number;
+  apiPath?: string;
 }
 
-export function CategoryProductGrid({ initialProducts, categorySlug, totalProducts, perPage }: CategoryProductGridProps) {
+export function CategoryProductGrid({ initialProducts, categorySlug, totalProducts, perPage, apiPath }: CategoryProductGridProps) {
   const [products, setProducts] = useState<Product[]>(initialProducts);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -19,13 +20,15 @@ export function CategoryProductGrid({ initialProducts, categorySlug, totalProduc
   const sentinelRef = useRef<HTMLDivElement>(null);
   const loadingRef = useRef(false);
 
+  const basePath = apiPath || `/api/products/category/${encodeURIComponent(categorySlug)}`;
+
   const loadMore = useCallback(async () => {
     if (loadingRef.current || !hasMore) return;
     loadingRef.current = true;
     setLoading(true);
     try {
       const nextPage = page + 1;
-      const res = await fetch(`/api/products/category/${encodeURIComponent(categorySlug)}?page=${nextPage}&per_page=${perPage}`);
+      const res = await fetch(`${basePath}?page=${nextPage}&per_page=${perPage}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       if (data.products?.length) {
@@ -38,7 +41,7 @@ export function CategoryProductGrid({ initialProducts, categorySlug, totalProduc
       loadingRef.current = false;
       setLoading(false);
     }
-  }, [hasMore, page, categorySlug, perPage]);
+  }, [hasMore, page, basePath, perPage]);
 
   useEffect(() => {
     const sentinel = sentinelRef.current;

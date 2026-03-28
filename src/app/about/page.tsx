@@ -1,5 +1,8 @@
 import { Truck, ShieldCheck, Award, Heart } from 'lucide-react';
 import { siteConfig } from '@/config/site';
+import { BreadcrumbJsonLd } from '@/components/seo';
+
+const SITE_URL = siteConfig.url;
 
 export const metadata = {
   title: 'אודותינו | בלאנו - רהיטי מעצבים',
@@ -12,12 +15,26 @@ export const metadata = {
     description: 'הכירו את בלאנו - רהיטי מעצבים. אנחנו מייצרים רהיטים איכותיים בישראל עם תשומת לב לכל פרט',
     url: `${siteConfig.url}/about`,
     type: 'website' as const,
+    images: [{ url: `${siteConfig.url}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image' as const,
+    title: 'אודותינו | בלאנו - רהיטי מעצבים',
+    description: 'הכירו את בלאנו - רהיטי מעצבים. אנחנו מייצרים רהיטים איכותיים בישראל עם תשומת לב לכל פרט',
+    images: [`${siteConfig.url}${siteConfig.ogImage}`],
   },
 };
 
 export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-8">
+      <BreadcrumbJsonLd 
+        items={[
+          { name: 'דף הבית', url: SITE_URL },
+          { name: 'אודותינו', url: `${SITE_URL}/about` },
+        ]} 
+      />
+
       {/* Breadcrumb */}
       <nav className="text-sm text-muted-foreground mb-6">
         <a href="/" className="hover:text-primary">דף הבית</a>

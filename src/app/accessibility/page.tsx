@@ -7,6 +7,19 @@ export const metadata: Metadata = {
   alternates: {
     canonical: `${siteConfig.url}/accessibility`,
   },
+  openGraph: {
+    title: `הצהרת נגישות | ${siteConfig.name}`,
+    description: `הצהרת נגישות של אתר ${siteConfig.fullName}`,
+    url: `${siteConfig.url}/accessibility`,
+    type: 'website',
+    images: [{ url: `${siteConfig.url}${siteConfig.ogImage}` }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `הצהרת נגישות | ${siteConfig.name}`,
+    description: `הצהרת נגישות של אתר ${siteConfig.fullName}`,
+    images: [`${siteConfig.url}${siteConfig.ogImage}`],
+  },
 };
 
 export default function AccessibilityPage() {
