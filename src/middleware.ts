@@ -4,8 +4,8 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   
-  // Base URL for redirects - always use www
-  const baseUrl = 'https://www.bellano.co.il';
+  // Base URL for redirects
+  const baseUrl = 'https://bellano.co.il';
 
   // Block WordPress admin/login pages - return 410 Gone
   if (pathname.startsWith('/wp-login.php') || pathname.startsWith('/wp-admin')) {
@@ -34,7 +34,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Handle old WordPress category URLs with query parameters
-  // /product-category/X?orderby=Y → https://www.bellano.co.il/category/X (clean, single redirect)
+  // /product-category/X?orderby=Y → https://bellano.co.il/category/X (clean, single redirect)
   if (pathname.startsWith('/product-category/')) {
     // Extract category slug (handle nested categories)
     const pathWithoutPrefix = pathname.replace('/product-category/', '');

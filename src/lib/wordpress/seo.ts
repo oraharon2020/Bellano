@@ -4,12 +4,12 @@ import { siteConfig } from '@/config/site';
 /**
  * Replace admin subdomain URLs with the public site URL.
  * Yoast generates URLs with admin.bellano.co.il — these must be rewritten
- * to www.bellano.co.il before reaching the HTML, or Google sees conflicting canonicals.
+ * to bellano.co.il before reaching the HTML, or Google sees conflicting canonicals.
  */
 function sanitizeAdminUrl(url: string | undefined): string | undefined {
   if (!url) return url;
   const adminHost = new URL(siteConfig.wordpressUrl).host; // admin.bellano.co.il
-  const publicHost = new URL(siteConfig.url).host;         // www.bellano.co.il
+  const publicHost = new URL(siteConfig.url).host;         // bellano.co.il
   return url.replaceAll(adminHost, publicHost);
 }
 
