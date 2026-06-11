@@ -31,12 +31,18 @@ interface VariationAttribute {
   value: string;
 }
 
+interface FormulaOrderData {
+  dimensions: { width?: number; depth?: number; height?: number };
+  price: number; // Client-calculated price - re-validated server-side before use
+}
+
 interface OrderItem {
   product_id: number;
   variation_id?: number;
   quantity: number;
   variation_attributes?: VariationAttribute[];
   admin_fields?: AdminFields;
+  formula?: FormulaOrderData; // Formula pricing (custom dimensions)
   bundle_discount?: number; // Bundle discount percentage
   price?: string; // Actual price (may include bundle discount)
   original_price?: string; // Original price before bundle discount
@@ -73,6 +79,32 @@ interface CreateOrderRequest {
   payment_method?: 'credit_card' | 'phone_order';
   coupon_code?: string | null;
   utm_data?: UtmData | null;
+}
+
+/**
+ * Re-validate a formula price server-side via the WP module
+ * (POST /wp-json/nalla/v1/formula/{id}/calculate). Returns null when the
+ * module is unreachable — caller falls back to the client price and flags
+ * the order for manual review.
+ */
+async function validateFormulaPrice(
+  productId: number,
+  variationId: number,
+  dimensions: FormulaOrderData['dimensions']
+): Promise<number | null> {
+  try {
+    const res = await fetch(`${WC_URL}/wp-json/nalla/v1/formula/${productId}/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variation_id: variationId, dimensions }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const price = Number(data?.price);
+    return Number.isFinite(price) && price > 0 ? price : null;
+  } catch {
+    return null;
+  }
 }
 
 // Helper to determine traffic source label
@@ -132,7 +164,7 @@ export async function POST(request: NextRequest) {
     const hasAdminFields = items.some(item => item.admin_fields);
     
     // Build line items with meta data for admin fields
-    const lineItems = items.map((item) => {
+    const lineItems = await Promise.all(items.map(async (item) => {
       const lineItem: any = {
         product_id: item.product_id,
         quantity: item.quantity,
@@ -240,9 +272,40 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Formula pricing (custom dimensions) - recalculate server-side, never
+      // trust the client price. Runs last so the validated price always wins.
+      if (item.formula?.dimensions && item.variation_id) {
+        const serverPrice = await validateFormulaPrice(
+          item.product_id,
+          item.variation_id,
+          item.formula.dimensions
+        );
+        const unitPrice = serverPrice ?? item.formula.price;
+
+        lineItem.price = unitPrice;
+        lineItem.subtotal = (unitPrice * item.quantity).toString();
+        lineItem.total = (unitPrice * item.quantity).toString();
+
+        const dimLabels: Record<string, string> = { width: 'רוחב', depth: 'עומק', height: 'גובה' };
+        for (const [dim, value] of Object.entries(item.formula.dimensions)) {
+          if (value == null || value === 0) continue;
+          lineItem.meta_data.push({ key: dimLabels[dim] || dim, value: `${value} ס״מ` });
+          // Underscore meta for parity with the WP cart module (hidden in UI)
+          lineItem.meta_data.push({ key: `_nalla_formula_${dim}`, value: String(value) });
+        }
+        lineItem.meta_data.push({ key: '_nalla_formula_price', value: String(unitPrice) });
+
+        if (serverPrice === null) {
+          console.error(
+            `Formula price validation failed for product ${item.product_id} variation ${item.variation_id} - using client price ${item.formula.price}`
+          );
+          lineItem.meta_data.push({ key: 'אימות מחיר מידות', value: 'נכשל - יש לוודא מחיר ידנית' });
+        }
+      }
+
       return lineItem;
-    });
-    
+    }));
+
     // Create the order in WooCommerce
     const orderData = {
       payment_method: isPhoneOrder ? 'cod' : 'meshulam',

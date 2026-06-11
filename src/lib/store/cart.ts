@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { siteConfig, getApiEndpoint } from '@/config/site';
+import type { FormulaFieldsData } from '@/lib/formula-pricing';
 
 export interface AdminFieldsData {
   width?: string;
@@ -39,6 +40,7 @@ export interface CartItem {
     attributes: { name: string; value: string }[];
   };
   adminFields?: AdminFieldsData;
+  formulaFields?: FormulaFieldsData; // Custom dimensions + formula-calculated price
   bundleDiscount?: number; // Discount percentage if part of a bundle
   originalPrice?: string; // Original price before bundle discount
 }
@@ -49,9 +51,9 @@ interface CartStore {
   isHydrated: boolean;
   isCheckingOut: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
-  updateItem: (id: string, item: Partial<CartItem>, variationId?: number) => void;
-  removeItem: (id: string, variationId?: number) => void;
-  updateQuantity: (id: string, quantity: number, variationId?: number) => void;
+  updateItem: (id: string, item: Partial<CartItem>, variationId?: number, formulaKey?: string) => void;
+  removeItem: (id: string, variationId?: number, formulaKey?: string) => void;
+  updateQuantity: (id: string, quantity: number, variationId?: number, formulaKey?: string) => void;
   clearCart: () => void;
   toggleCart: () => void;
   openCart: () => void;
@@ -63,8 +65,23 @@ interface CartStore {
   setHydrated: () => void;
 }
 
-const getItemKey = (id: string, variationId?: number) => {
-  return variationId ? `${id}-${variationId}` : id;
+/**
+ * Stable key fragment for formula dimensions (e.g. "w240-d35-h30") so the
+ * same variation with different custom dimensions stays a separate cart line.
+ */
+export const getFormulaKey = (formulaFields?: FormulaFieldsData): string | undefined => {
+  if (!formulaFields?.dimensions) return undefined;
+  const parts: string[] = [];
+  (['width', 'depth', 'height'] as const).forEach((dim) => {
+    const value = formulaFields.dimensions[dim];
+    if (value != null) parts.push(`${dim[0]}${value}`);
+  });
+  return parts.length > 0 ? parts.join('-') : undefined;
+};
+
+const getItemKey = (id: string, variationId?: number, formulaKey?: string) => {
+  const base = variationId ? `${id}-${variationId}` : id;
+  return formulaKey ? `${base}-${formulaKey}` : base;
 };
 
 export const useCartStore = create<CartStore>()(
@@ -79,15 +96,15 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (item, quantity = 1) => {
         const items = get().items;
-        const itemKey = getItemKey(item.id, item.variation?.id);
-        const existingItem = items.find((i) => 
-          getItemKey(i.id, i.variation?.id) === itemKey
+        const itemKey = getItemKey(item.id, item.variation?.id, getFormulaKey(item.formulaFields));
+        const existingItem = items.find((i) =>
+          getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
         );
 
         if (existingItem) {
           set({
             items: items.map((i) =>
-              getItemKey(i.id, i.variation?.id) === itemKey
+              getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
                 ? { ...i, quantity: i.quantity + quantity }
                 : i
             ),
@@ -98,37 +115,37 @@ export const useCartStore = create<CartStore>()(
         get().openCart();
       },
 
-      removeItem: (id, variationId) => {
-        const itemKey = getItemKey(id, variationId);
-        set({ 
-          items: get().items.filter((i) => 
-            getItemKey(i.id, i.variation?.id) !== itemKey
-          ) 
+      removeItem: (id, variationId, formulaKey) => {
+        const itemKey = getItemKey(id, variationId, formulaKey);
+        set({
+          items: get().items.filter((i) =>
+            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) !== itemKey
+          )
         });
       },
 
-      updateItem: (id, updates, variationId) => {
-        const itemKey = getItemKey(id, variationId);
+      updateItem: (id, updates, variationId, formulaKey) => {
+        const itemKey = getItemKey(id, variationId, formulaKey);
         set({
           items: get().items.map((i) =>
-            getItemKey(i.id, i.variation?.id) === itemKey 
-              ? { ...i, ...updates } 
+            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
+              ? { ...i, ...updates }
               : i
           ),
         });
         get().openCart();
       },
 
-      updateQuantity: (id, quantity, variationId) => {
+      updateQuantity: (id, quantity, variationId, formulaKey) => {
         if (quantity < 1) {
-          get().removeItem(id, variationId);
+          get().removeItem(id, variationId, formulaKey);
           return;
         }
-        const itemKey = getItemKey(id, variationId);
+        const itemKey = getItemKey(id, variationId, formulaKey);
         set({
           items: get().items.map((i) =>
-            getItemKey(i.id, i.variation?.id) === itemKey 
-              ? { ...i, quantity } 
+            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
+              ? { ...i, quantity }
               : i
           ),
         });

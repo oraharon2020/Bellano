@@ -1,5 +1,6 @@
 import { ProductPageClient } from './ProductPageClient';
 import { getFullProductData, transformProduct, getProducts } from '@/lib/woocommerce/api';
+import { getFormulaConfig } from '@/lib/formula-pricing';
 import { notFound } from 'next/navigation';
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
@@ -175,7 +176,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
     
     const { product: wooProduct, variations, faqs: apiFaqs, video, swatches } = data;
-    
+
+    // Formula pricing config (custom-dimension products) — null for regular
+    // products or if the WP module is unreachable, so it can never break the page
+    const formulaConfig = await getFormulaConfig(wooProduct.id);
+
     // Use API FAQs or fallback to default
     const faqs = apiFaqs && apiFaqs.length > 0 ? apiFaqs : defaultFaqs;
     
@@ -219,6 +224,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           swatches={swatches}
           category={categorySlug ? { name: categoryName, slug: categorySlug } : undefined}
           relatedData={relatedData}
+          formulaConfig={formulaConfig}
         />
       </>
     );

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles } from 'lucide-react';
-import { useCartStore } from '@/lib/store/cart';
+import { useCartStore, getFormulaKey } from '@/lib/store/cart';
 import { getStoredUtmParams, getTrafficSourceLabel } from '@/hooks/useUtmTracking';
 
 interface ShippingMethod {
@@ -237,6 +237,11 @@ export default function CheckoutPage() {
             quantity: item.quantity,
             // Include variation attributes
             variation_attributes: item.variation?.attributes || [],
+            // Formula pricing (custom dimensions) - price is re-validated server-side
+            formula: item.formulaFields ? {
+              dimensions: item.formulaFields.dimensions,
+              price: item.formulaFields.price,
+            } : undefined,
             // Include bundle discount info for price override
             bundle_discount: item.bundleDiscount,
             price: item.price, // Send the actual price (already discounted if bundle)
@@ -891,7 +896,7 @@ export default function CheckoutPage() {
                             <h4 className="text-sm font-medium line-clamp-2">{item.name}</h4>
                             <button
                               type="button"
-                              onClick={() => removeItem(item.id, item.variation?.id)}
+                              onClick={() => removeItem(item.id, item.variation?.id, getFormulaKey(item.formulaFields))}
                               className="text-gray-400 hover:text-red-500 transition-colors p-1"
                               title="הסר מוצר"
                             >
@@ -903,7 +908,18 @@ export default function CheckoutPage() {
                               {item.variation.attributes.map((attr) => attr.value).join(' • ')}
                             </p>
                           )}
-                          
+
+                          {/* Formula Pricing - custom dimensions */}
+                          {item.formulaFields && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {[
+                                item.formulaFields.dimensions.width != null && `רוחב: ${item.formulaFields.dimensions.width}`,
+                                item.formulaFields.dimensions.depth != null && `עומק: ${item.formulaFields.dimensions.depth}`,
+                                item.formulaFields.dimensions.height != null && `גובה: ${item.formulaFields.dimensions.height}`,
+                              ].filter(Boolean).join(' / ')} ס״מ
+                            </p>
+                          )}
+
                           {/* Tambour Color */}
                           {item.adminFields?.tambourColor && (
                             <p className="text-xs text-gray-600 mt-1">

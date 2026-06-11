@@ -11,6 +11,8 @@ import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/lib/store/cart';
 import { useWishlistStore } from '@/lib/store/wishlist';
 import { AdminProductFields } from '@/components/product/AdminProductFields';
+import { FormulaPricingPanel } from '@/components/product/FormulaPricingPanel';
+import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pricing';
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
@@ -218,9 +220,10 @@ interface ProductPageClientProps {
   swatches?: Record<string, ColorSwatch>;
   category?: { name: string; slug: string };
   relatedData?: RelatedData | null;
+  formulaConfig?: FormulaProductConfig | null;
 }
 
-export function ProductPageClient({ product, variations = [], faqs = [], video = null, swatches = {}, category, relatedData }: ProductPageClientProps) {
+export function ProductPageClient({ product, variations = [], faqs = [], video = null, swatches = {}, category, relatedData, formulaConfig = null }: ProductPageClientProps) {
   const [selectedImage, setSelectedImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
@@ -236,6 +239,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
   
   // Glass option state
   const [glassSelected, setGlassSelected] = useState<boolean>(false);
+
+  // Formula pricing state (custom-dimension products)
+  const [formulaData, setFormulaData] = useState<FormulaFieldsData | null>(null);
 
   const { addItem } = useCartStore();
   const { toggleItem, isInWishlist, isHydrated: wishlistHydrated } = useWishlistStore();
@@ -331,13 +337,28 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     });
   }, [variations, selectedAttributes]);
 
-  // Get current price (from variation or product)
-  const currentPrice = selectedVariation 
-    ? `${selectedVariation.price} ₪` 
+  // Formula config of the selected variation (null = regular pricing)
+  const activeFormula = useMemo(() => {
+    if (!formulaConfig?.enabled || !formulaConfig.variations?.length || !selectedVariation) {
+      return null;
+    }
+    return formulaConfig.variations.find(v => v.variation_id === selectedVariation.id) || null;
+  }, [formulaConfig, selectedVariation]);
+
+  // Clear stale formula price when switching to a variation without a formula
+  useEffect(() => {
+    if (!activeFormula) setFormulaData(null);
+  }, [activeFormula]);
+
+  // Get current price (formula > variation > product)
+  const currentPrice = activeFormula && formulaData
+    ? `${formulaData.price} ₪`
+    : selectedVariation
+    ? `${selectedVariation.price} ₪`
     : product.price;
-  
-  const currentRegularPrice = selectedVariation?.regular_price 
-    ? `${selectedVariation.regular_price} ₪` 
+
+  const currentRegularPrice = selectedVariation?.regular_price
+    ? `${selectedVariation.regular_price} ₪`
     : product.regularPrice;
 
   // Build gallery images including variation images - memoize to prevent recreation
@@ -522,10 +543,12 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         attributes: Object.entries(selectedAttributes).map(([name, value]) => ({ name, value })),
       } : undefined,
       adminFields: Object.keys(adminFieldsToSave).length > 2 ? adminFieldsToSave : undefined,
+      formulaFields: activeFormula && formulaData ? formulaData : undefined,
     }, quantity);
   };
 
-  const hasDiscount = (selectedVariation?.on_sale || product.onSale) && currentRegularPrice;
+  // Formula-priced items have no "regular price" to compare against
+  const hasDiscount = !formulaData && (selectedVariation?.on_sale || product.onSale) && currentRegularPrice;
   const discountPercentage = hasDiscount && currentRegularPrice
     ? Math.round(
         ((parseFloat(currentRegularPrice.replace(/[^\d.]/g, '')) -
@@ -787,6 +810,18 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 );
               })}
             </div>
+
+            {/* Formula Pricing - dimension sliders (only for enabled products) */}
+            {activeFormula && (
+              <FormulaPricingPanel
+                key={activeFormula.variation_id}
+                config={activeFormula.config}
+                showDepth={!!formulaConfig?.show_depth}
+                showHeight={!!formulaConfig?.show_height}
+                roundTo={formulaConfig?.round_to ?? 0}
+                onChange={setFormulaData}
+              />
+            )}
 
             {/* Admin Fields - Only visible to admins/sales reps */}
             <AdminProductFields
