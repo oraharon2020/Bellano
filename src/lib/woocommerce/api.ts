@@ -447,6 +447,7 @@ export async function getProductsWithSwatches(params?: {
   search?: string;
   orderby?: 'date' | 'price' | 'popularity' | 'rating' | 'menu_order';
   order?: 'asc' | 'desc';
+  on_sale?: boolean;
 }): Promise<ReturnType<typeof transformProduct>[]> {
   // Fetch products and color swatches in parallel
   const [products, swatches] = await Promise.all([

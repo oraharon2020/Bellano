@@ -27,11 +27,22 @@ export const revalidate = 300;
 
 export async function generateMetadata({ params }: BlogPostPageProps) {
   const { slug } = await params;
-  
+
+  let post;
   try {
-    const post = await getPostBySlug(slug);
-    if (!post) return { title: 'פוסט לא נמצא' };
-    
+    post = await getPostBySlug(slug);
+  } catch {
+    return { title: 'פוסט לא נמצא' };
+  }
+
+  // notFound() here (before streaming starts) returns a real 404 status;
+  // throwing it only in the page body yields a soft 404. It must stay
+  // outside the try/catch or the catch would swallow it.
+  if (!post) {
+    notFound();
+  }
+
+  {
     const title = post.title.rendered.replace(/<[^>]*>/g, '');
     const description = post.excerpt.rendered.replace(/<[^>]*>/g, '').slice(0, 160);
     const featuredImage = getFeaturedImage(post);
@@ -58,8 +69,6 @@ export async function generateMetadata({ params }: BlogPostPageProps) {
         images: featuredImage ? [featuredImage] : [],
       },
     };
-  } catch {
-    return { title: 'פוסט לא נמצא' };
   }
 }
 

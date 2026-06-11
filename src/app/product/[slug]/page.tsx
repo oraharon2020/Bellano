@@ -75,16 +75,24 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: ProductPageProps) {
   const { slug } = await params;
-  
+
+  // Single API call - cached and shared with page component
+  let data;
   try {
-    // Single API call - cached and shared with page component
-    const data = await getFullProductData(slug);
-    
-    if (!data) {
-      return { title: 'מוצר לא נמצא | בלאנו' };
-    }
-    
-    const { product: wooProduct, seo } = data;
+    data = await getFullProductData(slug);
+  } catch (error) {
+    console.error('Error fetching product metadata:', error);
+    return { title: 'בלאנו - רהיטי מעצבים' };
+  }
+
+  // notFound() must be thrown here (before streaming starts) so the response
+  // gets a real 404 status — throwing it only in the page body yields a soft 404.
+  // It must also stay outside the try/catch or the catch would swallow it.
+  if (!data) {
+    notFound();
+  }
+
+  const { product: wooProduct, seo } = data;
     const product = transformProduct(wooProduct);
     
     const fallbackDescription = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
@@ -94,7 +102,9 @@ export async function generateMetadata({ params }: ProductPageProps) {
     // If Yoast SEO data exists from WordPress
     if (seo?.title) {
       return {
-        title: seo.title || `${product.name} | בלאנו`,
+        // Yoast title already includes the brand — absolute skips the layout
+        // template that would append "| בלאנו - רהיטי מעצבים" a second time
+        title: { absolute: seo.title },
         description: seo.description || fallbackDescription,
         alternates: {
           canonical: sanitizeAdminUrl(seo.canonical) || `${SITE_URL}/product/${slug}`,
@@ -151,10 +161,6 @@ export async function generateMetadata({ params }: ProductPageProps) {
         images: fallbackImage ? [sanitizeImageUrl(fallbackImage)!] : [],
       },
     };
-  } catch (error) {
-    console.error('Error fetching product metadata:', error);
-    return { title: 'בלאנו - רהיטי מעצבים' };
-  }
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {

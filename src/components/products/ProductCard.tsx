@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useRef, useEffect, useTransition } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Heart, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -175,8 +176,10 @@ export function ProductCard({ product }: ProductCardProps) {
   // Reference to card element
   const cardRef = useRef<HTMLDivElement>(null);
   
-  // Navigate with loading state
-  const handleNavigate = () => {
+  // Navigate with loading state (real <a> href stays crawlable; modifier clicks open new tab)
+  const handleNavigate = (e: React.MouseEvent) => {
+    if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
     startTransition(() => {
       router.push(`/product/${product.slug}`);
     });
@@ -277,9 +280,10 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Image Container */}
       <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-3">
         {/* Clickable overlay with loading state */}
-        <button
+        <Link
+          href={`/product/${product.slug}`}
+          prefetch={false}
           onClick={handleNavigate}
-          disabled={isPending}
           className="absolute inset-0 z-10 cursor-pointer"
           aria-label={`צפה במוצר ${product.name}`}
         />
@@ -357,11 +361,16 @@ export function ProductCard({ product }: ProductCardProps) {
       {/* Product Info */}
       <div className="text-center space-y-2">
         {/* Product Name */}
-        <button onClick={handleNavigate} className="w-full text-center">
+        <Link
+          href={`/product/${product.slug}`}
+          prefetch={false}
+          onClick={handleNavigate}
+          className="block w-full text-center"
+        >
           <h3 className="font-medium text-base hover:text-primary transition-colors line-clamp-2">
             {product.name}
           </h3>
-        </button>
+        </Link>
 
         {/* Price */}
         <div className="flex items-center justify-center gap-2">

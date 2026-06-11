@@ -14,9 +14,7 @@ import { AdminProductFields } from '@/components/product/AdminProductFields';
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
-import ProductAIChat from '@/components/product/ProductAIChat';
 import CompleteTheLook from '@/components/product/CompleteTheLook';
-import featureFlags from '@/config/features';
 import { analytics } from '@/lib/analytics';
 
 // Color mapping for visual display
@@ -958,31 +956,6 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               selectedAttributes={selectedAttributes}
               relatedData={relatedData}
             />
-
-            {/* AI Product Chat */}
-            {featureFlags.aiProductChat && (
-              <ProductAIChat 
-                product={{
-                  name: product.name,
-                  description: product.description || product.shortDescription || '',
-                  price: currentPrice,
-                  categories: [],
-                  attributes: product.attributes?.nodes?.map((a: { name: string; options: string[] }) => ({
-                    name: a.name,
-                    options: a.options || [],
-                  })) || [],
-                  assemblyIncluded: product.assemblyIncluded !== false,
-                  availabilityType: product.availabilityType,
-                  tambourColor: product.tambourColor,
-                  bundleInfo: relatedData ? {
-                    enabled: relatedData.enabled,
-                    discount: relatedData.discount,
-                    products: relatedData.products.map(p => ({ name: p.name, price: `₪${p.price}` })),
-                    variationBundles: relatedData.variation_bundles || undefined,
-                  } : null,
-                }}
-              />
-            )}
 
             {/* Return policy notice */}
             <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2.5 text-xs text-blue-700">

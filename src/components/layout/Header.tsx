@@ -94,12 +94,6 @@ export function Header() {
                 </div>
               ))}
               <Link
-                href="/design-assistant"
-                className="px-3 py-2 text-sm text-amber-600 font-medium hover:text-amber-700 flex items-center gap-1"
-              >
-                ✨ עוזר עיצוב
-              </Link>
-              <Link
                 href="/categories"
                 className="px-3 py-2 text-sm text-primary font-medium hover:underline"
               >
@@ -237,16 +231,6 @@ export function Header() {
               >
                 <span className="font-semibold text-primary">כל הקטגוריות</span>
                 <ChevronLeft className="w-4 h-4 text-primary" />
-              </Link>
-              
-              {/* Design Assistant Link */}
-              <Link
-                href="/design-assistant"
-                className="flex items-center justify-between py-3 px-4 border-b bg-amber-50 transition-colors hover:bg-amber-100"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                <span className="font-semibold text-amber-600">✨ עוזר עיצוב AI</span>
-                <ChevronLeft className="w-4 h-4 text-amber-600" />
               </Link>
               
               {/* Info Links */}

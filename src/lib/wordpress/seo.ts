@@ -90,7 +90,9 @@ export function yoastToMetadata(yoast: YoastSEOData, fallback: {
   const ogImage = sanitizeImageUrl(yoast.og_image?.[0]?.url) || sanitizeImageUrl(fallback.image);
   
   return {
-    title: yoast.title || fallback.title,
+    // Yoast titles already include the brand — absolute prevents the layout
+    // title template from appending it a second time
+    title: yoast.title ? { absolute: yoast.title } : fallback.title,
     description: yoast.description || fallback.description,
     alternates: {
       canonical: sanitizeAdminUrl(yoast.canonical) || fallback.url,

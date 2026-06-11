@@ -7,11 +7,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
+        // NOTE: /_next/ must stay crawlable — /_next/image serves every product
+        // image (Google Images) and /_next/static is required for page rendering
         disallow: [
           '/api/',
           '/checkout/',
           '/wishlist/',
-          '/_next/',
           '/admin/',
           '/design-assistant/',
         ],
