@@ -15,29 +15,29 @@ export const promoPopupConfig = {
   // Popup content
   content: {
     // Small badge at top
-    badge: 'שנה חדשה',
-    
+    badge: 'קיץ חם',
+
     // Hebrew headline
-    headline: 'פותחים שנה עם בלאנו ✨',
-    
+    headline: 'מבצע קיץ עם בלאנו ☀️',
+
     // English text
-    englishText: 'New Year, New Home',
-    
+    englishText: 'Summer Sale',
+
     // Discount display
-    discountNumber: '5%',
+    discountNumber: '7%',
     discountText: 'הנחה על כל האתר',
-    
+
     // Coupon section
     couponLabel: 'קוד קופון',
-    couponCode: 'NEW7',
+    couponCode: 'SUMMER7',
     copyButtonText: 'העתק',
     copiedText: 'הועתק!',
-    
+
     // CTA button
     ctaText: 'לקנייה עכשיו',
     ctaLink: '/categories',
-    
+
     // Footer note
-    footerNote: 'לכבוד השנה החדשה 🎊',
+    footerNote: 'בשביל קיץ מושלם בבית 🏡',
   },
 };
