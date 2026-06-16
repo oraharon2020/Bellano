@@ -4,5 +4,6 @@ export {
   ProductJsonLd, 
   BreadcrumbJsonLd,
   LocalBusinessJsonLd,
-  FAQJsonLd
+  FAQJsonLd,
+  CollectionPageJsonLd
 } from './JsonLd';

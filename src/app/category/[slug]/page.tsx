@@ -1,9 +1,11 @@
 import { CategoryProductGrid } from '@/components/products';
 import { getProductsByCategorySlugPaginated, getCategoryBySlug, getCategories } from '@/lib/woocommerce';
-import { BreadcrumbJsonLd } from '@/components/seo';
+import { getCategoryContent } from '@/lib/wordpress';
+import { BreadcrumbJsonLd, CollectionPageJsonLd } from '@/components/seo';
+import { CategoryContentSection } from '@/components/category/CategoryContentSection';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 import { siteConfig } from '@/config/site';
-import { getYoastSEO, yoastToMetadata } from '@/lib/wordpress/seo';
+import { getYoastCategorySEO, yoastToMetadata } from '@/lib/wordpress/seo';
 
 const SITE_URL = siteConfig.url;
 const PRODUCTS_PER_PAGE = 24;
@@ -41,8 +43,8 @@ export async function generateMetadata({ params }: CategoryPageProps) {
   const canonicalUrl = `${SITE_URL}/category/${slug}`;
   
   try {
-    // Get Yoast SEO data from WordPress
-    const yoastData = await getYoastSEO(`/product-category/${slug}/`);
+    // Get Yoast SEO data straight from the product_cat taxonomy
+    const yoastData = await getYoastCategorySEO(slug);
     
     const category = await getCategoryBySlug(slug);
     const name = category?.name || slug;
@@ -62,7 +64,7 @@ export async function generateMetadata({ params }: CategoryPageProps) {
     
     // Fallback to auto-generated metadata
     return {
-      title: name,
+      title: `${name} | בלאנו`,
       description: fallbackDescription,
       alternates: {
         canonical: canonicalUrl,
@@ -72,6 +74,8 @@ export async function generateMetadata({ params }: CategoryPageProps) {
         description: fallbackDescription,
         url: canonicalUrl,
         type: 'website',
+        siteName: siteConfig.name,
+        locale: 'he_IL',
         images: [{ 
           url: fallbackImage,
           width: 1200,
@@ -84,6 +88,10 @@ export async function generateMetadata({ params }: CategoryPageProps) {
         title: `${name} | בלאנו`,
         description: fallbackDescription,
         images: [fallbackImage],
+      },
+      robots: {
+        index: true,
+        follow: true,
       },
     };
   } catch {
@@ -99,16 +107,19 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   let category = null;
   let products: any[] = [];
   let total = 0;
+  let categoryContent = null;
 
   try {
-    const [categoryData, paginatedData] = await Promise.all([
+    const [categoryData, paginatedData, contentData] = await Promise.all([
       getCategoryBySlug(slug),
       getProductsByCategorySlugPaginated(slug, { per_page: PRODUCTS_PER_PAGE, page: 1 }),
+      getCategoryContent(slug),
     ]);
     
     category = categoryData;
     products = paginatedData.products;
     total = paginatedData.total;
+    categoryContent = contentData;
   } catch (error) {
     console.error('Error fetching category data:', error);
   }
@@ -134,6 +145,23 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           { name: categoryName, url: `${SITE_URL}/category/${slug}` },
         ]} 
       />
+
+      {/* JSON-LD CollectionPage + ItemList (first page of products) */}
+      {products.length > 0 && (
+        <CollectionPageJsonLd
+          name={categoryName}
+          url={`${SITE_URL}/category/${slug}`}
+          description={category?.description}
+          image={category?.image?.src}
+          products={products.slice(0, 24).map((product) => ({
+            name: product.name,
+            slug: product.slug,
+            image: product.images?.[0]?.src,
+            price: product.price,
+            availability: product.stock_status === 'outofstock' ? 'OutOfStock' : 'InStock',
+          }))}
+        />
+      )}
       
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
@@ -144,13 +172,20 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         </nav>
 
         {/* Category Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl md:text-4xl font-bold mb-2">{categoryName}</h1>
+        <div className="mb-8">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <h1 className="text-3xl md:text-4xl font-bold">{categoryName}</h1>
+            {total > 0 && (
+              <span className="inline-flex items-center rounded-full bg-secondary px-3 py-1 text-sm font-medium text-secondary-foreground">
+                {total} מוצרים
+              </span>
+            )}
+          </div>
+          <span className="mt-3 block h-1 w-16 rounded-full bg-primary/80" />
           {category?.description && (
-            <ExpandableDescription description={category.description} />
-          )}
-          {total > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">{total} מוצרים</p>
+            <div className="mt-4">
+              <ExpandableDescription description={category.description} />
+            </div>
           )}
         </div>
 
@@ -166,6 +201,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           <div className="text-center py-12">
             <p className="text-muted-foreground">לא נמצאו מוצרים בקטגוריה זו</p>
           </div>
+        )}
+
+        {/* Rich SEO content section (article, advantages, FAQ, related) */}
+        {categoryContent && (
+          <CategoryContentSection
+            content={categoryContent}
+            categoryName={categoryName}
+          />
         )}
       </div>
     </>

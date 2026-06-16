@@ -262,3 +262,100 @@ export function FAQJsonLd({ questions }: FAQJsonLdProps) {
     />
   );
 }
+
+// CollectionPage + ItemList Schema - Tells Google a category page is a
+// product collection, making products eligible for rich results / carousels.
+interface CollectionPageJsonLdProps {
+  name: string;
+  url: string;
+  description?: string;
+  image?: string;
+  products: {
+    name: string;
+    slug: string;
+    image?: string;
+    price?: string;
+    availability?: 'InStock' | 'OutOfStock' | 'PreOrder';
+  }[];
+}
+
+export function CollectionPageJsonLd({
+  name,
+  url,
+  description,
+  image,
+  products,
+}: CollectionPageJsonLdProps) {
+  const itemListElements = products.map((product, index) => {
+    const productUrl = `${siteConfig.url}/product/${product.slug}`;
+    const item: any = {
+      '@type': 'Product',
+      name: product.name,
+      url: productUrl,
+      brand: {
+        '@type': 'Brand',
+        name: siteConfig.name,
+      },
+    };
+
+    if (product.image) {
+      item.image = product.image;
+    }
+
+    const priceValue = parseFloat((product.price || '').replace(/[^\d.]/g, ''));
+    if (priceValue > 0) {
+      item.offers = {
+        '@type': 'Offer',
+        price: priceValue,
+        priceCurrency: 'ILS',
+        availability: `https://schema.org/${product.availability || 'InStock'}`,
+        url: productUrl,
+        seller: {
+          '@type': 'Organization',
+          name: siteConfig.name,
+        },
+      };
+    }
+
+    return {
+      '@type': 'ListItem',
+      position: index + 1,
+      item,
+    };
+  });
+
+  const jsonLd: any = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    '@id': `${url}/#collection`,
+    name,
+    url,
+    isPartOf: {
+      '@type': 'WebSite',
+      '@id': `${siteConfig.url}/#website`,
+      name: siteConfig.name,
+      url: siteConfig.url,
+    },
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: products.length,
+      itemListElement: itemListElements,
+    },
+  };
+
+  if (description) {
+    jsonLd.description = description.replace(/<[^>]*>/g, '').slice(0, 500);
+  }
+
+  if (image) {
+    jsonLd.image = image;
+  }
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
+
