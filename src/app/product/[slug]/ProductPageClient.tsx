@@ -450,8 +450,16 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
       ? product.glassOption.price 
       : 0;
     
-    // Use admin price if set, otherwise use regular price + options
-    const basePrice = adminPrice !== null ? adminPrice : parseFloat(currentPrice.replace(/[^\d.]/g, '')) || 0;
+    // Price priority: admin override (now formula-aware, see variationPrice
+    // passed to AdminProductFields) → formula custom-dimension price → regular.
+    // For non-admins adminPrice stays null (AdminProductFields only emits
+    // onPriceChange for admins), so the formula price is used as expected.
+    const formulaBase = activeFormula && formulaData ? formulaData.price : null;
+    const basePrice = adminPrice !== null
+      ? adminPrice
+      : formulaBase !== null
+      ? formulaBase
+      : parseFloat(currentPrice.replace(/[^\d.]/g, '')) || 0;
     const finalPriceValue = basePrice + tambourPriceAdd + glassPriceAdd;
     const finalPrice = `${finalPriceValue} ₪`;
     const priceValue = finalPriceValue;
@@ -819,7 +827,13 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             {/* Admin Fields - Only visible to admins/sales reps */}
             <AdminProductFields
               basePrice={parseFloat(product.price?.replace(/[^\d.]/g, '') || '0')}
-              variationPrice={selectedVariation ? parseFloat(selectedVariation.price || '0') : undefined}
+              variationPrice={
+                activeFormula && formulaData
+                  ? formulaData.price
+                  : selectedVariation
+                  ? parseFloat(selectedVariation.price || '0')
+                  : undefined
+              }
               productImage={product.image?.sourceUrl || product.galleryImages?.[0]?.sourceUrl}
               productName={product.name}
               onPriceChange={(newPrice, data) => {

@@ -163,11 +163,14 @@ export function AdminProductFields({
     ? ((currentBasePrice - totalPrice) / currentBasePrice) * 100 
     : 0;
 
-  // Notify parent of changes
+  // Notify parent of changes — only for actual admins, so a non-admin's
+  // cart price is never overridden by the variation-default totalPrice
+  // (this component renders nothing for non-admins but its effects still run).
   useEffect(() => {
+    if (!isAdmin) return;
     onPriceChange?.(totalPrice, formData);
     onDataChange?.(formData);
-  }, [totalPrice, formData, onPriceChange, onDataChange]);
+  }, [isAdmin, totalPrice, formData, onPriceChange, onDataChange]);
 
   const handleInputChange = (field: keyof AdminFieldsData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
