@@ -107,7 +107,13 @@ function ExpandableShortDescription({ html, className }: { html: string; classNa
       <div className="relative">
         <div
           ref={contentRef}
-          className={`text-sm text-gray-600 leading-relaxed overflow-hidden transition-all duration-300 ${
+          className={`prose prose-sm max-w-none text-gray-600
+            prose-p:my-2 prose-p:leading-relaxed prose-p:text-gray-600
+            prose-li:my-0.5 prose-li:text-gray-600 prose-ul:my-2 prose-ol:my-2
+            prose-strong:text-gray-900 prose-strong:font-semibold
+            prose-a:text-primary prose-a:no-underline hover:prose-a:underline
+            [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0
+            [&_*]:!font-sans overflow-hidden transition-all duration-300 ${
             isExpanded ? 'max-h-[2000px]' : 'max-h-[6.5em]'
           }`}
           dangerouslySetInnerHTML={{ __html: html }}
@@ -1079,7 +1085,17 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 {activeTab === 'description' ? (
                   <HtmlContent 
                     html={product.description || ''}
-                    className="text-sm text-gray-600 leading-relaxed [&_*]:!font-sans [&_p]:mb-3 [&_ul]:list-disc [&_ul]:mr-5 [&_li]:mb-1"
+                    className="prose prose-sm max-w-none
+                      prose-headings:font-bold prose-headings:text-gray-900
+                      prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3
+                      prose-h3:text-base prose-h3:mt-5 prose-h3:mb-2
+                      prose-p:text-gray-600 prose-p:leading-[1.9] prose-p:my-3
+                      prose-li:text-gray-600 prose-li:my-1 prose-li:leading-relaxed
+                      prose-strong:text-gray-900 prose-strong:font-semibold
+                      prose-a:text-primary prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                      prose-ul:my-3 prose-ol:my-3
+                      [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0
+                      [&_*]:!font-sans"
                   />
                 ) : (
                   <div className="text-sm">
