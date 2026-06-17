@@ -89,60 +89,51 @@ function HtmlContent({ html, className }: { html: string; className?: string }) 
   );
 }
 
-// Expandable short description for mobile
+// Expandable short description — shows "קרא עוד" when content exceeds 4 lines
 function ExpandableShortDescription({ html, className }: { html: string; className?: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  
+  const [needsTruncation, setNeedsTruncation] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    setMounted(true);
-  }, []);
-  
-  const plainText = html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-  const needsTruncation = plainText.length > 100;
-  
-  if (!mounted) {
-    return <p className={`text-sm text-gray-600 ${className}`}>{plainText.slice(0, 100)}...</p>;
-  }
-  
-  if (!needsTruncation) {
-    return (
-      <div 
-        className={`text-sm text-gray-600 leading-relaxed ${className}`}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
-  }
-  
+    const el = contentRef.current;
+    if (!el) return;
+    // Compare rendered scrollHeight vs capped clientHeight to detect overflow
+    setNeedsTruncation(el.scrollHeight > el.clientHeight + 2);
+  }, [html]);
+
   return (
     <div className={className}>
       <div className="relative">
-        <div 
+        <div
+          ref={contentRef}
           className={`text-sm text-gray-600 leading-relaxed overflow-hidden transition-all duration-300 ${
-            isExpanded ? 'max-h-[500px]' : 'max-h-[4.5em]'
+            isExpanded ? 'max-h-[2000px]' : 'max-h-[6.5em]'
           }`}
           dangerouslySetInnerHTML={{ __html: html }}
         />
-        {!isExpanded && (
-          <div className="absolute bottom-0 left-0 right-0 h-4 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+        {needsTruncation && !isExpanded && (
+          <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-white to-transparent pointer-events-none" />
         )}
       </div>
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-1 transition-colors"
-      >
-        {isExpanded ? (
-          <>
-            <span>הצג פחות</span>
-            <ChevronUp className="w-3 h-3" />
-          </>
-        ) : (
-          <>
-            <span>קרא עוד</span>
-            <ChevronDown className="w-3 h-3" />
-          </>
-        )}
-      </button>
+      {needsTruncation && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 mt-1 transition-colors"
+        >
+          {isExpanded ? (
+            <>
+              <span>הצג פחות</span>
+              <ChevronUp className="w-3 h-3" />
+            </>
+          ) : (
+            <>
+              <span>קרא עוד</span>
+              <ChevronDown className="w-3 h-3" />
+            </>
+          )}
+        </button>
+      )}
     </div>
   );
 }
@@ -748,15 +739,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             {/* Short Description */}
             {product.shortDescription && (
               <>
-                {/* Desktop - full description */}
-                <HtmlContent 
+                <ExpandableShortDescription
                   html={product.shortDescription}
-                  className="text-sm text-gray-600 leading-relaxed mb-4 md:mb-6 hidden md:block [&_*]:!font-sans"
-                />
-                {/* Mobile - expandable description */}
-                <ExpandableShortDescription 
-                  html={product.shortDescription}
-                  className="md:hidden mb-4 [&_*]:!font-sans"
+                  className="mb-4 md:mb-6 [&_*]:!font-sans"
                 />
               </>
             )}
