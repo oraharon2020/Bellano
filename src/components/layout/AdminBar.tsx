@@ -2,18 +2,38 @@
 
 import { useAdminStore } from '@/lib/store/admin';
 import { usePathname } from 'next/navigation';
-import { ExternalLink, Edit, LayoutDashboard, Package, LogOut, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { ExternalLink, Edit, LayoutDashboard, Package, LogOut, X, RefreshCw, Check } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
 
 export function AdminBar() {
-  const { isAdmin, adminName, logout, currentProductId } = useAdminStore();
+  const { isAdmin, adminName, logout, currentProductId, adminToken } = useAdminStore();
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [cacheState, setCacheState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const clearCache = useCallback(async () => {
+    if (!adminToken || cacheState === 'loading') return;
+    setCacheState('loading');
+    try {
+      const res = await fetch('/api/cache', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-token': adminToken,
+        },
+        body: JSON.stringify({ path: pathname }),
+      });
+      setCacheState(res.ok ? 'done' : 'error');
+    } catch {
+      setCacheState('error');
+    }
+    setTimeout(() => setCacheState('idle'), 2500);
+  }, [adminToken, cacheState, pathname]);
 
   // Add/remove body padding when admin bar is visible
   useEffect(() => {
@@ -109,6 +129,29 @@ export function AdminBar() {
 
       {/* Right side - User info */}
       <div className="flex items-center gap-4">
+        {/* Cache clear button */}
+        <button
+          onClick={clearCache}
+          disabled={cacheState === 'loading'}
+          className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors ${
+            cacheState === 'done'
+              ? 'bg-green-600 text-white'
+              : cacheState === 'error'
+              ? 'bg-red-600 text-white'
+              : 'hover:text-yellow-400 text-gray-300'
+          }`}
+          title="ניקוי קאש של הדף הנוכחי"
+        >
+          {cacheState === 'done' ? (
+            <Check className="w-4 h-4" />
+          ) : (
+            <RefreshCw className={`w-4 h-4 ${cacheState === 'loading' ? 'animate-spin' : ''}`} />
+          )}
+          <span>
+            {cacheState === 'loading' ? 'מנקה...' : cacheState === 'done' ? 'נוקה!' : cacheState === 'error' ? 'שגיאה' : 'ניקוי קאש'}
+          </span>
+        </button>
+
         <span className="text-gray-400">
           שלום, <span className="text-white">{adminName}</span>
         </span>
