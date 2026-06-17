@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Ruler } from 'lucide-react';
-import { calculateFormulaPrice, applyFormulaRounding } from '@/lib/formula-pricing';
+import { calculateFormulaPrice, applyFormulaRounding, snapToStep } from '@/lib/formula-pricing';
 import type {
   FormulaConfig,
   FormulaDimension,
@@ -41,20 +41,22 @@ export function FormulaPricingPanel({
     return dims;
   }, [config, showDepth, showHeight]);
 
-  const minDims = useMemo(() => {
+  const initialDims = useMemo(() => {
     const d: FormulaDimensions = {};
     for (const dim of visibleDims) {
-      d[dim] = Number(config[dim]?.min ?? 0);
+      const cfg = config[dim];
+      const fallback = Number(cfg?.default ?? cfg?.min ?? 0);
+      d[dim] = cfg ? snapToStep(fallback, cfg) : fallback;
     }
     return d;
   }, [visibleDims, config]);
 
-  const [dims, setDims] = useState<FormulaDimensions>(minDims);
+  const [dims, setDims] = useState<FormulaDimensions>(initialDims);
 
-  // Reset to minimums when the variation (and therefore the config) changes
+  // Reset to defaults when the variation (and therefore the config) changes
   useEffect(() => {
-    setDims(minDims);
-  }, [minDims]);
+    setDims(initialDims);
+  }, [initialDims]);
 
   const result = useMemo(() => {
     const r = calculateFormulaPrice(config, dims);
@@ -74,10 +76,8 @@ export function FormulaPricingPanel({
 
   const clampDim = (dim: FormulaDimension, raw: number) => {
     const cfg = config[dim];
-    let v = raw;
-    if (cfg?.min != null && v < cfg.min) v = cfg.min;
-    if (cfg?.max != null && v > cfg.max) v = cfg.max;
-    setDims((prev) => ({ ...prev, [dim]: v }));
+    if (!cfg) return;
+    setDims((prev) => ({ ...prev, [dim]: snapToStep(raw, cfg) }));
   };
 
   if (visibleDims.length === 0) return null;
@@ -95,6 +95,7 @@ export function FormulaPricingPanel({
           const cfg = config[dim]!;
           const min = Number(cfg.min ?? 0);
           const max = Number(cfg.max ?? min);
+          const step = Number(cfg.step) > 0 ? Number(cfg.step) : 1;
           const value = dims[dim] ?? min;
           const extra =
             dim === 'width' ? result.breakdown.width?.amount : result.breakdown[dim]?.amount;
@@ -117,6 +118,7 @@ export function FormulaPricingPanel({
                     inputMode="numeric"
                     min={min}
                     max={max}
+                    step={step}
                     value={value}
                     onChange={(e) => setDim(dim, Number(e.target.value))}
                     onBlur={(e) => clampDim(dim, Number(e.target.value))}
@@ -133,9 +135,9 @@ export function FormulaPricingPanel({
                     aria-label={`${DIM_LABELS[dim]} בס״מ`}
                     min={min}
                     max={max}
-                    step={1}
+                    step={step}
                     value={Math.min(Math.max(value, min), max)}
-                    onChange={(e) => setDim(dim, Number(e.target.value))}
+                    onChange={(e) => clampDim(dim, Number(e.target.value))}
                     className="w-full h-2 accent-black cursor-pointer"
                   />
                   <div className="flex justify-between text-[11px] text-gray-400 mt-0.5">

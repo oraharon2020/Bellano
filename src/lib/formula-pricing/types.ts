@@ -16,6 +16,10 @@ export interface FormulaTier {
 export interface FormulaDimensionConfig {
   min?: number;
   max?: number;
+  /** Customer-facing default value (falls back to min when unset) */
+  default?: number;
+  /** Increment the customer can pick, e.g. 10 = jumps of 10cm (falls back to 1) */
+  step?: number;
   /** Width only — the base price of the variation at minimum width */
   base_price?: number;
   /** Width only — 'linear' (default) or 'tiered' */

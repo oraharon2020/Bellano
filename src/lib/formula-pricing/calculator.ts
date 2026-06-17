@@ -15,6 +15,23 @@ import type {
   FormulaCalcResult,
 } from './types';
 
+/**
+ * Snap a chosen value to the nearest valid step, measured from the dimension's
+ * minimum, then clamp into [min, max]. Mirrors snap_to_step() in the PHP
+ * calculator so the client price always matches the server price.
+ */
+export function snapToStep(value: number, cfg: FormulaDimensionConfig): number {
+  const min = Number(cfg.min ?? value);
+  let v = value;
+  const step = Number(cfg.step ?? 0);
+  if (step > 0) {
+    v = min + Math.round((v - min) / step) * step;
+  }
+  if (cfg.min != null && v < cfg.min) v = cfg.min;
+  if (cfg.max != null && v > cfg.max) v = cfg.max;
+  return Math.round(v * 100) / 100;
+}
+
 export function calculateFormulaPrice(
   config: FormulaConfig,
   dimensions: FormulaDimensions
@@ -27,7 +44,7 @@ export function calculateFormulaPrice(
   // ── Width ──────────────────────────────────────────────────
   if (config.width && dimensions.width != null) {
     const wCfg = config.width;
-    let w = dimensions.width;
+    let w = snapToStep(dimensions.width, wCfg);
 
     if (wCfg.min != null && w < wCfg.min) {
       errors.push(`width below minimum (${wCfg.min})`);
@@ -83,7 +100,7 @@ function linearExtra(
   label: string,
   basePrice: number
 ) {
-  let v = value;
+  let v = snapToStep(value, cfg);
   if (cfg.min != null && v < cfg.min) {
     errors.push(`${label} below minimum (${cfg.min})`);
     v = cfg.min;
