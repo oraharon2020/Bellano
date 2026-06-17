@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useCartStore } from '@/lib/store/cart';
 import { useWishlistStore } from '@/lib/store/wishlist';
+import { useAdminStore } from '@/lib/store/admin';
 import { AdminProductFields } from '@/components/product/AdminProductFields';
 import { FormulaPricingPanel } from '@/components/product/FormulaPricingPanel';
 import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pricing';
@@ -245,7 +246,14 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
 
   const { addItem } = useCartStore();
   const { toggleItem, isInWishlist, isHydrated: wishlistHydrated } = useWishlistStore();
+  const { setCurrentProductId } = useAdminStore();
   const isWishlisted = wishlistHydrated && isInWishlist(product.id);
+
+  // Register product ID in admin store so AdminBar can link directly to WP edit page
+  useEffect(() => {
+    setCurrentProductId(product.databaseId);
+    return () => setCurrentProductId(null);
+  }, [product.databaseId, setCurrentProductId]);
 
   const wishlistItem = {
     id: product.id,

@@ -6,7 +6,7 @@ import { ExternalLink, Edit, LayoutDashboard, Package, LogOut, X } from 'lucide-
 import { useState, useEffect } from 'react';
 
 export function AdminBar() {
-  const { isAdmin, adminName, logout } = useAdminStore();
+  const { isAdmin, adminName, logout, currentProductId } = useAdminStore();
   const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(true);
   const [mounted, setMounted] = useState(false);
@@ -80,7 +80,11 @@ export function AdminBar() {
         {/* Context-specific links */}
         {productSlug && (
           <a
-            href={`https://admin.bellano.co.il/wp-admin/edit.php?post_type=product&s=${encodeURIComponent(productSlug)}`}
+            href={
+              currentProductId
+                ? `https://admin.bellano.co.il/wp-admin/post.php?post=${currentProductId}&action=edit`
+                : `https://admin.bellano.co.il/wp-admin/edit.php?post_type=product&s=${encodeURIComponent(productSlug)}`
+            }
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 bg-yellow-500 text-gray-900 px-2 py-1 rounded hover:bg-yellow-400 transition-colors"

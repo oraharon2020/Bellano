@@ -9,12 +9,14 @@ interface AdminStore {
   adminToken: string | null;
   upgrades: { name: string; price: number }[];
   showLoginModal: boolean;
-  
+  currentProductId: number | null;
+
   // Actions
   setAdmin: (isAdmin: boolean, adminName: string, token: string | null, upgrades?: { name: string; price: number }[]) => void;
   logout: () => void;
   openLoginModal: () => void;
   closeLoginModal: () => void;
+  setCurrentProductId: (id: number | null) => void;
 }
 
 export const useAdminStore = create<AdminStore>()(
@@ -25,18 +27,22 @@ export const useAdminStore = create<AdminStore>()(
       adminToken: null,
       upgrades: [],
       showLoginModal: false,
-      
-      setAdmin: (isAdmin, adminName, token, upgrades = []) => 
+      currentProductId: null,
+
+      setAdmin: (isAdmin, adminName, token, upgrades = []) =>
         set({ isAdmin, adminName, adminToken: token, upgrades }),
-      
-      logout: () => 
+
+      logout: () =>
         set({ isAdmin: false, adminName: '', adminToken: null, upgrades: [] }),
-      
-      openLoginModal: () => 
+
+      openLoginModal: () =>
         set({ showLoginModal: true }),
-      
-      closeLoginModal: () => 
+
+      closeLoginModal: () =>
         set({ showLoginModal: false }),
+
+      setCurrentProductId: (id) =>
+        set({ currentProductId: id }),
     }),
     {
       name: 'bellano-admin',
