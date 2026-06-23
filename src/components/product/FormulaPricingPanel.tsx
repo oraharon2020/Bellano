@@ -118,7 +118,10 @@ export function FormulaPricingPanel({
             if (options[options.length - 1] !== max) options.push(max);
           }
           const hasDiscrete = options.length > 1 && options.length <= CHIP_THRESHOLD;
-          const useDropdown = hasDiscrete && displayStyle === 'dropdown';
+          // When the product opts into 'dropdown', it REPLACES both the chips
+          // and the slider — a single <select> with every valid stop. Falls
+          // back to chips/slider only when not in dropdown mode.
+          const useDropdown = displayStyle === 'dropdown' && options.length > 1;
           const useChips = hasDiscrete && !useDropdown;
 
           return (
@@ -179,7 +182,7 @@ export function FormulaPricingPanel({
               )}
 
               {/* Many options → stepper + slider with tick stops */}
-              {!useChips && max > min && (
+              {!useChips && !useDropdown && max > min && (
                 <>
                   <div className="flex items-center gap-3">
                     <button
