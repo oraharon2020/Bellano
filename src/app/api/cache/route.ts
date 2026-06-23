@@ -34,8 +34,10 @@ export async function POST(request: NextRequest) {
   // Also clear tagged fetch caches that live on their own timer and are NOT
   // cleared by revalidatePath — e.g. the per-product formula-pricing config
   // (tagged 'formula'). Without this, dimension labels / formula changes keep
-  // serving the stale cached fetch for up to its revalidate window.
-  revalidateTag('formula');
+  // serving the stale cached fetch for up to its revalidate window. Next.js 16
+  // requires a second arg; { expire: 0 } expires the tag immediately (this is
+  // an admin-triggered "clear cache now" action, so immediate is what we want).
+  revalidateTag('formula', { expire: 0 });
 
   return NextResponse.json({
     success: true,
