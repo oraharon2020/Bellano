@@ -22,6 +22,8 @@ interface FormulaPricingPanelProps {
   showDepth: boolean;
   showHeight: boolean;
   roundTo: number;
+  /** Optional custom labels per dimension (e.g. width → "קוטר"). */
+  labels?: Partial<Record<FormulaDimension, string>>;
   /** Fires on every dimension change with the chosen dims + calculated price */
   onChange: (data: FormulaFieldsData) => void;
 }
@@ -31,8 +33,12 @@ export function FormulaPricingPanel({
   showDepth,
   showHeight,
   roundTo,
+  labels,
   onChange,
 }: FormulaPricingPanelProps) {
+  const labelFor = (dim: FormulaDimension): string =>
+    (labels && labels[dim]) || DIM_LABELS[dim];
+
   const visibleDims = useMemo(() => {
     const dims: FormulaDimension[] = [];
     if (config.width) dims.push('width');
@@ -114,7 +120,7 @@ export function FormulaPricingPanel({
             <div key={dim}>
               <div className="flex items-center justify-between mb-2">
                 <label htmlFor={`formula-${dim}`} className="text-xs font-medium text-gray-700">
-                  {DIM_LABELS[dim]}
+                  {labelFor(dim)}
                   {extra != null && extra > 0 && (
                     <span className="text-gray-400 font-normal mr-2">
                       (+{Math.round(extra).toLocaleString()}₪)
@@ -156,7 +162,7 @@ export function FormulaPricingPanel({
                   <div className="flex items-center gap-3">
                     <button
                       type="button"
-                      aria-label={`הקטן ${DIM_LABELS[dim]}`}
+                      aria-label={`הקטן ${labelFor(dim)}`}
                       onClick={() => clampDim(dim, value - step)}
                       disabled={value <= min}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:border-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-gray-300 disabled:hover:bg-transparent disabled:hover:text-gray-700"
@@ -167,7 +173,7 @@ export function FormulaPricingPanel({
                     <input
                       id={`formula-${dim}`}
                       type="range"
-                      aria-label={`${DIM_LABELS[dim]} בס״מ`}
+                      aria-label={`${labelFor(dim)} בס״מ`}
                       list={`formula-ticks-${dim}`}
                       min={min}
                       max={max}
@@ -179,7 +185,7 @@ export function FormulaPricingPanel({
 
                     <button
                       type="button"
-                      aria-label={`הגדל ${DIM_LABELS[dim]}`}
+                      aria-label={`הגדל ${labelFor(dim)}`}
                       onClick={() => clampDim(dim, value + step)}
                       disabled={value >= max}
                       className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-300 text-gray-700 transition-colors hover:border-black hover:bg-black hover:text-white disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:border-gray-300 disabled:hover:bg-transparent disabled:hover:text-gray-700"

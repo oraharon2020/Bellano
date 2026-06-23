@@ -1,4 +1,4 @@
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 // Cache clearing is a low-risk, non-destructive operation.
@@ -30,6 +30,12 @@ export async function POST(request: NextRequest) {
   if (path === '/') {
     revalidatePath('/categories');
   }
+
+  // Also clear tagged fetch caches that live on their own timer and are NOT
+  // cleared by revalidatePath — e.g. the per-product formula-pricing config
+  // (tagged 'formula'). Without this, dimension labels / formula changes keep
+  // serving the stale cached fetch for up to its revalidate window.
+  revalidateTag('formula');
 
   return NextResponse.json({
     success: true,

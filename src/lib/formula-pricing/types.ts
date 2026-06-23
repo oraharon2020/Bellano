@@ -52,6 +52,8 @@ export interface FormulaProductConfig {
   show_depth?: boolean;
   show_height?: boolean;
   round_to?: number;
+  /** Optional custom labels per dimension (e.g. width → "קוטר"). */
+  labels?: Partial<Record<FormulaDimension, string>>;
   variations?: FormulaVariation[];
 }
 

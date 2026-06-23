@@ -826,6 +826,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 showDepth={!!formulaConfig?.show_depth}
                 showHeight={!!formulaConfig?.show_height}
                 roundTo={formulaConfig?.round_to ?? 0}
+                labels={formulaConfig?.labels}
                 onChange={setFormulaData}
               />
             )}
