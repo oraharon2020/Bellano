@@ -241,6 +241,7 @@ export default function CheckoutPage() {
             formula: item.formulaFields ? {
               dimensions: item.formulaFields.dimensions,
               price: item.formulaFields.price,
+              labels: item.formulaFields.labels,
             } : undefined,
             // Include bundle discount info for price override
             bundle_discount: item.bundleDiscount,
@@ -913,9 +914,9 @@ export default function CheckoutPage() {
                           {item.formulaFields && (
                             <p className="text-xs text-gray-600 mt-1">
                               {[
-                                item.formulaFields.dimensions.width != null && `רוחב: ${item.formulaFields.dimensions.width}`,
-                                item.formulaFields.dimensions.depth != null && `עומק: ${item.formulaFields.dimensions.depth}`,
-                                item.formulaFields.dimensions.height != null && `גובה: ${item.formulaFields.dimensions.height}`,
+                                item.formulaFields.dimensions.width != null && `${item.formulaFields.labels?.width || 'רוחב'}: ${item.formulaFields.dimensions.width}`,
+                                item.formulaFields.dimensions.depth != null && `${item.formulaFields.labels?.depth || 'עומק'}: ${item.formulaFields.dimensions.depth}`,
+                                item.formulaFields.dimensions.height != null && `${item.formulaFields.labels?.height || 'גובה'}: ${item.formulaFields.dimensions.height}`,
                               ].filter(Boolean).join(' / ')} ס״מ
                             </p>
                           )}

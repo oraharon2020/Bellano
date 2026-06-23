@@ -34,6 +34,7 @@ interface VariationAttribute {
 interface FormulaOrderData {
   dimensions: { width?: number; depth?: number; height?: number };
   price: number; // Client-calculated price - re-validated server-side before use
+  labels?: { width?: string; depth?: string; height?: string }; // Custom dim labels
 }
 
 interface OrderItem {
@@ -104,6 +105,29 @@ async function validateFormulaPrice(
     return Number.isFinite(price) && price > 0 ? price : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Fetch the product's custom dimension labels (e.g. width → "שולחן קטן"), so
+ * the WooCommerce order shows the same names the customer saw. Falls back to
+ * the default רוחב/עומק/גובה when none are configured or on any error.
+ */
+async function fetchFormulaLabels(productId: number): Promise<Record<string, string>> {
+  const defaults: Record<string, string> = { width: 'רוחב', depth: 'עומק', height: 'גובה' };
+  try {
+    const res = await fetch(`${WC_URL}/wp-json/nalla/v1/formula/${productId}`);
+    if (!res.ok) return defaults;
+    const data = await res.json();
+    const labels = data?.labels;
+    if (labels && typeof labels === 'object') {
+      for (const dim of ['width', 'depth', 'height']) {
+        if (labels[dim]) defaults[dim] = String(labels[dim]);
+      }
+    }
+    return defaults;
+  } catch {
+    return defaults;
   }
 }
 
@@ -286,7 +310,11 @@ export async function POST(request: NextRequest) {
         lineItem.subtotal = (unitPrice * item.quantity).toString();
         lineItem.total = (unitPrice * item.quantity).toString();
 
-        const dimLabels: Record<string, string> = { width: 'רוחב', depth: 'עומק', height: 'גובה' };
+        // Prefer labels sent with the order (what the customer actually saw);
+        // fall back to fetching them from the product config.
+        const dimLabels = (item.formula.labels && Object.keys(item.formula.labels).length)
+          ? { width: 'רוחב', depth: 'עומק', height: 'גובה', ...item.formula.labels }
+          : await fetchFormulaLabels(item.product_id);
         for (const [dim, value] of Object.entries(item.formula.dimensions)) {
           if (value == null || value === 0) continue;
           lineItem.meta_data.push({ key: dimLabels[dim] || dim, value: `${value} ס״מ` });

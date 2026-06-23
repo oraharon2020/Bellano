@@ -76,8 +76,8 @@ export function FormulaPricingPanel({
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
   useEffect(() => {
-    onChangeRef.current({ dimensions: dims, price: result.price });
-  }, [dims, result.price]);
+    onChangeRef.current({ dimensions: dims, price: result.price, labels });
+  }, [dims, result.price, labels]);
 
   const clampDim = (dim: FormulaDimension, raw: number) => {
     const cfg = config[dim];

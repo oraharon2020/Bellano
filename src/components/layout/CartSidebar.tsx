@@ -179,9 +179,9 @@ export function CartSidebar() {
                         <Ruler className="w-3 h-3" />
                         <span>
                           {[
-                            item.formulaFields.dimensions.width != null && `רוחב: ${item.formulaFields.dimensions.width}`,
-                            item.formulaFields.dimensions.depth != null && `עומק: ${item.formulaFields.dimensions.depth}`,
-                            item.formulaFields.dimensions.height != null && `גובה: ${item.formulaFields.dimensions.height}`,
+                            item.formulaFields.dimensions.width != null && `${item.formulaFields.labels?.width || 'רוחב'}: ${item.formulaFields.dimensions.width}`,
+                            item.formulaFields.dimensions.depth != null && `${item.formulaFields.labels?.depth || 'עומק'}: ${item.formulaFields.dimensions.depth}`,
+                            item.formulaFields.dimensions.height != null && `${item.formulaFields.labels?.height || 'גובה'}: ${item.formulaFields.dimensions.height}`,
                           ].filter(Boolean).join(' / ')} ס״מ
                         </span>
                       </div>

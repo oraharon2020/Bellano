@@ -76,4 +76,7 @@ export interface FormulaCalcResult {
 export interface FormulaFieldsData {
   dimensions: FormulaDimensions;
   price: number;
+  /** Custom dimension labels at add-to-cart time (e.g. width → "שולחן קטן"),
+   *  so the cart and checkout show the same names as the product page. */
+  labels?: Partial<Record<FormulaDimension, string>>;
 }
