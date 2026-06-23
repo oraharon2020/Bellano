@@ -24,6 +24,8 @@ interface FormulaPricingPanelProps {
   roundTo: number;
   /** Optional custom labels per dimension (e.g. width → "קוטר"). */
   labels?: Partial<Record<FormulaDimension, string>>;
+  /** How to render discrete size options: tap chips (default) or a dropdown. */
+  displayStyle?: 'chips' | 'dropdown';
   /** Fires on every dimension change with the chosen dims + calculated price */
   onChange: (data: FormulaFieldsData) => void;
 }
@@ -34,6 +36,7 @@ export function FormulaPricingPanel({
   showHeight,
   roundTo,
   labels,
+  displayStyle = 'chips',
   onChange,
 }: FormulaPricingPanelProps) {
   const labelFor = (dim: FormulaDimension): string =>
@@ -114,7 +117,9 @@ export function FormulaPricingPanel({
             }
             if (options[options.length - 1] !== max) options.push(max);
           }
-          const useChips = options.length > 1 && options.length <= CHIP_THRESHOLD;
+          const hasDiscrete = options.length > 1 && options.length <= CHIP_THRESHOLD;
+          const useDropdown = hasDiscrete && displayStyle === 'dropdown';
+          const useChips = hasDiscrete && !useDropdown;
 
           return (
             <div key={dim}>
@@ -131,6 +136,23 @@ export function FormulaPricingPanel({
                   {value} <span className="text-xs font-normal text-gray-400">ס״מ</span>
                 </span>
               </div>
+
+              {/* Discrete options as a classic dropdown (opt-in per product) */}
+              {useDropdown && (
+                <select
+                  id={`formula-${dim}`}
+                  aria-label={labelFor(dim)}
+                  value={value}
+                  onChange={(e) => clampDim(dim, Number(e.target.value))}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 focus:border-black focus:outline-none"
+                >
+                  {options.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt} ס״מ
+                    </option>
+                  ))}
+                </select>
+              )}
 
               {/* Few options → tap-to-select chips */}
               {useChips && (

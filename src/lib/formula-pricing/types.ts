@@ -54,6 +54,8 @@ export interface FormulaProductConfig {
   round_to?: number;
   /** Optional custom labels per dimension (e.g. width → "קוטר"). */
   labels?: Partial<Record<FormulaDimension, string>>;
+  /** How discrete size options render: tap chips (default) or a dropdown. */
+  display_style?: 'chips' | 'dropdown';
   variations?: FormulaVariation[];
 }
 
