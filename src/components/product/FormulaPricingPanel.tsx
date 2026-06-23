@@ -62,10 +62,30 @@ export function FormulaPricingPanel({
 
   const [dims, setDims] = useState<FormulaDimensions>(initialDims);
 
-  // Reset to defaults when the variation (and therefore the config) changes
+  // When the variation (and therefore the config) changes — e.g. the customer
+  // switches colour — DON'T blow away their chosen size. Keep each dimension's
+  // current value when it is still valid for the new config (snapped to the new
+  // step/range); only fall back to the default for dimensions that are new or
+  // whose value no longer fits. This preserves the size across colour changes.
   useEffect(() => {
-    setDims(initialDims);
-  }, [initialDims]);
+    setDims((prev) => {
+      const next: FormulaDimensions = {};
+      for (const dim of visibleDims) {
+        const cfg = config[dim];
+        if (!cfg) { next[dim] = initialDims[dim]; continue; }
+        const prevVal = prev[dim];
+        if (prevVal != null) {
+          const snapped = snapToStep(prevVal, cfg);
+          const min = Number(cfg.min ?? snapped);
+          const max = Number(cfg.max ?? snapped);
+          next[dim] = Math.min(Math.max(snapped, min), max);
+        } else {
+          next[dim] = initialDims[dim];
+        }
+      }
+      return next;
+    });
+  }, [visibleDims, config, initialDims]);
 
   const result = useMemo(() => {
     const r = calculateFormulaPrice(config, dims);
