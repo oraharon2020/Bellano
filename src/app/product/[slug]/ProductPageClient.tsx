@@ -821,7 +821,6 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             {/* Formula Pricing - dimension sliders (only for enabled products) */}
             {activeFormula && (
               <FormulaPricingPanel
-                key={activeFormula.variation_id}
                 config={activeFormula.config}
                 showDepth={!!formulaConfig?.show_depth}
                 showHeight={!!formulaConfig?.show_height}
