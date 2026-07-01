@@ -517,27 +517,21 @@ export interface ColorSwatch {
   color?: string;
 }
 
-let colorSwatchesCache: Record<string, ColorSwatch> | null = null;
-let swatchesCacheTime: number = 0;
-const SWATCHES_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-// Fetch color swatches from WordPress
+// Fetch color swatches from WordPress.
+// No module-level in-memory cache here on purpose: a JS variable cache cannot
+// be cleared by the admin "clear cache" button (revalidateTag/revalidatePath
+// can't reset it), which made newly-added colors stay hidden for minutes. We
+// rely on Next's TAGGED fetch cache instead, which /api/cache busts via
+// revalidateTag('swatches').
 export async function getColorSwatches(): Promise<Record<string, ColorSwatch>> {
-  // Return cached data if available and not expired
-  if (colorSwatchesCache && Date.now() - swatchesCacheTime < SWATCHES_CACHE_DURATION) {
-    return colorSwatchesCache;
-  }
-
   try {
     const response = await fetch(`${WOOCOMMERCE_URL}/wp-json/${siteConfig.prefix}/v1/color-swatches`, {
-      next: { revalidate: 300 }
+      next: { revalidate: 3600, tags: ['swatches'] }
     });
 
     if (response.ok) {
       const data = await response.json();
       if (data.success && data.swatches) {
-        colorSwatchesCache = data.swatches;
-        swatchesCacheTime = Date.now();
         return data.swatches;
       }
     }
@@ -545,7 +539,7 @@ export async function getColorSwatches(): Promise<Record<string, ColorSwatch>> {
     console.error('Error fetching color swatches:', error);
   }
 
-  return colorSwatchesCache || {};
+  return {};
 }
 
 // Normalize string for comparison (remove extra spaces, lowercase)

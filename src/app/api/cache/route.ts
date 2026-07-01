@@ -39,6 +39,10 @@ export async function POST(request: NextRequest) {
   // an admin-triggered "clear cache now" action, so immediate is what we want).
   revalidateTag('formula', { expire: 0 });
 
+  // Color swatches live in a tagged fetch cache too (newly-added colors would
+  // otherwise stay hidden until the fetch revalidate window elapses).
+  revalidateTag('swatches', { expire: 0 });
+
   return NextResponse.json({
     success: true,
     path,
