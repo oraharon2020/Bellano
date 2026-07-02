@@ -424,7 +424,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     setManualImageSelect(false);
   }, [selectedAttributes]);
 
-  // Track view_item - Vercel Analytics
+  // Track view_item - Vercel Analytics + Meta Pixel ViewContent + GA4
   useEffect(() => {
     const priceValue = parseFloat(product.price.replace(/[^\d.]/g, '')) || 0;
     analytics.viewProduct({
@@ -433,6 +433,30 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
       price: priceValue,
       category: category?.name,
     });
+
+    // Meta Pixel ViewContent (catalog-compatible product id)
+    if (typeof window !== 'undefined' && (window as any).fbq) {
+      (window as any).fbq('track', 'ViewContent', {
+        content_name: product.name,
+        content_ids: [product.databaseId.toString()],
+        content_type: 'product',
+        value: priceValue,
+        currency: 'ILS',
+      });
+    }
+
+    // GA4 view_item
+    if (typeof window !== 'undefined' && (window as any).gtag) {
+      (window as any).gtag('event', 'view_item', {
+        currency: 'ILS',
+        value: priceValue,
+        items: [{
+          item_id: product.databaseId.toString(),
+          item_name: product.name,
+          price: priceValue,
+        }],
+      });
+    }
   }, [product.databaseId, product.name, product.price, category?.name]);
 
   // Handle thumbnail click
@@ -474,7 +498,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     if (typeof window !== 'undefined' && (window as any).fbq) {
       (window as any).fbq('track', 'AddToCart', {
         content_name: product.name,
-        content_ids: [product.databaseId.toString()],
+        content_ids: selectedVariation?.id
+          ? [selectedVariation.id.toString(), product.databaseId.toString()]
+          : [product.databaseId.toString()],
         content_type: 'product',
         value: priceValue * quantity,
         currency: 'ILS',
@@ -488,7 +514,8 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         currency: 'ILS',
         value: priceValue * quantity,
         items: [{
-          item_id: product.databaseId.toString(),
+          item_id: (selectedVariation?.id || product.databaseId).toString(),
+          item_group_id: selectedVariation?.id ? product.databaseId.toString() : undefined,
           item_name: product.name,
           price: priceValue,
           quantity: quantity,

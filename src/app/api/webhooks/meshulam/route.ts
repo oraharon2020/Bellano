@@ -153,7 +153,7 @@ export async function POST(request: NextRequest) {
       try {
         const getMeta = (k: string): string | undefined =>
           (order.meta_data || []).find((m: { key: string; value: unknown }) => m.key === k)?.value as string | undefined;
-        const lineItems: Array<{ product_id: number; quantity: number; price: string | number }> = order.line_items || [];
+        const lineItems: Array<{ product_id: number; variation_id?: number; quantity: number; price: string | number }> = order.line_items || [];
         const capiRes = await sendMetaPurchase({
           eventId: `order_${orderId}`,
           eventSourceUrl: getMeta('_event_source_url'),
@@ -168,8 +168,13 @@ export async function POST(request: NextRequest) {
           fbc: getMeta('_fbc'),
           value: parseFloat(order.total) || 0,
           currency: order.currency || 'ILS',
-          contentIds: lineItems.map((li) => String(li.product_id)),
-          contents: lineItems.map((li) => ({ id: String(li.product_id), quantity: li.quantity, item_price: Number(li.price) || undefined })),
+          contentIds: lineItems.flatMap((li) => {
+            const ids: string[] = [];
+            if (li.variation_id) ids.push(String(li.variation_id));
+            if (li.product_id) ids.push(String(li.product_id));
+            return ids;
+          }),
+          contents: lineItems.map((li) => ({ id: String(li.variation_id || li.product_id), quantity: li.quantity, item_price: Number(li.price) || undefined })),
           numItems: lineItems.reduce((n, li) => n + (li.quantity || 0), 0),
         });
         if (!capiRes.ok) {

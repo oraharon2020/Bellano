@@ -65,6 +65,8 @@ export async function GET(request: NextRequest) {
           name: string;
           quantity: number;
           total: string;
+          product_id?: number;
+          variation_id?: number;
           image?: { src?: string };
           meta_data?: Array<{ key: string; value: string; display_key?: string; display_value?: string }>;
         }) => {
@@ -105,6 +107,8 @@ export async function GET(request: NextRequest) {
             quantity: item.quantity,
             price: `₪${parseFloat(item.total).toLocaleString()}`,
             image: item.image?.src || null,
+            product_id: item.product_id || 0,
+            variation_id: item.variation_id || 0,
             attributes: attributes.length > 0 ? attributes : undefined,
           };
         }),

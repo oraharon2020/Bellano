@@ -13,6 +13,8 @@ interface OrderItem {
   quantity: number;
   price: string;
   image?: string;
+  product_id?: number;
+  variation_id?: number;
   attributes?: Array<{ name: string; value: string }>;
 }
 
@@ -46,14 +48,27 @@ function SuccessContent() {
       
       const totalValue = parseFloat(orderData.total) || 0;
       const eventType = isPhoneOrder ? 'Lead' : 'Purchase'; // Phone orders are leads until paid
-      
+
+      // Catalog-compatible IDs: send variation + product id for each line
+      const contentIds = orderData.items.flatMap((it) => {
+        const ids: string[] = [];
+        if (it.variation_id) ids.push(String(it.variation_id));
+        if (it.product_id) ids.push(String(it.product_id));
+        return ids;
+      });
+      const fbContents = orderData.items.map((it) => ({
+        id: String(it.variation_id || it.product_id || ''),
+        quantity: it.quantity,
+      }));
+
       // Facebook Pixel - Purchase or Lead Event
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', eventType, {
           value: totalValue,
           currency: 'ILS',
           content_type: 'product',
-          content_ids: orderData.items.map((_, i) => `item_${i}`),
+          content_ids: contentIds,
+          contents: fbContents,
           num_items: orderData.items.reduce((sum, item) => sum + item.quantity, 0),
           order_id: orderData.id,
         }, { eventID: `order_${orderData.id}` });
@@ -78,8 +93,9 @@ function SuccessContent() {
           transaction_id: orderData.id,
           value: totalValue,
           currency: 'ILS',
-          items: orderData.items.map((item, index) => ({
-            item_id: `item_${index}`,
+          items: orderData.items.map((item) => ({
+            item_id: String(item.variation_id || item.product_id || ''),
+            item_group_id: item.product_id ? String(item.product_id) : undefined,
             item_name: item.name,
             quantity: item.quantity,
             price: parseFloat(item.price.replace(/[^\d.]/g, '')) || 0,
