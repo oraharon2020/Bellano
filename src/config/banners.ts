@@ -6,6 +6,7 @@ export interface Banner {
   id: string;
   image: string;           // URL of the banner image
   mobileImage?: string;    // Optional different image for mobile
+  imageOnly?: boolean;     // Show the full image with no text/button overlay
   title?: string;          // Optional overlay title
   subtitle?: string;       // Optional overlay subtitle
   buttonText?: string;     // Optional button text

@@ -103,7 +103,7 @@ export function HeroBanner() {
               src={banner.image}
               alt={banner.title || 'Banner'}
               fill
-              className="object-cover hidden md:block"
+              className={`${banner.imageOnly ? 'object-contain' : 'object-cover'} hidden md:block`}
               priority={index === 0}
               sizes="100vw"
             />
@@ -112,13 +112,13 @@ export function HeroBanner() {
               src={banner.mobileImage || banner.image}
               alt={banner.title || 'Banner'}
               fill
-              className="object-cover md:hidden"
+              className={`${banner.imageOnly ? 'object-contain' : 'object-cover'} md:hidden`}
               priority={index === 0}
               sizes="100vw"
             />
 
             {/* Overlay Content */}
-            {(banner.title || banner.subtitle || banner.buttonText) && (
+            {!banner.imageOnly && (banner.title || banner.subtitle || banner.buttonText) && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/20">
                 <div className="text-center text-white px-4">
                   {banner.title && (
