@@ -110,6 +110,28 @@ async function HeroSection() {
   const titleIsHebrew = /[֐-׿]/.test(title);
   const defaultH1 = 'רהיטים מעוצבים לבית - בלאנו';
 
+  // Image-only banner: render the designed image at its natural aspect ratio
+  // (no fixed-height crop) so it stays sharp on desktop and nothing is cut off.
+  if (imageOnly) {
+    return (
+      <section className="w-full bg-[#f5f5f0]">
+        <h1 className="sr-only">{title || defaultH1}</h1>
+        <picture>
+          {mobileImageUrl && mobileImageUrl !== imageUrl && (
+            <source media="(max-width: 767px)" srcSet={mobileImageUrl} />
+          )}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imageUrl}
+            alt="בלאנו רהיטי מעצבים"
+            className="block w-full h-auto"
+            fetchPriority="high"
+          />
+        </picture>
+      </section>
+    );
+  }
+
   return (
     <section className="relative h-[60vh] md:h-[72vh] overflow-hidden">
       {/* Background - Video or Image */}
