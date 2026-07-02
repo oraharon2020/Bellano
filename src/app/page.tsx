@@ -16,6 +16,7 @@ const getOptimizedImageUrl = (src: string, width: number = 750) => {
 // Types for homepage banners
 interface HomepageBanner {
   mediaType: 'image' | 'video';
+  imageOnly: boolean;
   image: string;
   mobileImage: string;
   video: string;
@@ -58,6 +59,7 @@ async function HeroSection() {
   
   // Default values if no banner from WordPress
   const mediaType = banner?.mediaType || 'image';
+  const imageOnly = banner?.imageOnly || false;
   const imageUrl = banner?.image || siteConfig.defaultBannerImage;
   const mobileImageUrl = banner?.mobileImage || imageUrl;
   const videoUrl = fixMediaUrl(banner?.video) || '';
@@ -157,12 +159,17 @@ async function HeroSection() {
         )}
         
         {/* Side gradient overlay - text sits on the right (RTL start) */}
-        <div className={`absolute inset-0 ${textColor === 'white'
-          ? 'bg-gradient-to-l from-black/60 via-black/25 to-black/5'
-          : 'bg-gradient-to-l from-white/70 via-white/30 to-white/5'}`} />
+        {!imageOnly && (
+          <div className={`absolute inset-0 ${textColor === 'white'
+            ? 'bg-gradient-to-l from-black/60 via-black/25 to-black/5'
+            : 'bg-gradient-to-l from-white/70 via-white/30 to-white/5'}`} />
+        )}
       </div>
       
-      {/* Content - editorial, aligned to the right (RTL start); always rendered so the page always has an H1 */}
+      {/* Content - hidden entirely for image-only banners; keep an sr-only H1 for SEO */}
+      {imageOnly ? (
+        <h1 className="sr-only">{title || defaultH1}</h1>
+      ) : (
       <div className={`relative h-full flex ${textPositionClass}`}>
         <div className="container mx-auto px-4 md:px-8 w-full">
           <div className="max-w-2xl text-right">
@@ -215,6 +222,7 @@ async function HeroSection() {
           </div>
         </div>
       </div>
+      )}
     </section>
   );
 }
