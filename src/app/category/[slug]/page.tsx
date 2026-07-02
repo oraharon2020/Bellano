@@ -4,7 +4,7 @@ import { getCategoryContent } from '@/lib/wordpress';
 import { BreadcrumbJsonLd, CollectionPageJsonLd } from '@/components/seo';
 import { CategoryContentSection } from '@/components/category/CategoryContentSection';
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
-import { siteConfig } from '@/config/site';
+import { siteConfig, fixMediaUrl } from '@/config/site';
 import { getYoastCategorySEO, yoastToMetadata } from '@/lib/wordpress/seo';
 
 const SITE_URL = siteConfig.url;
@@ -126,6 +126,20 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const categoryName = category?.name || slug;
 
+  const bannerImg = categoryContent?.topBanner ? (
+    <picture>
+      {categoryContent.topBannerMobile ? (
+        <source media="(max-width: 767px)" srcSet={fixMediaUrl(categoryContent.topBannerMobile)} />
+      ) : null}
+      <img
+        src={fixMediaUrl(categoryContent.topBanner)}
+        alt={`מבצע ${categoryName}`}
+        className="w-full h-auto rounded-2xl"
+        loading="eager"
+      />
+    </picture>
+  ) : null;
+
   return (
     <>
       {/* Prefetch product pages for faster navigation */}
@@ -163,6 +177,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         />
       )}
       
+      {bannerImg && (
+        <div className="container mx-auto px-4 pt-6">
+          {categoryContent?.topBannerLink ? (
+            <a href={categoryContent.topBannerLink} className="block">{bannerImg}</a>
+          ) : bannerImg}
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-8">
         {/* Breadcrumb */}
         <nav className="text-sm text-muted-foreground mb-6" aria-label="Breadcrumb">

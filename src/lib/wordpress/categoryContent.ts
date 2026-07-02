@@ -21,6 +21,9 @@ export interface CategoryContent {
   faq: CategoryFaqItem[];
   advantages: CategoryAdvantage[];
   related: CategoryRelated[];
+  topBanner: string;
+  topBannerMobile: string;
+  topBannerLink: string;
 }
 
 const EMPTY_CONTENT: CategoryContent = {
@@ -28,6 +31,9 @@ const EMPTY_CONTENT: CategoryContent = {
   faq: [],
   advantages: [],
   related: [],
+  topBanner: '',
+  topBannerMobile: '',
+  topBannerLink: '',
 };
 
 /**
@@ -66,6 +72,9 @@ export async function getCategoryContent(slug: string): Promise<CategoryContent>
             .filter((r: CategoryRelated) => r?.name && r?.slug)
             .map((r: CategoryRelated) => ({ name: r.name, slug: r.slug }))
         : [],
+      topBanner: typeof data?.topBanner === 'string' ? data.topBanner : '',
+      topBannerMobile: typeof data?.topBannerMobile === 'string' ? data.topBannerMobile : '',
+      topBannerLink: typeof data?.topBannerLink === 'string' ? data.topBannerLink : '',
     };
   } catch {
     return EMPTY_CONTENT;

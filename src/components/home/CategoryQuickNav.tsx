@@ -26,7 +26,7 @@ export async function CategoryQuickNav() {
     <nav aria-label="קטגוריות" className="border-b border-gray-100 bg-white">
       <div className="overflow-x-auto scrollbar-hide">
         {/* w-max + mx-auto: centered when it fits, edge-scrollable when it overflows */}
-        <ul className="flex items-start gap-5 md:gap-7 w-max mx-auto py-4 px-4">
+        <ul className="flex items-start gap-5 md:gap-7 w-max mx-auto pt-4 pb-2 px-4">
           {/* SALE tile first */}
           <li className="flex-shrink-0">
             <Link href="/category/sale" className="group flex flex-col items-center gap-2 w-16 md:w-20">
