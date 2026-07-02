@@ -75,6 +75,28 @@ function SuccessContent() {
         console.log(`Facebook ${eventType} event fired:`, totalValue);
       }
 
+      // Google Enhanced Conversions — supply first-party data so Google can
+      // match the conversion even when cookies are blocked. gtag hashes it
+      // client-side; we send plaintext email/phone (E.164) + name.
+      if (typeof window !== 'undefined' && (window as any).gtag && orderData.billing?.email) {
+        const rawPhone = (orderData.billing.phone || '').replace(/\D/g, '');
+        const phoneE164 = rawPhone
+          ? rawPhone.startsWith('0')
+            ? '+972' + rawPhone.slice(1)
+            : rawPhone.startsWith('972')
+            ? '+' + rawPhone
+            : '+972' + rawPhone
+          : undefined;
+        (window as any).gtag('set', 'user_data', {
+          email: orderData.billing.email,
+          ...(phoneE164 ? { phone_number: phoneE164 } : {}),
+          address: {
+            first_name: orderData.billing.first_name || undefined,
+            last_name: orderData.billing.last_name || undefined,
+          },
+        });
+      }
+
       // Google Ads - Conversion (for both - phone orders are still valuable leads)
       if (typeof window !== 'undefined' && (window as any).gtag) {
         const conversionLabel = siteConfig.analytics.googleAdsConversionLabel;
