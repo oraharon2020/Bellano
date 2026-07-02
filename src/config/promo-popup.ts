@@ -26,7 +26,7 @@ export const promoPopupConfig = {
 
     // Discount display
     discountNumber: '15%',
-    discountText: 'הנחה על כל האתר',
+    discountText: 'הנחה על קומודות ושידות צד מיטה',
 
     // Coupon section
     couponLabel: 'קוד קופון',
