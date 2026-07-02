@@ -1033,7 +1033,7 @@ export default function CheckoutPage() {
                           value={couponCode}
                           onChange={(e) => setCouponCode(e.target.value)}
                           placeholder="קוד קופון"
-                          className="w-full pr-10 pl-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                          className="w-full pr-10 pl-3 py-2 text-base md:text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), validateCoupon())}
                         />
                       </div>

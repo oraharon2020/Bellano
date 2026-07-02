@@ -308,7 +308,7 @@ export function CartSidebar() {
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value)}
                         placeholder="הזן קוד"
-                        className="flex-1 px-2 py-1.5 text-xs border rounded focus:outline-none focus:ring-1 focus:ring-black"
+                        className="flex-1 px-2 py-1.5 text-base md:text-xs border rounded focus:outline-none focus:ring-1 focus:ring-black"
                         onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
                       />
                       <button
