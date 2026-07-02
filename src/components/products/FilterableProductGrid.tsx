@@ -126,12 +126,11 @@ export function FilterableProductGrid({ products }: FilterableProductGridProps) 
       {/* Toolbar — Sort + Filter Toggle */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-2">
-          <p className="text-sm text-muted-foreground">
-            {filteredProducts.length} מוצרים
-            {filteredProducts.length !== products.length && (
-              <span className="text-xs"> (מתוך {products.length})</span>
-            )}
-          </p>
+          {filteredProducts.length !== products.length && (
+            <p className="text-sm text-muted-foreground">
+              {filteredProducts.length} מוצרים <span className="text-xs">(מתוך {products.length})</span>
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
