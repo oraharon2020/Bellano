@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sendMetaPurchase } from '@/lib/meta-capi';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://admin.bellano.co.il';
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -146,7 +147,40 @@ export async function POST(request: NextRequest) {
           }),
         }
       );
-      
+
+      // Server-side Meta Purchase (de-duplicated with the browser Pixel via
+      // event_id = order_<id>). Never blocks the webhook response on failure.
+      try {
+        const getMeta = (k: string): string | undefined =>
+          (order.meta_data || []).find((m: { key: string; value: unknown }) => m.key === k)?.value as string | undefined;
+        const lineItems: Array<{ product_id: number; quantity: number; price: string | number }> = order.line_items || [];
+        const capiRes = await sendMetaPurchase({
+          eventId: `order_${orderId}`,
+          eventSourceUrl: getMeta('_event_source_url'),
+          email: order.billing?.email,
+          phone: order.billing?.phone,
+          firstName: order.billing?.first_name,
+          lastName: order.billing?.last_name,
+          city: order.billing?.city,
+          clientIp: getMeta('_client_ip'),
+          userAgent: getMeta('_client_user_agent'),
+          fbp: getMeta('_fbp'),
+          fbc: getMeta('_fbc'),
+          value: parseFloat(order.total) || 0,
+          currency: order.currency || 'ILS',
+          contentIds: lineItems.map((li) => String(li.product_id)),
+          contents: lineItems.map((li) => ({ id: String(li.product_id), quantity: li.quantity, item_price: Number(li.price) || undefined })),
+          numItems: lineItems.reduce((n, li) => n + (li.quantity || 0), 0),
+        });
+        if (!capiRes.ok) {
+          console.error(`Meta CAPI Purchase failed for order ${orderId}:`, capiRes.error);
+        } else {
+          console.log(`Meta CAPI Purchase sent for order ${orderId}`);
+        }
+      } catch (e) {
+        console.error(`Meta CAPI Purchase threw for order ${orderId}:`, e);
+      }
+
       console.log(`Meshulam Webhook: Order ${orderId} marked as processing, asmachta: ${transactionId}, time: ${Date.now() - startTime}ms`);
       
       return NextResponse.json({ 

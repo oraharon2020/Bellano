@@ -334,6 +334,16 @@ export async function POST(request: NextRequest) {
       return lineItem;
     }));
 
+    // Capture Meta CAPI signals (used server-side by the payment webhook for a
+    // de-duplicated Purchase event). Stored as order meta.
+    const fbp = request.cookies.get('_fbp')?.value || '';
+    let fbc = request.cookies.get('_fbc')?.value || '';
+    if (!fbc && utm_data?.fbclid) {
+      fbc = `fb.1.${Date.now()}.${utm_data.fbclid}`;
+    }
+    const clientUserAgent = request.headers.get('user-agent') || '';
+    const eventSourceUrl = request.headers.get('referer') || utm_data?.landing_page || '';
+
     // Create the order in WooCommerce
     const orderData = {
       payment_method: isPhoneOrder ? 'cod' : 'meshulam',
@@ -390,6 +400,12 @@ export async function POST(request: NextRequest) {
         ...(utm_data?.gclid ? [{ key: '_gclid', value: utm_data.gclid }] : []),
         ...(utm_data?.fbclid ? [{ key: '_fbclid', value: utm_data.fbclid }] : []),
         ...(utm_data?.landing_page ? [{ key: '_landing_page', value: utm_data.landing_page }] : []),
+        // Meta CAPI signals (read by the payment webhook)
+        ...(fbp ? [{ key: '_fbp', value: fbp }] : []),
+        ...(fbc ? [{ key: '_fbc', value: fbc }] : []),
+        ...(clientUserAgent ? [{ key: '_client_user_agent', value: clientUserAgent }] : []),
+        ...(ip ? [{ key: '_client_ip', value: ip }] : []),
+        ...(eventSourceUrl ? [{ key: '_event_source_url', value: eventSourceUrl }] : []),
       ],
     };
 

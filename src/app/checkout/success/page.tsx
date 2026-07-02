@@ -56,7 +56,7 @@ function SuccessContent() {
           content_ids: orderData.items.map((_, i) => `item_${i}`),
           num_items: orderData.items.reduce((sum, item) => sum + item.quantity, 0),
           order_id: orderData.id,
-        });
+        }, { eventID: `order_${orderData.id}` });
         console.log(`Facebook ${eventType} event fired:`, totalValue);
       }
 
