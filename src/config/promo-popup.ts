@@ -25,7 +25,7 @@ export const promoPopupConfig = {
     englishText: 'SUMMER SALE',
 
     // Discount display
-    discountNumber: '15%',
+    discountNumber: '15',
     discountText: 'הנחה על קומודות ושידות צד מיטה',
 
     // Coupon section

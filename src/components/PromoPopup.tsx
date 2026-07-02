@@ -102,7 +102,7 @@ export default function PromoPopup() {
             {/* Discount */}
             <div className="text-center mb-8">
               <span className="text-6xl font-extralight text-gray-900 tracking-tight">
-                7<span className="text-3xl">%</span>
+                {content.discountNumber}<span className="text-3xl">%</span>
               </span>
               <p className="text-[13px] text-gray-500 mt-2 font-light">
                 {content.discountText}
