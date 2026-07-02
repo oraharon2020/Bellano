@@ -10,26 +10,27 @@ export const promoPopupConfig = {
   showOncePerSession: true,
   
   // Delay before showing popup (in milliseconds)
-  delay: 3000,
+  // Higher delay so it doesn't pop the moment the site opens
+  delay: 9000,
   
   // Popup content
   content: {
     // Small badge at top
-    badge: 'קיץ חם',
+    badge: 'סאמר סייל',
 
     // Hebrew headline
-    headline: 'מבצע קיץ עם בלאנו ☀️',
+    headline: 'מבצע קיץ בבלאנו ☀️',
 
     // English text
-    englishText: 'Summer Sale',
+    englishText: 'SUMMER SALE',
 
     // Discount display
-    discountNumber: '7%',
+    discountNumber: '15%',
     discountText: 'הנחה על כל האתר',
 
     // Coupon section
     couponLabel: 'קוד קופון',
-    couponCode: 'SUMMER7',
+    couponCode: 'SUMMER15',
     copyButtonText: 'העתק',
     copiedText: 'הועתק!',
 
@@ -38,6 +39,6 @@ export const promoPopupConfig = {
     ctaLink: '/categories',
 
     // Footer note
-    footerNote: 'בשביל קיץ מושלם בבית 🏡',
+    footerNote: 'קיץ מושלם מתחיל בבית 🏡',
   },
 };
