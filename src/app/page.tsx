@@ -132,6 +132,8 @@ async function HeroSection() {
             alt="בלאנו רהיטי מעצבים"
             fill
             className="object-cover hidden md:block"
+            sizes="100vw"
+            quality={92}
             priority
           />
         )}
@@ -154,6 +156,8 @@ async function HeroSection() {
             alt="בלאנו רהיטי מעצבים"
             fill
             className="object-cover md:hidden"
+            sizes="100vw"
+            quality={92}
             priority
           />
         )}
