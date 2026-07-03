@@ -310,10 +310,23 @@ export default function CheckoutPage() {
         return name;
       }).join(', ');
       
-      // Amount to charge (with coupon discount if applied)
-      const amountToCharge = appliedCoupon ? finalTotal : subtotal;
-      
-      console.log('Amount to charge:', amountToCharge);
+      // Amount to charge — ALWAYS the server-validated order total (formula
+      // re-validated, coupon + shipping applied server-side), never the client
+      // cart total, so the charge always equals the recorded order.
+      const clientAmount = appliedCoupon ? finalTotal : subtotal;
+      const serverTotal = Number(orderData.total);
+      // If the server price is HIGHER than what the customer saw (stale price or
+      // a changed formula), stop and ask them to refresh instead of charging
+      // more than displayed.
+      if (Number.isFinite(serverTotal) && serverTotal > clientAmount + 1) {
+        console.warn('Server total exceeds displayed price — aborting payment', { serverTotal, clientAmount });
+        setError('המחיר עודכן מאז שהוספתם את המוצר לעגלה. רעננו את העמוד כדי לראות את המחיר המעודכן ולבצע את ההזמנה מחדש.');
+        setIsLoading(false);
+        return;
+      }
+      const amountToCharge = (Number.isFinite(serverTotal) && serverTotal > 0) ? serverTotal : clientAmount;
+
+      console.log('Amount to charge (server-validated):', amountToCharge, { serverTotal, clientAmount });
       
       // Send single item with total amount to avoid Meshulam sum mismatch issues
       const finalPaymentItems = [{

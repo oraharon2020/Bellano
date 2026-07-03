@@ -17,7 +17,7 @@ const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 export async function getFormulaConfig(productId: number): Promise<FormulaProductConfig | null> {
   try {
     const res = await fetch(`${WP_URL}/wp-json/nalla/v1/formula/${productId}`, {
-      next: { revalidate: 300, tags: ['formula', `formula-${productId}`] },
+      next: { revalidate: 60, tags: ['formula', `formula-${productId}`] },
     });
     if (!res.ok) return null;
     const data: FormulaProductConfig = await res.json();
