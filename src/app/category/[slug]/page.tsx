@@ -6,6 +6,7 @@ import { CategoryContentSection } from '@/components/category/CategoryContentSec
 import { ExpandableDescription } from '@/components/ui/ExpandableDescription';
 import { siteConfig, fixMediaUrl } from '@/config/site';
 import { getYoastCategorySEO, yoastToMetadata } from '@/lib/wordpress/seo';
+import { notFound } from 'next/navigation';
 
 const SITE_URL = siteConfig.url;
 const PRODUCTS_PER_PAGE = 24;
@@ -108,6 +109,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   let products: any[] = [];
   let total = 0;
   let categoryContent = null;
+  let fetchFailed = false;
 
   try {
     const [categoryData, paginatedData, contentData] = await Promise.all([
@@ -122,6 +124,14 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     categoryContent = contentData;
   } catch (error) {
     console.error('Error fetching category data:', error);
+    fetchFailed = true;
+  }
+
+  // A slug that resolves to no real category is a genuine 404 — return the
+  // proper not-found page instead of an empty "no products" soft 404. Only when
+  // the fetch actually succeeded (never 404 on a transient API error).
+  if (!fetchFailed && !category) {
+    notFound();
   }
 
   const categoryName = category?.name || slug;
