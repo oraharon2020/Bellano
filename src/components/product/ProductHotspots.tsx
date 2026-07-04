@@ -67,8 +67,8 @@ export function ProductHotspots({
     return () => document.removeEventListener('pointerdown', onDown);
   }, [editing, openId]);
 
-  // Match by image PATH so admin.* vs www.* (or query strings) don't hide dots.
-  // Fall back to gallery index so points survive image regeneration (new URL).
+  // Match strictly by image PATH so a point only ever appears on the exact
+  // image it was placed on (admin.* vs www.* / query strings are normalised).
   const imgKey = (u: string) => {
     try {
       return new URL(u, WP_URL).pathname;
@@ -76,9 +76,7 @@ export function ProductHotspots({
       return u;
     }
   };
-  const current = all.filter(
-    (h) => imgKey(h.image) === imgKey(imageUrl) || (h.idx !== undefined && h.idx === imageIndex)
-  );
+  const current = all.filter((h) => imgKey(h.image) === imgKey(imageUrl));
 
   const addAt = useCallback(
     (e: React.MouseEvent) => {
