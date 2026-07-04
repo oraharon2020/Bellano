@@ -43,7 +43,15 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
     };
   }, [productId]);
 
-  const current = all.filter((h) => h.image === imageUrl);
+  // Match by image PATH so admin.* vs www.* (or query strings) don't hide dots.
+  const imgKey = (u: string) => {
+    try {
+      return new URL(u, WP_URL).pathname;
+    } catch {
+      return u;
+    }
+  };
+  const current = all.filter((h) => imgKey(h.image) === imgKey(imageUrl));
 
   const addAt = useCallback(
     (e: React.MouseEvent) => {
@@ -78,16 +86,20 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
     if (!adminToken) return;
     setSaving(true);
     try {
-      const res = await fetch(`${WP_URL}/wp-json/bellano/v1/hotspots/${productId}`, {
+      const res = await fetch(`/api/hotspots`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: adminToken, hotspots: all }),
+        body: JSON.stringify({ productId, hotspots: all, adminToken }),
       });
       const d = await res.json();
       if (d?.success) {
         setAll(Array.isArray(d.hotspots) ? d.hotspots : all);
         setDirty(false);
+      } else {
+        alert(d?.message === 'unauthorized' ? 'ההרשאה פגה — התחברו מחדש כאדמין.' : 'שמירה נכשלה, נסו שוב.');
       }
+    } catch {
+      alert('שגיאת רשת בשמירה.');
     } finally {
       setSaving(false);
     }
