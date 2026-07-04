@@ -120,6 +120,8 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              // Auto-save on finish so changes are never lost / forgotten.
+              if (editing && dirty) save();
               setEditing((v) => !v);
               setOpenId(null);
             }}
@@ -127,7 +129,7 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
               editing ? 'bg-black text-white' : 'bg-white/90 text-gray-800'
             }`}
           >
-            {editing ? 'סיום סימון' : '✏️ נקודות'}
+            {editing ? (saving ? 'שומר…' : '✓ סיום ושמירה') : '✏️ נקודות'}
           </button>
           {editing && (
             <button
@@ -148,7 +150,7 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
       {editing && (
         <div data-hs-bar className="absolute bottom-2 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
           <span className="text-[11px] bg-black/70 text-white rounded-full px-3 py-1">
-            לחצו על התמונה כדי להוסיף נקודה
+            לחצו על התמונה להוספת נקודה · ✕ למחיקה
           </span>
         </div>
       )}
@@ -171,6 +173,21 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
           >
             +
           </button>
+
+          {editing && (
+            <button
+              type="button"
+              data-hs-dot
+              onClick={(e) => {
+                e.stopPropagation();
+                remove(h.id);
+              }}
+              className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-600 text-white text-[10px] leading-none flex items-center justify-center shadow ring-2 ring-white hover:bg-red-700"
+              aria-label="מחק נקודה"
+            >
+              ✕
+            </button>
+          )}
 
           {openId === h.id && (
             <div
@@ -195,11 +212,19 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
                     rows={3}
                     className="w-full text-base border border-gray-300 rounded-md px-2 py-1"
                   />
-                  <div className="flex justify-between">
-                    <button type="button" onClick={() => remove(h.id)} className="text-xs text-red-600">
-                      מחק
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => remove(h.id)}
+                      className="flex-1 text-sm bg-red-50 text-red-600 rounded-md py-1.5 font-medium hover:bg-red-100"
+                    >
+                      🗑 מחק נקודה
                     </button>
-                    <button type="button" onClick={() => setOpenId(null)} className="text-xs text-gray-500">
+                    <button
+                      type="button"
+                      onClick={() => setOpenId(null)}
+                      className="flex-1 text-sm bg-gray-100 text-gray-600 rounded-md py-1.5 hover:bg-gray-200"
+                    >
                       סגור
                     </button>
                   </div>
