@@ -32,7 +32,7 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
 
   useEffect(() => {
     let cancelled = false;
-    fetch(`${WP_URL}/wp-json/bellano/v1/hotspots/${productId}`)
+    fetch(`/api/hotspots?productId=${productId}`)
       .then((r) => (r.ok ? r.json() : { hotspots: [] }))
       .then((d) => {
         if (!cancelled) setAll(Array.isArray(d?.hotspots) ? d.hotspots : []);

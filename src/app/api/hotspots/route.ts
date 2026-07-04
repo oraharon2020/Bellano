@@ -3,6 +3,23 @@ import { siteConfig } from '@/config/site';
 
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 
+// Same-origin GET proxy for reading hotspots. admin.bellano.co.il does not send
+// Access-Control-Allow-Origin, so a direct client fetch is CORS-blocked; proxy
+// it through Next so the browser reads it same-origin.
+export async function GET(request: NextRequest) {
+  const productId = Number(request.nextUrl.searchParams.get('productId')) || 0;
+  if (!productId) return NextResponse.json({ hotspots: [] });
+  try {
+    const res = await fetch(`${WP_URL}/wp-json/bellano/v1/hotspots/${productId}`, {
+      cache: 'no-store',
+    });
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch {
+    return NextResponse.json({ hotspots: [] });
+  }
+}
+
 // Server-side proxy for saving product hotspots. Keeps the write same-origin
 // (no cross-domain CORS to admin.*) — WordPress still authorises via the admin
 // token, so this only forwards; it does not weaken the auth.
