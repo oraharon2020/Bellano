@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles, ChevronDown } from 'lucide-react';
@@ -44,8 +44,9 @@ export function CartSidebar() {
   const discount = appliedCoupon?.discount || 0;
   const finalTotal = Math.max(0, subtotal - discount);
 
-  const validateCoupon = async () => {
-    if (!couponCode.trim()) {
+  const validateCoupon = async (codeOverride?: string) => {
+    const code = (codeOverride ?? couponCode).trim();
+    if (!code) {
       setCouponError('נא להזין קוד קופון');
       return;
     }
@@ -58,7 +59,7 @@ export function CartSidebar() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          code: couponCode.trim(),
+          code: code,
           cart_total: subtotal,
           product_ids: items.map(item => item.databaseId),
           line_items: items.map(item => ({
@@ -83,6 +84,7 @@ export function CartSidebar() {
         setCouponCode('');
         setCouponError('');
       } else {
+        setAppliedCoupon(null);
         setCouponError(data.message);
       }
     } catch (error) {
@@ -96,6 +98,18 @@ export function CartSidebar() {
     setAppliedCoupon(null);
     setCouponError('');
   };
+
+  // Re-validate an applied coupon when the cart changes: drop it if its eligible
+  // items were removed, or recompute the discount on what remains. Debounced to
+  // avoid hammering the endpoint on rapid quantity changes.
+  const cartSignature = items.map(i => `${i.databaseId}-${i.variation?.id || 0}-${i.quantity}`).join(',');
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    if (items.length === 0) { removeCoupon(); return; }
+    const t = setTimeout(() => validateCoupon(appliedCoupon.code), 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature]);
 
   if (!isHydrated || !isOpen) return null;
 
@@ -317,7 +331,7 @@ export function CartSidebar() {
                         onKeyDown={(e) => e.key === 'Enter' && validateCoupon()}
                       />
                       <button
-                        onClick={validateCoupon}
+                        onClick={() => validateCoupon()}
                         disabled={isValidating}
                         className="px-3 py-1.5 bg-gray-100 text-xs font-medium rounded hover:bg-gray-200 transition-colors disabled:opacity-50"
                       >

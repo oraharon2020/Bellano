@@ -103,6 +103,19 @@ export default function CheckoutPage() {
     }
   }, [searchParams, items.length]);
 
+  // Re-validate an applied coupon whenever the cart changes, so a coupon whose
+  // eligible items were removed is dropped (and the discount recomputed on what
+  // remains) instead of lingering with a stale discount. Debounced to avoid
+  // hammering the endpoint on rapid quantity changes.
+  const cartSignature = items.map(i => `${i.databaseId}-${i.variation?.id || 0}-${i.quantity}`).join(',');
+  useEffect(() => {
+    if (!appliedCoupon) return;
+    if (items.length === 0) { removeCoupon(); return; }
+    const t = setTimeout(() => validateCoupon(appliedCoupon.code), 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cartSignature]);
+
   const subtotal = getTotal();
   const discount = appliedCoupon?.discount || 0;
   const finalTotal = Math.max(0, subtotal - discount);
@@ -157,6 +170,7 @@ export default function CheckoutPage() {
         setCouponCode('');
         setCouponError('');
       } else {
+        setAppliedCoupon(null);
         setCouponError(data.message);
       }
     } catch {
