@@ -3,6 +3,10 @@ import { siteConfig } from '@/config/site';
 
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 
+// Reads must always reflect the latest save — never cache.
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Same-origin GET proxy for reading hotspots. admin.bellano.co.il does not send
 // Access-Control-Allow-Origin, so a direct client fetch is CORS-blocked; proxy
 // it through Next so the browser reads it same-origin.
@@ -10,11 +14,12 @@ export async function GET(request: NextRequest) {
   const productId = Number(request.nextUrl.searchParams.get('productId')) || 0;
   if (!productId) return NextResponse.json({ hotspots: [] });
   try {
-    const res = await fetch(`${WP_URL}/wp-json/bellano/v1/hotspots/${productId}`, {
-      cache: 'no-store',
-    });
+    const res = await fetch(
+      `${WP_URL}/wp-json/bellano/v1/hotspots/${productId}?_=${Date.now()}`,
+      { cache: 'no-store' }
+    );
     const data = await res.json();
-    return NextResponse.json(data);
+    return NextResponse.json(data, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ hotspots: [] });
   }
