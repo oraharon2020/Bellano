@@ -135,6 +135,11 @@ export default function CheckoutPage() {
           code: codeToValidate,
           cart_total: subtotal,
           product_ids: items.map(item => item.databaseId),
+          line_items: items.map(item => ({
+            product_id: item.databaseId,
+            price: parseInt(String(item.price).replace(/[^\d]/g, '')) || 0,
+            quantity: item.quantity,
+          })),
           has_bundle_items: items.some(item => item.bundleDiscount && item.bundleDiscount > 0),
         }),
       });

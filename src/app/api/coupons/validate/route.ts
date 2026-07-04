@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { code, cart_total, product_ids, has_bundle_items } = await request.json();
+    const { code, cart_total, product_ids, has_bundle_items, line_items } = await request.json();
 
     if (!code) {
       return NextResponse.json(
@@ -144,27 +144,80 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check product restrictions
-    if (coupon.product_ids.length > 0 && product_ids) {
-      const hasValidProduct = product_ids.some((id: number) => coupon.product_ids.includes(id));
-      if (!hasValidProduct) {
-        return NextResponse.json(
-          { success: false, message: 'הקופון לא תקף למוצרים בסל' },
-          { status: 400 }
-        );
+    // ── Eligibility: does the cart actually contain items this coupon covers? ──
+    // WooCommerce limits coupons by product AND category (include / exclude). We
+    // resolve each cart product's categories and keep only the ELIGIBLE items,
+    // so a category-limited coupon (e.g. SUMMER15 for bedside tables) is refused
+    // when the cart has none of them, and discounts ONLY the eligible items when
+    // the cart is mixed — instead of silently applying to the whole cart.
+    const hasProductRestriction =
+      coupon.product_ids.length > 0 ||
+      coupon.excluded_product_ids.length > 0 ||
+      coupon.product_categories.length > 0 ||
+      coupon.excluded_product_categories.length > 0;
+
+    // Working line items (prefer per-item data; fall back to bare product_ids).
+    const lines: { product_id: number; price: number; quantity: number }[] =
+      Array.isArray(line_items) && line_items.length
+        ? line_items.map((li: any) => ({
+            product_id: Number(li.product_id) || 0,
+            price: Number(li.price) || 0,
+            quantity: Number(li.quantity) || 1,
+          }))
+        : Array.isArray(product_ids)
+          ? product_ids.map((id: number) => ({ product_id: Number(id) || 0, price: 0, quantity: 1 }))
+          : [];
+
+    // Resolve the cart products' categories (only when a restriction exists).
+    const catMap: Record<number, number[]> = {};
+    if (hasProductRestriction && lines.length) {
+      const ids = Array.from(new Set(lines.map((l) => l.product_id).filter(Boolean)));
+      if (ids.length) {
+        try {
+          const prodRes = await fetch(
+            `${WC_URL}/wp-json/wc/v3/products?include=${ids.join(',')}&per_page=100&_fields=id,categories`,
+            { headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/json' }, cache: 'no-store' }
+          );
+          if (prodRes.ok) {
+            const prods: { id: number; categories?: { id: number }[] }[] = await prodRes.json();
+            for (const p of prods) catMap[p.id] = (p.categories || []).map((c) => c.id);
+          }
+        } catch {
+          // On a fetch failure, skip the CATEGORY check rather than wrongly
+          // reject a valid coupon; the product-id rules below still apply.
+        }
       }
     }
 
-    // Check excluded products
-    if (coupon.excluded_product_ids.length > 0 && product_ids) {
-      const allExcluded = product_ids.every((id: number) => coupon.excluded_product_ids.includes(id));
-      if (allExcluded) {
-        return NextResponse.json(
-          { success: false, message: 'הקופון לא תקף למוצרים בסל' },
-          { status: 400 }
-        );
-      }
+    const isEligible = (pid: number): boolean => {
+      const catsKnown = pid in catMap;
+      const cats = catMap[pid] || [];
+      const inProducts = coupon.product_ids.length === 0 || coupon.product_ids.includes(pid);
+      const notExcludedProduct = !coupon.excluded_product_ids.includes(pid);
+      const inCategories =
+        coupon.product_categories.length === 0 || !catsKnown || cats.some((c) => coupon.product_categories.includes(c));
+      const notExcludedCategory =
+        coupon.excluded_product_categories.length === 0 || !catsKnown || !cats.some((c) => coupon.excluded_product_categories.includes(c));
+      return inProducts && notExcludedProduct && inCategories && notExcludedCategory;
+    };
+
+    const eligibleLines = hasProductRestriction ? lines.filter((l) => isEligible(l.product_id)) : lines;
+
+    if (hasProductRestriction && eligibleLines.length === 0) {
+      return NextResponse.json(
+        { success: false, message: 'הקופון אינו תקף למוצרים שבסל.' },
+        { status: 400 }
+      );
     }
+
+    // Base the discount on the ELIGIBLE items only (matches WooCommerce). When
+    // no per-item prices were sent, fall back to the whole cart.
+    const havePrices = eligibleLines.some((l) => l.price > 0);
+    const eligibleSubtotal = havePrices
+      ? eligibleLines.reduce((sum, l) => sum + l.price * l.quantity, 0)
+      : cart_total;
+    const eligibleQty = eligibleLines.reduce((sum, l) => sum + l.quantity, 0) || 1;
+    const discountBase = hasProductRestriction ? eligibleSubtotal : cart_total;
 
     // Calculate discount
     let discount = 0;
@@ -172,7 +225,7 @@ export async function POST(request: NextRequest) {
 
     switch (coupon.discount_type) {
       case 'percent':
-        discount = (cart_total * parseFloat(coupon.amount)) / 100;
+        discount = (discountBase * parseFloat(coupon.amount)) / 100;
         discountDisplay = `${coupon.amount}%`;
         break;
       case 'fixed_cart':
@@ -180,8 +233,8 @@ export async function POST(request: NextRequest) {
         discountDisplay = `₪${coupon.amount}`;
         break;
       case 'fixed_product':
-        // For fixed product discount, calculate based on eligible products
-        discount = parseFloat(coupon.amount);
+        // Fixed amount off each eligible item (per quantity).
+        discount = parseFloat(coupon.amount) * eligibleQty;
         discountDisplay = `₪${coupon.amount}`;
         break;
     }
