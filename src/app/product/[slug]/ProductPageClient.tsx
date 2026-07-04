@@ -15,6 +15,7 @@ import { AdminProductFields } from '@/components/product/AdminProductFields';
 import { FormulaPricingPanel } from '@/components/product/FormulaPricingPanel';
 import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pricing';
 import { ProductVideo } from '@/components/product/ProductVideo';
+import { ProductHotspots } from '@/components/product/ProductHotspots';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
 import CompleteTheLook from '@/components/product/CompleteTheLook';
@@ -643,6 +644,12 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 <span className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded">
                   -{discountPercentage}%
                 </span>
+              )}
+              {allImages[selectedImage]?.sourceUrl && (
+                <ProductHotspots
+                  productId={product.databaseId}
+                  imageUrl={allImages[selectedImage].sourceUrl}
+                />
               )}
             </div>
 
