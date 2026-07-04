@@ -81,6 +81,8 @@ export function ProductHotspots({
   const addAt = useCallback(
     (e: React.MouseEvent) => {
       if (!editing || !ref.current) return;
+      // Stop the parent image container from opening the zoom lightbox.
+      e.stopPropagation();
       if ((e.target as HTMLElement).closest('[data-hs-dot],[data-hs-pop],[data-hs-bar]')) return;
       const rect = ref.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;

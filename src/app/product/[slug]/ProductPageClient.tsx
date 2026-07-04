@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import { Heart, Minus, Plus, Truck, ShieldCheck, CreditCard, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HelpCircle, ZoomIn } from 'lucide-react';
 import { ShareButtons } from '@/components/product/ShareButtons';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +16,7 @@ import { FormulaPricingPanel } from '@/components/product/FormulaPricingPanel';
 import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pricing';
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ProductHotspots } from '@/components/product/ProductHotspots';
+import { ProductLightbox } from '@/components/product/ProductLightbox';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
 import CompleteTheLook from '@/components/product/CompleteTheLook';
@@ -224,6 +225,8 @@ interface ProductPageClientProps {
 
 export function ProductPageClient({ product, variations = [], faqs = [], video = null, swatches = {}, category, relatedData, formulaConfig = null }: ProductPageClientProps) {
   const [selectedImage, setSelectedImage] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
@@ -627,7 +630,13 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
           {/* Image Gallery */}
           <div>
             {/* Main Image - Square, no background, rounded corners */}
-            <div className="relative aspect-square rounded-2xl overflow-hidden mb-3 md:mb-4">
+            <div
+              className="relative aspect-square rounded-2xl overflow-hidden mb-3 md:mb-4 cursor-zoom-in"
+              onClick={() => {
+                setLightboxIndex(selectedImage);
+                setLightboxOpen(true);
+              }}
+            >
               {allImages[selectedImage]?.sourceUrl && (
                 <Image
                   src={allImages[selectedImage].sourceUrl}
@@ -645,6 +654,18 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                   -{discountPercentage}%
                 </span>
               )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxIndex(selectedImage);
+                  setLightboxOpen(true);
+                }}
+                aria-label="הגדלת תמונה"
+                className="absolute bottom-3 left-3 z-10 w-9 h-9 rounded-full bg-white/85 hover:bg-white text-gray-800 shadow-md flex items-center justify-center"
+              >
+                <ZoomIn className="w-5 h-5" />
+              </button>
               {allImages[selectedImage]?.sourceUrl && (
                 <ProductHotspots
                   productId={product.databaseId}
@@ -1161,6 +1182,16 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         </div>
 
       </div>
+
+      <ProductLightbox
+        images={allImages}
+        video={video}
+        index={lightboxIndex}
+        onIndexChange={setLightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        productName={product.name}
+      />
     </div>
   );
 }
