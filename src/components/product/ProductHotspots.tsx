@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { track } from '@vercel/analytics';
 import { useAdminStore } from '@/lib/store/admin';
 import { siteConfig } from '@/config/site';
 
@@ -9,6 +10,7 @@ const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 interface Hotspot {
   id: string;
   image: string;
+  idx?: number;
   x: number;
   y: number;
   title: string;
@@ -21,12 +23,21 @@ interface Hotspot {
  * - Admins: an inline editor to add/move-less place, edit and delete points,
  *   then save straight to WordPress (write is admin-token authorised server-side).
  */
-export function ProductHotspots({ productId, imageUrl }: { productId: number; imageUrl: string }) {
+export function ProductHotspots({
+  productId,
+  imageUrl,
+  imageIndex = 0,
+}: {
+  productId: number;
+  imageUrl: string;
+  imageIndex?: number;
+}) {
   const { isAdmin, adminToken } = useAdminStore();
   const [all, setAll] = useState<Hotspot[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [suggesting, setSuggesting] = useState(false);
   const [dirty, setDirty] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -57,6 +68,7 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
   }, [editing, openId]);
 
   // Match by image PATH so admin.* vs www.* (or query strings) don't hide dots.
+  // Fall back to gallery index so points survive image regeneration (new URL).
   const imgKey = (u: string) => {
     try {
       return new URL(u, WP_URL).pathname;
@@ -64,7 +76,9 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
       return u;
     }
   };
-  const current = all.filter((h) => imgKey(h.image) === imgKey(imageUrl));
+  const current = all.filter(
+    (h) => imgKey(h.image) === imgKey(imageUrl) || (h.idx !== undefined && h.idx === imageIndex)
+  );
 
   const addAt = useCallback(
     (e: React.MouseEvent) => {
@@ -76,12 +90,12 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
       const id = 'hs_' + Math.random().toString(36).slice(2, 9);
       setAll((prev) => [
         ...prev,
-        { id, image: imageUrl, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, title: '', text: '' },
+        { id, image: imageUrl, idx: imageIndex, x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100, title: '', text: '' },
       ]);
       setOpenId(id);
       setDirty(true);
     },
-    [editing, imageUrl]
+    [editing, imageUrl, imageIndex]
   );
 
   const update = (id: string, patch: Partial<Hotspot>) => {
@@ -93,6 +107,29 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
     setAll((prev) => prev.filter((h) => h.id !== id));
     setOpenId(null);
     setDirty(true);
+  };
+
+  const suggest = async () => {
+    if (!adminToken || suggesting) return;
+    setSuggesting(true);
+    try {
+      const res = await fetch(`/api/hotspots/suggest`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, adminToken, image: imageUrl, idx: imageIndex }),
+      });
+      const d = await res.json();
+      if (d?.success && Array.isArray(d.hotspots) && d.hotspots.length) {
+        setAll((prev) => [...prev, ...d.hotspots]);
+        setDirty(true);
+      } else {
+        alert('לא התקבלו הצעות. נסו שוב או הוסיפו ידנית.');
+      }
+    } catch {
+      alert('שגיאת רשת בהצעה.');
+    } finally {
+      setSuggesting(false);
+    }
   };
 
   const save = async () => {
@@ -127,6 +164,16 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
       onClick={editing ? addAt : undefined}
       className={`absolute inset-0 z-20 ${editing ? 'cursor-crosshair pointer-events-auto' : 'pointer-events-none'}`}
     >
+      {current.length > 0 && (
+        <ul className="sr-only">
+          {current.map((h) => (
+            <li key={h.id}>
+              {h.title}
+              {h.text ? `: ${h.text}` : ''}
+            </li>
+          ))}
+        </ul>
+      )}
       {isAdmin && (
         <div data-hs-bar className="absolute top-2 left-2 z-30 flex gap-1 pointer-events-auto">
           <button
@@ -144,8 +191,19 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
           >
             {editing ? (saving ? 'שומר…' : '✓ סיום ושמירה') : '✏️ נקודות'}
           </button>
-          {editing && (
-            <button
+          {editing && (            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                suggest();
+              }}
+              disabled={suggesting}
+              className="text-xs rounded-md px-2 py-1 shadow bg-indigo-600 text-white disabled:opacity-50"
+            >
+              {suggesting ? 'מנתח׳…' : '✨ הצעת AI'}
+            </button>
+          )}
+          {editing && (            <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -179,7 +237,11 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
             data-hs-dot
             onClick={(e) => {
               e.stopPropagation();
-              setOpenId(openId === h.id ? null : h.id);
+              const next = openId === h.id ? null : h.id;
+              setOpenId(next);
+              if (next && !isAdmin) {
+                track('hotspot_open', { product_id: productId, title: h.title || '' });
+              }
             }}
             className="relative flex items-center justify-center p-1.5 -m-1.5"
             aria-label={h.title || 'מידע — לחצו'}

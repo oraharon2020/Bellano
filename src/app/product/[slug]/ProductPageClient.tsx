@@ -649,6 +649,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 <ProductHotspots
                   productId={product.databaseId}
                   imageUrl={allImages[selectedImage].sourceUrl}
+                  imageIndex={selectedImage}
                 />
               )}
             </div>
