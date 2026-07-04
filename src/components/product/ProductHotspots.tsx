@@ -43,6 +43,19 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
     };
   }, [productId]);
 
+  // Close an open info popover when clicking anywhere else on the page (view
+  // mode only — in edit mode clicks on the image are used to add points).
+  useEffect(() => {
+    if (editing || !openId) return;
+    const onDown = (e: Event) => {
+      const t = e.target as HTMLElement;
+      if (t.closest && t.closest('[data-hs-pop],[data-hs-dot]')) return;
+      setOpenId(null);
+    };
+    document.addEventListener('pointerdown', onDown);
+    return () => document.removeEventListener('pointerdown', onDown);
+  }, [editing, openId]);
+
   // Match by image PATH so admin.* vs www.* (or query strings) don't hide dots.
   const imgKey = (u: string) => {
     try {
@@ -168,10 +181,15 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
               e.stopPropagation();
               setOpenId(openId === h.id ? null : h.id);
             }}
-            className="w-6 h-6 rounded-full bg-white shadow-md ring-2 ring-black/70 flex items-center justify-center text-black text-sm font-bold hover:scale-110 transition-transform"
-            aria-label={h.title || 'מידע'}
+            className="relative flex items-center justify-center"
+            aria-label={h.title || 'מידע — לחצו'}
           >
-            +
+            {!editing && openId !== h.id && (
+              <span className="absolute w-8 h-8 rounded-full bg-black/25 animate-ping" />
+            )}
+            <span className="relative w-7 h-7 rounded-full bg-black text-white shadow-lg ring-2 ring-white flex items-center justify-center text-lg leading-none hover:scale-110 transition-transform">
+              +
+            </span>
           </button>
 
           {editing && (
@@ -231,7 +249,15 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
                 </div>
               ) : (
                 <>
-                  {h.title && <div className="font-semibold text-gray-900 text-sm mb-1">{h.title}</div>}
+                  <button
+                    type="button"
+                    onClick={() => setOpenId(null)}
+                    aria-label="סגור"
+                    className="absolute top-1 left-1 w-6 h-6 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center text-sm"
+                  >
+                    ✕
+                  </button>
+                  {h.title && <div className="font-semibold text-gray-900 text-sm mb-1 pl-6">{h.title}</div>}
                   {h.text && <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{h.text}</div>}
                 </>
               )}
