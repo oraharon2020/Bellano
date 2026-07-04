@@ -181,13 +181,13 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
               e.stopPropagation();
               setOpenId(openId === h.id ? null : h.id);
             }}
-            className="relative flex items-center justify-center"
+            className="relative flex items-center justify-center p-1.5 -m-1.5"
             aria-label={h.title || 'מידע — לחצו'}
           >
             {!editing && openId !== h.id && (
-              <span className="absolute w-8 h-8 rounded-full bg-black/25 animate-ping" />
+              <span className="absolute w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-black/25 animate-ping" />
             )}
-            <span className="relative w-7 h-7 rounded-full bg-black text-white shadow-lg ring-2 ring-white flex items-center justify-center text-lg leading-none hover:scale-110 transition-transform">
+            <span className="relative w-5 h-5 sm:w-7 sm:h-7 rounded-full bg-black text-white shadow-lg ring-2 ring-white flex items-center justify-center text-sm sm:text-lg leading-none hover:scale-110 transition-transform">
               +
             </span>
           </button>
@@ -206,65 +206,69 @@ export function ProductHotspots({ productId, imageUrl }: { productId: number; im
               ✕
             </button>
           )}
+        </div>
+      ))}
 
-          {openId === h.id && (
-            <div
-              data-hs-pop
-              dir="rtl"
-              onClick={(e) => e.stopPropagation()}
-              className="absolute z-40 mt-2 w-56 max-w-[70vw] bg-white rounded-xl shadow-xl border border-gray-100 p-3 text-right"
-              style={{ left: '50%', transform: 'translateX(-50%)' }}
-            >
-              {editing ? (
-                <div className="space-y-2">
-                  <input
-                    value={h.title}
-                    onChange={(e) => update(h.id, { title: e.target.value })}
-                    placeholder="כותרת"
-                    className="w-full text-base border border-gray-300 rounded-md px-2 py-1"
-                  />
-                  <textarea
-                    value={h.text}
-                    onChange={(e) => update(h.id, { text: e.target.value })}
-                    placeholder="תיאור"
-                    rows={3}
-                    className="w-full text-base border border-gray-300 rounded-md px-2 py-1"
-                  />
-                  <div className="flex gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => remove(h.id)}
-                      className="flex-1 text-sm bg-red-50 text-red-600 rounded-md py-1.5 font-medium hover:bg-red-100"
-                    >
-                      🗑 מחק נקודה
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setOpenId(null)}
-                      className="flex-1 text-sm bg-gray-100 text-gray-600 rounded-md py-1.5 hover:bg-gray-200"
-                    >
-                      סגור
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
+      {/* Info / editor panel pinned to the bottom of the image — never clipped. */}
+      {(() => {
+        const h = current.find((x) => x.id === openId);
+        if (!h) return null;
+        return (
+          <div
+            data-hs-pop
+            dir="rtl"
+            onClick={(e) => e.stopPropagation()}
+            className="absolute inset-x-2 bottom-2 z-40 bg-white/95 backdrop-blur rounded-xl shadow-xl border border-gray-100 p-3 text-right pointer-events-auto"
+          >
+            {editing ? (
+              <div className="space-y-2">
+                <input
+                  value={h.title}
+                  onChange={(e) => update(h.id, { title: e.target.value })}
+                  placeholder="כותרת"
+                  className="w-full text-base border border-gray-300 rounded-md px-2 py-1"
+                />
+                <textarea
+                  value={h.text}
+                  onChange={(e) => update(h.id, { text: e.target.value })}
+                  placeholder="תיאור"
+                  rows={3}
+                  className="w-full text-base border border-gray-300 rounded-md px-2 py-1"
+                />
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => remove(h.id)}
+                    className="flex-1 text-sm bg-red-50 text-red-600 rounded-md py-1.5 font-medium hover:bg-red-100"
+                  >
+                    🗑 מחק נקודה
+                  </button>
                   <button
                     type="button"
                     onClick={() => setOpenId(null)}
-                    aria-label="סגור"
-                    className="absolute top-1 left-1 w-6 h-6 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center text-sm"
+                    className="flex-1 text-sm bg-gray-100 text-gray-600 rounded-md py-1.5 hover:bg-gray-200"
                   >
-                    ✕
+                    סגור
                   </button>
-                  {h.title && <div className="font-semibold text-gray-900 text-sm mb-1 pl-6">{h.title}</div>}
-                  {h.text && <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{h.text}</div>}
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      ))}
+                </div>
+              </div>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setOpenId(null)}
+                  aria-label="סגור"
+                  className="absolute top-1.5 left-1.5 w-7 h-7 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 flex items-center justify-center text-base"
+                >
+                  ✕
+                </button>
+                {h.title && <div className="font-semibold text-gray-900 text-sm mb-1 pl-8">{h.title}</div>}
+                {h.text && <div className="text-gray-600 text-sm leading-relaxed whitespace-pre-line">{h.text}</div>}
+              </>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
