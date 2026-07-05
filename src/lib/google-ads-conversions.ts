@@ -1,21 +1,23 @@
-// Google Ads — server-side offline conversion import.
+// Google Ads — server-side offline conversion import via the Data Manager API.
 //
-// Uploads a purchase conversion straight to Google Ads from a trusted server
-// context (the Meshulam payment webhook), keyed by the click's `gclid` that we
-// captured at order creation. This is the Google equivalent of Meta CAPI: it is
-// immune to ad blockers / iOS / Safari ITP / users who never return to the
-// thank-you page, so Google Ads stops under-counting ad-driven purchases.
+// Google sunset ConversionUploadService.UploadClickConversions for new
+// integrations; the current path is the Data Manager API `events:ingest`.
+// Uploads a purchase event straight to Google Ads from a trusted server context
+// (the Meshulam payment webhook), keyed by the click's `gclid` captured at order
+// creation — immune to ad blockers / iOS / users who never return to the
+// thank-you page — so Google Ads stops under-counting ad-driven purchases.
 //
-// It is de-duplicated against the browser tag by `orderId` (transaction id).
+// De-duplicated against the browser tag by `transactionId` (order id).
 //
 // Secrets come from env only (never the client):
-//   GOOGLE_ADS_DEVELOPER_TOKEN        – Google Ads API developer token
-//   GOOGLE_ADS_CUSTOMER_ID            – the account running the ads (digits only)
-//   GOOGLE_ADS_LOGIN_CUSTOMER_ID      – optional; MCC/manager id (digits only)
+//   GOOGLE_ADS_CUSTOMER_ID            – the Ads account id (digits only)
+//   GOOGLE_ADS_LOGIN_CUSTOMER_ID      – optional; manager id when going via MCC
 //   GOOGLE_ADS_CONVERSION_ACTION_ID   – numeric id of the Purchase conversion action
+//   GOOGLE_ADS_DEVELOPER_TOKEN        – optional; sent as developer-token header
 //   GOOGLE_OAUTH_CLIENT_ID            – OAuth client id
 //   GOOGLE_OAUTH_CLIENT_SECRET        – OAuth client secret
-//   GOOGLE_OAUTH_REFRESH_TOKEN        – OAuth refresh token (offline access)
+//   GOOGLE_OAUTH_REFRESH_TOKEN        – OAuth refresh token WITH the
+//                                       .../auth/datamanager scope
 
 import crypto from 'crypto';
 
@@ -27,7 +29,7 @@ const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 const OAUTH_REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-const API_VERSION = 'v21';
+const INGEST_URL = 'https://datamanager.googleapis.com/v1/events:ingest';
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
@@ -49,15 +51,6 @@ function hashPhone(phone?: string | null): string | undefined {
   if (p.startsWith('0')) p = '972' + p.slice(1);
   else if (!p.startsWith('972')) p = '972' + p;
   return sha256('+' + p);
-}
-
-/** "yyyy-mm-dd hh:mm:ss+00:00" in UTC — the format Google Ads expects. */
-function formatConversionDateTime(date: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return (
-    `${date.getUTCFullYear()}-${p(date.getUTCMonth() + 1)}-${p(date.getUTCDate())} ` +
-    `${p(date.getUTCHours())}:${p(date.getUTCMinutes())}:${p(date.getUTCSeconds())}+00:00`
-  );
 }
 
 /** Exchange the offline refresh token for a short-lived access token. */
@@ -94,16 +87,15 @@ export interface GoogleAdsConversionInput {
 }
 
 /**
- * Upload a purchase conversion to Google Ads. Never throws — returns a result
- * object so the caller (webhook) is unaffected.
+ * Ingest a purchase event to Google Ads via the Data Manager API. Never throws —
+ * returns a result object so the caller (webhook) is unaffected.
  */
 export async function sendGoogleAdsConversion(
   input: GoogleAdsConversionInput
 ): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
-  if (!DEVELOPER_TOKEN || !CUSTOMER_ID || !CONVERSION_ACTION_ID) {
+  if (!CUSTOMER_ID || !CONVERSION_ACTION_ID) {
     return { ok: false, skipped: true, error: 'Google Ads env not configured' };
   }
-  // No click id and no user identifiers → nothing Google can attribute.
   const hasClick = !!(input.gclid || input.gbraid || input.wbraid);
   const em = hashField(input.email);
   const ph = hashPhone(input.phone);
@@ -114,46 +106,55 @@ export async function sendGoogleAdsConversion(
   const accessToken = await getAccessToken();
   if (!accessToken) return { ok: false, error: 'oauth token exchange failed' };
 
-  const conversion: Record<string, unknown> = {
-    conversionAction: `customers/${CUSTOMER_ID}/conversionActions/${CONVERSION_ACTION_ID}`,
-    conversionDateTime: formatConversionDateTime(input.conversionDate || new Date()),
-    conversionValue: input.value,
-    currencyCode: input.currency,
-    orderId: input.orderId,
+  const destination: Record<string, unknown> = {
+    operatingAccount: { product: 'GOOGLE_ADS', accountId: CUSTOMER_ID },
+    productDestinationId: CONVERSION_ACTION_ID,
   };
-  if (input.gclid) conversion.gclid = input.gclid;
-  if (input.gbraid) conversion.gbraid = input.gbraid;
-  if (input.wbraid) conversion.wbraid = input.wbraid;
+  if (LOGIN_CUSTOMER_ID) {
+    destination.loginAccount = { product: 'GOOGLE_ADS', accountId: LOGIN_CUSTOMER_ID };
+  }
+
+  const adIdentifiers: Record<string, string> = {};
+  if (input.gclid) adIdentifiers.gclid = input.gclid;
+  if (input.gbraid) adIdentifiers.gbraid = input.gbraid;
+  if (input.wbraid) adIdentifiers.wbraid = input.wbraid;
 
   const userIdentifiers: Array<Record<string, string>> = [];
-  if (em) userIdentifiers.push({ hashedEmail: em });
-  if (ph) userIdentifiers.push({ hashedPhoneNumber: ph });
-  if (userIdentifiers.length) conversion.userIdentifiers = userIdentifiers;
+  if (em) userIdentifiers.push({ emailAddress: em });
+  if (ph) userIdentifiers.push({ phoneNumber: ph });
+
+  const event: Record<string, unknown> = {
+    transactionId: input.orderId,
+    eventTimestamp: (input.conversionDate || new Date()).toISOString(),
+    eventSource: 'WEB',
+    currency: input.currency,
+    conversionValue: input.value,
+  };
+  if (Object.keys(adIdentifiers).length) event.adIdentifiers = adIdentifiers;
+  if (userIdentifiers.length) event.userData = { userIdentifiers };
 
   const payload = {
-    conversions: [conversion],
-    partialFailure: true,
+    destinations: [destination],
+    events: [event],
+    encoding: 'HEX',
   };
 
   try {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${accessToken}`,
-      'developer-token': DEVELOPER_TOKEN,
       'Content-Type': 'application/json',
     };
+    if (DEVELOPER_TOKEN) headers['developer-token'] = DEVELOPER_TOKEN;
     if (LOGIN_CUSTOMER_ID) headers['login-customer-id'] = LOGIN_CUSTOMER_ID;
 
-    const res = await fetch(
-      `https://googleads.googleapis.com/${API_VERSION}/customers/${CUSTOMER_ID}:uploadClickConversions`,
-      { method: 'POST', headers, body: JSON.stringify(payload) }
-    );
+    const res = await fetch(INGEST_URL, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       return { ok: false, error: JSON.stringify(json?.error || json) };
-    }
-    // partialFailureError is reported with HTTP 200 — surface it.
-    if (json?.partialFailureError) {
-      return { ok: false, error: JSON.stringify(json.partialFailureError) };
     }
     return { ok: true };
   } catch (e) {
