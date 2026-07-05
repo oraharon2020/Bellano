@@ -27,7 +27,7 @@ const OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID;
 const OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
 const OAUTH_REFRESH_TOKEN = process.env.GOOGLE_OAUTH_REFRESH_TOKEN;
 
-const API_VERSION = 'v18';
+const API_VERSION = 'v21';
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
