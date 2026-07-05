@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendMetaPurchase } from '@/lib/meta-capi';
+import { sendGoogleAdsConversion } from '@/lib/google-ads-conversions';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://admin.bellano.co.il';
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -184,6 +185,37 @@ export async function POST(request: NextRequest) {
         }
       } catch (e) {
         console.error(`Meta CAPI Purchase threw for order ${orderId}:`, e);
+      }
+
+      // Server-side Google Ads conversion (offline import keyed by the captured
+      // gclid, de-duplicated with the browser tag via orderId). Fixes Google
+      // Ads under-counting ad-driven purchases that miss the client-side tag.
+      try {
+        const getMeta2 = (k: string): string | undefined =>
+          (order.meta_data || []).find((m: { key: string; value: unknown }) => m.key === k)?.value as string | undefined;
+        const gclid = getMeta2('_gclid');
+        const gbraid = getMeta2('_gbraid');
+        const wbraid = getMeta2('_wbraid');
+        const adsRes = await sendGoogleAdsConversion({
+          orderId: String(orderId),
+          gclid,
+          gbraid,
+          wbraid,
+          value: parseFloat(order.total) || 0,
+          currency: order.currency || 'ILS',
+          conversionDate: order.date_created_gmt ? new Date(order.date_created_gmt + 'Z') : new Date(),
+          email: order.billing?.email,
+          phone: order.billing?.phone,
+        });
+        if (adsRes.skipped) {
+          console.log(`Google Ads conversion skipped for order ${orderId}: ${adsRes.error}`);
+        } else if (!adsRes.ok) {
+          console.error(`Google Ads conversion failed for order ${orderId}:`, adsRes.error);
+        } else {
+          console.log(`Google Ads conversion sent for order ${orderId}`);
+        }
+      } catch (e) {
+        console.error(`Google Ads conversion threw for order ${orderId}:`, e);
       }
 
       console.log(`Meshulam Webhook: Order ${orderId} marked as processing, asmachta: ${transactionId}, time: ${Date.now() - startTime}ms`);
