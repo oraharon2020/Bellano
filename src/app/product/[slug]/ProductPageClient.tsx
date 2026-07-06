@@ -16,6 +16,7 @@ import { FormulaPricingPanel } from '@/components/product/FormulaPricingPanel';
 import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pricing';
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ProductHotspots } from '@/components/product/ProductHotspots';
+import { ProductHomePhotos } from '@/components/product/ProductHomePhotos';
 import { ProductLightbox } from '@/components/product/ProductLightbox';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
@@ -775,6 +776,10 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             </div>
             
             <p className="text-xs text-gray-400 mb-3 md:mb-4">מק״ט: {product.databaseId}</p>
+
+            <div className="mb-3 md:mb-4">
+              <ProductHomePhotos productId={product.databaseId} />
+            </div>
 
             {/* Price */}
             <div className="mb-3 md:mb-4">
