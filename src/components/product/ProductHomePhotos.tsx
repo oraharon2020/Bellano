@@ -18,7 +18,7 @@ interface HomePhoto {
  * Uploads go into the WordPress media library via the same-origin proxy.
  */
 export function ProductHomePhotos({ productId }: { productId: number }) {
-  const { isAdmin, adminToken } = useAdminStore();
+  const { isAdmin, adminToken, logout, openLoginModal } = useAdminStore();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [photos, setPhotos] = useState<HomePhoto[]>([]);
@@ -29,6 +29,15 @@ export function ProductHomePhotos({ productId }: { productId: number }) {
 
   useEffect(() => setMounted(true), []);
 
+  // A 401 means the admin token expired. Surface it instead of failing silently
+  // and send the user back to the login modal.
+  const handleExpired = useCallback(() => {
+    setOpen(false);
+    logout();
+    openLoginModal();
+    alert('ההרשאה פגה — התחברו מחדש כמנהל.');
+  }, [logout, openLoginModal]);
+
   const load = useCallback(async () => {
     if (!adminToken) return;
     setLoading(true);
@@ -37,6 +46,10 @@ export function ProductHomePhotos({ productId }: { productId: number }) {
         headers: { 'x-admin-token': adminToken },
         cache: 'no-store',
       });
+      if (res.status === 401) {
+        handleExpired();
+        return;
+      }
       const d = await res.json();
       setPhotos(Array.isArray(d?.photos) ? d.photos : []);
     } catch {
@@ -44,7 +57,7 @@ export function ProductHomePhotos({ productId }: { productId: number }) {
     } finally {
       setLoading(false);
     }
-  }, [productId, adminToken]);
+  }, [productId, adminToken, handleExpired]);
 
   useEffect(() => {
     if (open) load();
@@ -76,6 +89,10 @@ export function ProductHomePhotos({ productId }: { productId: number }) {
         fd.append('adminToken', adminToken);
         fd.append('file', file);
         const res = await fetch(`/api/home-photos/upload`, { method: 'POST', body: fd });
+        if (res.status === 401) {
+          handleExpired();
+          return;
+        }
         const d = await res.json();
         if (d?.success && d.photo) {
           setPhotos((prev) => [...prev, d.photo]);
