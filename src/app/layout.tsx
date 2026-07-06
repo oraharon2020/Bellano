@@ -10,6 +10,7 @@ import { OrganizationJsonLd, WebsiteJsonLd, LocalBusinessJsonLd } from "@/compon
 import { siteConfig } from "@/config/site";
 import PromoPopup from "@/components/PromoPopup";
 import { AdminLoginModal } from "@/components/layout/AdminLoginModal";
+import { AdminSessionGuard } from "@/components/layout/AdminSessionGuard";
 import { UtmTracker } from "@/components/UtmTracker";
 
 const rubik = Rubik({
@@ -172,6 +173,7 @@ export default function RootLayout({
         <FloatingButtons />
         <PromoPopup />
         <AdminLoginModal />
+        <AdminSessionGuard />
         <UtmTracker />
         <Analytics />
         <SpeedInsights />
