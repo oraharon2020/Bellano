@@ -50,7 +50,7 @@ export async function CategoriesShowcase() {
             src={category.image.sourceUrl}
             alt={category.name}
             fill
-            className="object-cover grayscale transition-all duration-[900ms] ease-out group-hover:grayscale-0 group-hover:scale-[1.04]"
+            className="object-cover transition-transform duration-[900ms] ease-out group-hover:scale-[1.04]"
             sizes={large ? '100vw' : '(max-width: 768px) 50vw, 320px'}
             quality={82}
           />

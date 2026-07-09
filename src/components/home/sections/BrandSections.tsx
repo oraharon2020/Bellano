@@ -25,7 +25,7 @@ export function CustomFurnitureSection() {
                 src="/images/homepage/custom-furniture.jpg"
                 alt="התאמה אישית"
                 fill
-                className="object-cover grayscale hover:grayscale-0 transition-all duration-[900ms]"
+                className="object-cover hover:scale-105 transition-transform duration-[900ms]"
                 sizes="(max-width: 1024px) 100vw, 600px"
               />
             </div>
@@ -113,7 +113,7 @@ export function InstagramSection() {
               src={src}
               alt={`בלאנו באינסטגרם ${i + 1}`}
               fill
-              className="object-cover grayscale group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105"
+              className="object-cover transition-transform duration-700 group-hover:scale-105"
               sizes="(max-width: 768px) 33vw, 16vw"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
