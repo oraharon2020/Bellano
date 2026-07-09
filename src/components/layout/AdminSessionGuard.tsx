@@ -11,7 +11,7 @@ import { useAdminStore } from '@/lib/store/admin';
  * valid — so the UI always reflects reality across every admin feature.
  */
 export function AdminSessionGuard() {
-  const { isAdmin, adminToken, logout } = useAdminStore();
+  const { isAdmin, adminToken, logout, openLoginModal } = useAdminStore();
   const checking = useRef(false);
 
   useEffect(() => {
@@ -27,10 +27,18 @@ export function AdminSessionGuard() {
           cache: 'no-store',
         });
         const d = await res.json().catch(() => ({}));
-        // Only log out on an explicit negative — never on a transient network error.
-        if (!cancelled && d && d.isAdmin === false) {
+        // Ignore a stale result: if the user re-logged in meanwhile, the active
+        // token will have changed — never log out the fresh session.
+        const currentToken = useAdminStore.getState().adminToken;
+        if (
+          !cancelled &&
+          currentToken === adminToken &&
+          d &&
+          d.isAdmin === false
+        ) {
           logout();
-          alert('החיבור כמנהל פג — התחברו מחדש כדי להמשיך לנהל.');
+          // Re-prompt login instead of a blocking error alert.
+          openLoginModal();
         }
       } catch {
         /* transient error — keep the session */
@@ -46,7 +54,7 @@ export function AdminSessionGuard() {
       cancelled = true;
       window.removeEventListener('focus', onFocus);
     };
-  }, [isAdmin, adminToken, logout]);
+  }, [isAdmin, adminToken, logout, openLoginModal]);
 
   return null;
 }
