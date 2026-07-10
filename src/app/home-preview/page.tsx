@@ -1,90 +1,75 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { getProductsWithSwatches, getCategories, transformCategory } from '@/lib/woocommerce';
-import { siteConfig, getApiEndpoint } from '@/config/site';
-import { WhatsAppSubscribeForm } from '@/components/home/WhatsAppSubscribeForm';
+import { getApiEndpoint, siteConfig } from '@/config/site';
 
 export const metadata = {
   title: 'בלאנו — תצוגה מקדימה',
   robots: { index: false, follow: false },
 };
 
-interface Cat {
+interface Category {
   id: string | number;
   name: string;
   slug: string;
   image?: { sourceUrl: string };
 }
 
-async function getBannerImage(): Promise<string> {
+const roomPaths = [
+  { icon: '⌂', title: 'סלון', subtitle: 'החלל שבו הכל קורה', links: [{ label: 'ספות', slug: 'sofas' }, { label: 'מזנונים', slug: 'living-room-sideboards' }, { label: 'שולחנות סלון', slug: 'living-room-tables' }] },
+  { icon: '◫', title: 'פינת אוכל', subtitle: 'רגעים סביב השולחן', links: [{ label: 'פינות אוכל', slug: 'dining' }, { label: 'כיסאות', slug: 'dining-room-chairs' }, { label: 'שולחנות בר', slug: 'bar-tables' }] },
+  { icon: '▭', title: 'חדר שינה', subtitle: 'המקום שהוא רק שלכם', links: [{ label: 'מיטות', slug: 'beds' }, { label: 'קומודות', slug: 'dresser' }, { label: 'שידות לילה', slug: 'bedside-tables' }] },
+  { icon: '▱', title: 'כניסה לבית', subtitle: 'הרושם הראשון', links: [{ label: 'קונסולות', slug: 'consoles' }, { label: 'מראות', slug: 'mirrors' }, { label: 'אקססוריז', slug: 'accessories' }] },
+];
+
+async function getBanner(): Promise<string> {
   try {
     const res = await fetch(getApiEndpoint('homepage'), { next: { revalidate: 300 } });
-    if (res.ok) {
-      const data = await res.json();
-      const b = data?.banners?.[0];
-      return b?.image || siteConfig.defaultBannerImage;
-    }
+    if (res.ok) return (await res.json())?.banners?.[0]?.image || siteConfig.defaultBannerImage;
   } catch {
     /* fall through */
   }
   return siteConfig.defaultBannerImage;
 }
 
-async function getCats(): Promise<Cat[]> {
-  let cats: Cat[] = [];
+async function getFeaturedCategories(): Promise<Category[]> {
   try {
     const res = await fetch(getApiEndpoint('featured-categories'), { next: { revalidate: 300 } });
     if (res.ok) {
       const data = await res.json();
-      if (data.categories?.length) cats = data.categories;
+      if (data.categories?.length) return data.categories;
     }
   } catch {
-    /* fall through */
+    /* use Woo fallback */
   }
-  if (!cats.length) {
-    const woo = await getCategories({ per_page: 50, hide_empty: true });
-    cats = woo
-      .filter((c: { parent: number; slug: string }) => c.parent === 0 && c.slug !== 'uncategorized')
-      .slice(0, 12)
-      .map(transformCategory) as Cat[];
-  }
-  return cats;
+  const categories = await getCategories({ per_page: 50, hide_empty: true });
+  return categories
+    .filter((c: { parent: number; slug: string }) => c.parent === 0 && c.slug !== 'uncategorized')
+    .slice(0, 8)
+    .map(transformCategory) as Category[];
 }
 
-/* ─── Hero — full-bleed image with an oversized magazine masthead ─── */
-async function HeroEditorial() {
-  const image = await getBannerImage();
+async function TopHero() {
+  const image = await getBanner();
   return (
-    <section className="relative h-[92vh] min-h-[560px] w-full overflow-hidden bg-[#0a0a0a]">
-      <Image src={image} alt="בלאנו רהיטי מעצבים" fill priority quality={92} className="object-cover" sizes="100vw" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/45" />
-
-      {/* top masthead line */}
-      <div className="absolute inset-x-0 top-0 z-10">
-        <div className="container mx-auto px-5 md:px-10 pt-6 flex items-center justify-between text-white/80 text-[11px] tracking-[0.35em] uppercase font-english">
-          <span>Est. 2009</span>
-          <span className="hidden md:block">Designed Furniture</span>
-          <span>Tel Aviv</span>
-        </div>
-      </div>
-
-      {/* Oversized wordmark + statement */}
-      <div className="relative z-10 h-full flex flex-col justify-end pb-16 md:pb-24">
-        <div className="container mx-auto px-5 md:px-10">
-          <p className="text-white/70 font-english text-xs tracking-[0.4em] uppercase mb-4">The Furniture Gallery</p>
-          <h1 className="text-white font-english font-bold leading-[0.82] tracking-[-0.03em] text-[24vw] md:text-[16vw]">
-            BELLANO
+    <section className="relative h-[74vh] min-h-[530px] overflow-hidden bg-[#f0efec]">
+      <Image src={image} alt="בלאנו רהיטי מעצבים" fill priority className="object-cover" sizes="100vw" quality={90} />
+      <div className="absolute inset-0 bg-gradient-to-l from-black/45 via-black/10 to-transparent" />
+      <div className="relative h-full container mx-auto px-5 md:px-10 flex items-end pb-14 md:pb-20">
+        <div className="max-w-xl text-white">
+          <p className="text-[11px] font-english tracking-[0.38em] uppercase text-white/80 mb-4">Bellano / Made for living</p>
+          <h1 className="text-4xl md:text-6xl font-light leading-[1.1] tracking-tight">
+            בואו נעצב את<br /><strong className="font-bold">הבית שלכם.</strong>
           </h1>
-          <div className="mt-6 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-            <p className="text-white/90 text-lg md:text-2xl font-light max-w-md leading-relaxed">
-              רהיטים מעוצבים בהתאמה אישית — כל פריט הוא יצירה אחת ויחידה.
-            </p>
-            <Link
-              href="/categories"
-              className="group inline-flex items-center gap-3 bg-white text-black hover:bg-transparent hover:text-white border border-white px-9 py-4 text-sm tracking-[0.15em] uppercase font-medium transition-all duration-300 self-start md:self-auto"
-            >
-              <span>לצפייה בקולקציה</span>
-              <span className="group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
+          <p className="mt-5 max-w-md text-base md:text-lg leading-relaxed text-white/90">
+            רהיטים מעוצבים, התאמה אישית וליווי מקצועי — מהרעיון הראשון ועד הבית.
+          </p>
+          <div className="flex flex-wrap gap-3 mt-8">
+            <a href="#rooms" className="bg-white text-black px-7 py-3.5 text-sm font-medium hover:bg-black hover:text-white transition-colors">
+              התחילו לפי חלל
+            </a>
+            <Link href="/design-assistant" className="border border-white/70 px-7 py-3.5 text-sm font-medium hover:bg-white hover:text-black transition-colors">
+              עוזר העיצוב שלנו
             </Link>
           </div>
         </div>
@@ -93,70 +78,56 @@ async function HeroEditorial() {
   );
 }
 
-/* ─── Marquee strip ─── */
-function Marquee() {
-  const items = ['משלוח חינם עד הבית', 'עד 12 תשלומים ללא ריבית', 'שנה אחריות מלאה', 'התאמה אישית מלאה', 'ייצור בישראל'];
-  const row = [...items, ...items];
+function RoomChooser() {
   return (
-    <section className="bg-black text-white overflow-hidden border-y border-white/10">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: '@keyframes bl-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}',
-        }}
-      />
-      <div className="flex whitespace-nowrap py-4" style={{ animation: 'bl-marquee 30s linear infinite' }}>
-        {row.map((t, i) => (
-          <span key={i} className="flex items-center text-sm tracking-[0.2em] uppercase">
-            <span className="px-8">{t}</span>
-            <span className="text-white/30" aria-hidden="true">✦</span>
-          </span>
-        ))}
+    <section id="rooms" className="bg-[#faf9f7] py-16 md:py-24 scroll-mt-20">
+      <div className="container mx-auto px-5 md:px-10">
+        <div className="max-w-xl mb-10 md:mb-14">
+          <p className="text-xs font-english tracking-[0.35em] uppercase text-gray-400 mb-3">Start here</p>
+          <h2 className="text-3xl md:text-5xl font-light tracking-tight">מה אתם <strong className="font-bold">מעצבים היום?</strong></h2>
+          <p className="text-gray-500 mt-4 leading-relaxed">בחרו חלל, גלו רעיונות ומצאו את הרהיטים שמתאימים בדיוק אליו.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border-t border-l border-gray-200">
+          {roomPaths.map((room) => (
+            <article key={room.title} className="bg-white border-b border-r border-gray-200 p-6 md:p-8 min-h-[260px] flex flex-col group hover:bg-black hover:text-white transition-colors duration-300">
+              <span className="font-english text-4xl text-gray-300 group-hover:text-white/50 mb-8 transition-colors" aria-hidden="true">{room.icon}</span>
+              <h3 className="text-2xl font-medium">{room.title}</h3>
+              <p className="text-sm text-gray-500 group-hover:text-white/60 mt-2 transition-colors">{room.subtitle}</p>
+              <div className="mt-auto pt-8 flex flex-wrap gap-x-3 gap-y-2">
+                {room.links.map((link) => (
+                  <Link key={link.slug} href={`/category/${link.slug}`} className="text-xs border-b border-gray-300 group-hover:border-white/60 pb-0.5 hover:opacity-60 transition-opacity">
+                    {link.label}
+                  </Link>
+                ))}
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-/* ─── Categories — cinematic horizontal gallery, numbered ─── */
-async function CategoriesGallery() {
-  const cats = (await getCats()).slice(0, 8);
+async function CategoryWall() {
+  const cats = (await getFeaturedCategories()).slice(0, 8);
   if (!cats.length) return null;
   return (
-    <section className="py-16 md:py-28 bg-white">
-      <div className="container mx-auto px-5 md:px-10 mb-8 md:mb-12 flex items-end justify-between">
+    <section className="py-16 md:py-24 bg-white">
+      <div className="container mx-auto px-5 md:px-10 flex items-end justify-between mb-8 md:mb-12">
         <div>
-          <p className="font-english text-gray-400 text-[11px] tracking-[0.4em] uppercase mb-3">Index / Collections</p>
-          <h2 className="text-4xl md:text-6xl font-english font-bold tracking-tight">Collections</h2>
+          <p className="text-xs font-english tracking-[0.35em] uppercase text-gray-400 mb-3">Shop by category</p>
+          <h2 className="text-3xl md:text-5xl font-light tracking-tight">כל מה שהבית <strong className="font-bold">צריך</strong></h2>
         </div>
-        <Link href="/categories" className="hidden md:inline-block text-xs uppercase tracking-[0.15em] border-b border-black pb-1 hover:opacity-60 transition-opacity">
-          View all
-        </Link>
+        <Link href="/categories" className="hidden md:block text-sm border-b border-black pb-1 hover:opacity-60">לכל הקטגוריות</Link>
       </div>
-
-      <div className="flex gap-4 md:gap-6 overflow-x-auto scrollbar-hide px-5 md:px-10 pb-4 snap-x snap-mandatory">
-        {cats.map((c, i) => (
-          <Link
-            key={c.id}
-            href={`/category/${c.slug}`}
-            className="group relative flex-shrink-0 w-[78vw] sm:w-[46vw] md:w-[30vw] lg:w-[24vw] snap-start"
-          >
-            <div className="relative aspect-square overflow-hidden bg-[#f4f3f1]">
-              {c.image?.sourceUrl && (
-                <Image
-                  src={c.image.sourceUrl}
-                  alt={c.name}
-                  fill
-                  className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  sizes="(max-width: 768px) 78vw, 24vw"
-                  quality={82}
-                />
-              )}
-              <span className="absolute top-4 left-4 font-english text-white/90 text-sm tracking-widest mix-blend-difference">
-                {String(i + 1).padStart(2, '0')}
-              </span>
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              <h3 className="text-lg md:text-xl font-medium">{c.name}</h3>
-              <span className="text-gray-400 group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
+      <div className="container mx-auto px-5 md:px-10 grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+        {cats.map((cat) => (
+          <Link href={`/category/${cat.slug}`} key={cat.id} className="group">
+            <div className="relative aspect-square overflow-hidden bg-[#f3f2ef]">
+              {cat.image?.sourceUrl && <Image src={cat.image.sourceUrl} alt={cat.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 50vw, 25vw" quality={80} />}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent pt-14 px-4 pb-4">
+                <h3 className="text-white font-medium text-sm md:text-base">{cat.name}</h3>
+              </div>
             </div>
           </Link>
         ))}
@@ -165,108 +136,67 @@ async function CategoriesGallery() {
   );
 }
 
-/* ─── Asymmetric editorial feature ─── */
-function FeatureSplit() {
-  return (
-    <section className="py-6 md:py-16 bg-white">
-      <div className="container mx-auto px-5 md:px-10">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-0 items-center">
-          <div className="md:col-span-7 relative">
-            <div className="relative aspect-[4/5] md:aspect-[3/4] overflow-hidden bg-[#f4f3f1]">
-              <Image src="/images/homepage/custom-furniture.jpg" alt="התאמה אישית" fill className="object-cover" sizes="(max-width:768px) 100vw, 55vw" />
-            </div>
-          </div>
-          <div className="md:col-span-5 md:-mr-16 relative z-10">
-            <div className="bg-black text-white p-8 md:p-14">
-              <p className="font-english text-white/40 text-[11px] tracking-[0.4em] uppercase mb-5">Bespoke</p>
-              <h2 className="text-3xl md:text-5xl font-light leading-tight mb-6">
-                מעוצב <span className="font-bold">בדיוק</span><br />בשבילכם
-              </h2>
-              <p className="text-white/60 leading-relaxed mb-8">
-                מידות, גימור, בדים וצבעים — כל פרט נבחר יחד איתכם. ליווי מעצב מהתכנון ועד ההתקנה בבית.
-              </p>
-              <Link
-                href="/contact"
-                className="group inline-flex items-center gap-3 border border-white/40 hover:border-white px-8 py-4 text-sm tracking-[0.15em] uppercase transition-colors"
-              >
-                <span>לתיאום ייעוץ</span>
-                <span className="group-hover:-translate-x-1 transition-transform" aria-hidden="true">←</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Products — numbered editorial row ─── */
-async function ProductsEditorial() {
-  const products = await getProductsWithSwatches({ per_page: 6, orderby: 'popularity' });
+async function Solutions() {
+  const products = await getProductsWithSwatches({ per_page: 4, orderby: 'popularity' });
   if (!products.length) return null;
   return (
-    <section className="py-16 md:py-28 bg-[#f7f6f4]">
-      <div className="container mx-auto px-5 md:px-10 mb-8 md:mb-12 flex items-end justify-between">
-        <div>
-          <p className="font-english text-gray-400 text-[11px] tracking-[0.4em] uppercase mb-3">Selected</p>
-          <h2 className="text-4xl md:text-6xl font-english font-bold tracking-tight">Bestsellers</h2>
-        </div>
-        <Link href="/categories" className="hidden md:inline-block text-xs uppercase tracking-[0.15em] border-b border-black pb-1 hover:opacity-60 transition-opacity">
-          Shop all
-        </Link>
-      </div>
-      <div className="flex gap-5 md:gap-8 overflow-x-auto scrollbar-hide px-5 md:px-10 pb-4 snap-x">
-        {products.map((p, i) => (
-          <Link key={p.id} href={`/product/${p.slug}`} className="group flex-shrink-0 w-[68vw] sm:w-[40vw] md:w-[26vw] lg:w-[20vw] snap-start">
-            <div className="relative aspect-square overflow-hidden bg-white mb-4">
-              {p.image && (
-                <Image src={p.image.sourceUrl} alt={p.name} fill className="object-cover transition-transform duration-700 group-hover:scale-105" sizes="(max-width:768px) 68vw, 20vw" quality={78} />
-              )}
-              <span className="absolute top-4 left-4 font-english text-black/70 text-sm tracking-widest">{String(i + 1).padStart(2, '0')}</span>
-              {p.onSale && <span className="absolute top-0 right-0 bg-black text-white text-[11px] font-english tracking-[0.15em] px-3 py-1.5">SALE</span>}
-            </div>
-            <h3 className="font-medium text-base line-clamp-1 group-hover:text-gray-500 transition-colors">{p.name}</h3>
-            <div className="flex items-center gap-3 mt-1">
-              {p.onSale && p.regularPrice && <span className="text-gray-400 line-through text-sm">{p.regularPrice}</span>}
-              <span className="font-bold text-lg">{p.price}</span>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-/* ─── Big statement ─── */
-function BigStatement() {
-  return (
-    <section className="relative bg-black text-white py-24 md:py-40 overflow-hidden">
-      <div className="container mx-auto px-5 md:px-10 text-center">
-        <p className="font-english text-white/40 text-[11px] tracking-[0.45em] uppercase mb-8">Crafted to order</p>
-        <h2 className="text-[13vw] md:text-[9vw] font-english font-bold leading-[0.85] tracking-tighter">
-          FORM<span className="text-white/30"> · </span>FUNCTION
-        </h2>
-        <p className="mt-8 text-white/70 text-lg md:text-xl font-light max-w-xl mx-auto">
-          עיצוב שמשלב אסתטיקה נקייה עם ריהוט שנבנה להחזיק שנים.
-        </p>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Newsletter ─── */
-function Newsletter() {
-  return (
-    <section className="py-20 md:py-28 bg-white">
+    <section className="py-16 md:py-24 bg-[#f0efec]">
       <div className="container mx-auto px-5 md:px-10">
-        <div className="border border-black p-10 md:p-16 text-center">
-          <p className="font-english text-gray-400 text-[11px] tracking-[0.4em] uppercase mb-4">Join the list</p>
-          <h2 className="text-3xl md:text-5xl font-light mb-4 tracking-tight">הישארו <span className="font-bold">מעודכנים</span></h2>
-          <p className="text-gray-500 mb-8 max-w-md mx-auto">עדכונים על קולקציות חדשות ומבצעים בלעדיים ישירות לוואטסאפ</p>
-          <div className="max-w-md mx-auto">
-            <WhatsAppSubscribeForm />
+        <div className="grid md:grid-cols-[1fr_2.2fr] gap-8 md:gap-14 items-start">
+          <div className="md:sticky md:top-28">
+            <p className="text-xs font-english tracking-[0.35em] uppercase text-gray-400 mb-3">Most loved</p>
+            <h2 className="text-3xl md:text-5xl font-light leading-tight tracking-tight">בחירות <strong className="font-bold">שלקוחות אוהבים</strong></h2>
+            <p className="text-gray-500 mt-5 leading-relaxed">הפריטים שנכנסו להכי הרבה בתים — וממשיכים לקבל מחמאות.</p>
+            <Link href="/categories" className="mt-8 inline-block bg-black text-white px-7 py-3.5 text-sm hover:bg-gray-700 transition-colors">לכל המוצרים</Link>
+          </div>
+          <div className="grid grid-cols-2 gap-4 md:gap-6">
+            {products.map((product) => (
+              <Link key={product.id} href={`/product/${product.slug}`} className="group">
+                <div className="relative aspect-square bg-white overflow-hidden">
+                  {product.image && <Image src={product.image.sourceUrl} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform duration-700" sizes="(max-width: 768px) 50vw, 30vw" quality={78} />}
+                </div>
+                <h3 className="mt-3 text-sm md:text-base font-medium line-clamp-1">{product.name}</h3>
+                <p className="mt-1 font-bold">{product.price}</p>
+              </Link>
+            ))}
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function PersonalDesign() {
+  return (
+    <section className="bg-black text-white py-16 md:py-24">
+      <div className="container mx-auto px-5 md:px-10 grid md:grid-cols-2 gap-10 md:gap-20 items-center">
+        <div>
+          <p className="text-xs font-english tracking-[0.35em] uppercase text-white/40 mb-4">Your home, your way</p>
+          <h2 className="text-4xl md:text-6xl font-light leading-tight tracking-tight">לא מצאתם<br /><strong className="font-bold">בדיוק מה שחיפשתם?</strong></h2>
+        </div>
+        <div>
+          <p className="text-white/70 text-lg leading-relaxed">בבלאנו אפשר להתאים מידות, צבעים, בדים וגימורים. שלחו לנו את החלל, הרעיון או המידה — ואנחנו נעזור לבנות את הפריט הנכון.</p>
+          <div className="flex flex-wrap gap-3 mt-8">
+            <Link href="/design-assistant" className="bg-white text-black px-7 py-3.5 text-sm font-medium hover:bg-gray-200 transition-colors">התחילו התאמה אישית</Link>
+            <Link href="/contact" className="border border-white/40 px-7 py-3.5 text-sm hover:border-white transition-colors">דברו איתנו</Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function TrustBar() {
+  const items = [['15+', 'שנות ניסיון'], ['12', 'תשלומים ללא ריבית'], ['∞', 'משלוח חינם עד הבית'], ['1', 'שנת אחריות מלאה']];
+  return (
+    <section className="py-12 md:py-16 bg-white border-b border-gray-200">
+      <div className="container mx-auto px-5 md:px-10 grid grid-cols-2 md:grid-cols-4 divide-x divide-x-reverse divide-gray-200">
+        {items.map(([value, label]) => (
+          <div key={label} className="text-center px-4 py-3">
+            <p className="font-english text-4xl md:text-5xl font-bold">{value}</p>
+            <p className="text-gray-500 text-xs md:text-sm mt-2">{label}</p>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -274,14 +204,13 @@ function Newsletter() {
 
 export default async function HomePreview() {
   return (
-    <div className="flex flex-col">
-      <HeroEditorial />
-      <Marquee />
-      <CategoriesGallery />
-      <FeatureSplit />
-      <ProductsEditorial />
-      <BigStatement />
-      <Newsletter />
-    </div>
+    <main>
+      <TopHero />
+      <TrustBar />
+      <RoomChooser />
+      <CategoryWall />
+      <Solutions />
+      <PersonalDesign />
+    </main>
   );
 }
