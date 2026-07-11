@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check, ChevronLeft, Loader2, RotateCcw, ShoppingBag } from 'lucide-react';
 import { useCartStore } from '@/lib/store/cart';
 
-interface Option { key: string; label: string; price: number; description?: string }
+interface Option { key: string; label: string; price: number; description?: string; image?: string }
 interface Group { label: string; multiple?: boolean; options: Option[] }
 interface Variation { id: number; name: string; attributes: { name: string; value: string }[]; image: string }
 interface DimConfig { min?: number; max?: number; step?: number; default?: number }
@@ -25,25 +25,22 @@ function values(config?: DimConfig) {
   return out;
 }
 
-function FurniturePreview({ width, height, base, opening }: { width: number; height: number; base: string; opening: string }) {
-  const visualWidth = Math.min(520, 260 + Math.max(0, width - 160) * 1.6);
-  const x = (600 - visualWidth) / 2;
-  const bodyY = 90;
-  const bodyH = Math.min(190, 110 + Math.max(0, height - 25) * 4);
-  const doors = width >= 240 ? 4 : width >= 190 ? 3 : 2;
+/**
+ * Live layered preview: the selected colour image is the base, and each chosen
+ * option that has a transparent layer image is stacked on top. Everything is
+ * plain <img> (object-contain) so any admin.bellano.co.il media URL just works.
+ */
+function LivePreview({ base, layers, width, height }: { base: string; layers: string[]; width: number; height: number }) {
   return (
-    <svg viewBox="0 0 600 360" className="w-full h-full" role="img" aria-label="המחשה סכמטית של המזנון">
-      <defs><linearGradient id="body" x1="0" x2="1"><stop stopColor="#e9e4dc"/><stop offset="1" stopColor="#cfc6b8"/></linearGradient><filter id="shadow"><feDropShadow dx="0" dy="10" stdDeviation="12" floodOpacity=".18"/></filter></defs>
-      <ellipse cx="300" cy="315" rx={visualWidth/2.1} ry="18" fill="#000" opacity=".08" />
-      <g filter="url(#shadow)">
-        <rect x={x} y={bodyY} width={visualWidth} height={bodyH} rx="5" fill="url(#body)" stroke="#a89f92" />
-        {Array.from({length:doors-1}).map((_,i)=><line key={i} x1={x+visualWidth/doors*(i+1)} x2={x+visualWidth/doors*(i+1)} y1={bodyY+4} y2={bodyY+bodyH-4} stroke="#aaa093" strokeWidth="1" />)}
-        {opening === 'handle' && Array.from({length:doors}).map((_,i)=><line key={i} x1={x+visualWidth/doors*(i+.5)-10} x2={x+visualWidth/doors*(i+.5)+10} y1={bodyY+18} y2={bodyY+18} stroke="#222" strokeWidth="3" />)}
-        {base === 'plinth' && <rect x={x+25} y={bodyY+bodyH} width={visualWidth-50} height="22" fill="#252525" />}
-        {base === 'metal' && <><line x1={x+35} x2={x+35} y1={bodyY+bodyH} y2={bodyY+bodyH+55} stroke="#181818" strokeWidth="8"/><line x1={x+visualWidth-35} x2={x+visualWidth-35} y1={bodyY+bodyH} y2={bodyY+bodyH+55} stroke="#181818" strokeWidth="8"/></>}
-      </g>
-      <text x="300" y="345" textAnchor="middle" fontSize="15" fill="#777">{width} × {height} ס״מ · המחשה כללית</text>
-    </svg>
+    <div className="relative w-full max-w-[560px] aspect-square mx-auto">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {base && <img src={base} alt="תצוגת הרהיט" className="absolute inset-0 w-full h-full object-contain" />}
+      {layers.map((src, i) => (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img key={src + i} src={src} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-opacity duration-300" />
+      ))}
+      <span className="absolute bottom-1 inset-x-0 text-center text-xs text-gray-500">{width} × {height} ס״מ · תצוגה חיה</span>
+    </div>
   );
 }
 
@@ -86,6 +83,8 @@ export function StudioConfigurator({ initial }: { initial: StudioConfig }) {
   const selected = (g:string,k:string) => Array.isArray(selections[g]) ? (selections[g] as string[]).includes(k) : selections[g] === k;
   const labels = Object.fromEntries(Object.entries(initial.studio.groups).map(([key,g]) => [key,g.options.filter(o=>selected(key,o.key)).map(o=>o.label)]));
   const variation = initial.product.variations.find(v=>v.id===variationId) || firstVariation;
+  const baseImage = variation?.image || initial.product.image;
+  const previewLayers = Object.entries(initial.studio.groups).flatMap(([key,group]) => group.options.filter(o => o.image && selected(key,o.key)).map(o => o.image as string));
 
   const add = () => {
     if (!calculation || !variation) return;
@@ -107,7 +106,7 @@ export function StudioConfigurator({ initial }: { initial: StudioConfig }) {
       <main className="max-w-[1500px] mx-auto grid lg:grid-cols-[1.15fr_.85fr] min-h-[calc(100vh-64px)]">
         <section className="relative bg-[#e9e8e5] p-5 md:p-10 flex flex-col min-h-[520px] lg:sticky lg:top-0 lg:h-[calc(100vh-64px)]">
           <div className="flex items-center justify-between"><span className="text-xs tracking-[.2em] uppercase text-gray-500">Live configuration</span><button onClick={()=>{setSelections(defaultSelections);setDimensions(defaultDims);}} className="text-xs flex gap-2 items-center text-gray-500"><RotateCcw className="w-3.5 h-3.5"/>איפוס</button></div>
-          <div className="flex-1 min-h-[300px] flex items-center justify-center"><FurniturePreview width={dimensions.width} height={dimensions.height} base={selections.base as string} opening={selections.opening as string}/></div>
+          <div className="flex-1 min-h-[300px] flex items-center justify-center"><LivePreview base={baseImage} layers={previewLayers} width={dimensions.width} height={dimensions.height}/></div>
           <div className="bg-white/70 backdrop-blur p-4 grid grid-cols-3 gap-3 text-center"><div><span className="block text-xs text-gray-500">רוחב</span><b>{dimensions.width} ס״מ</b></div><div><span className="block text-xs text-gray-500">עומק</span><b>{dimensions.depth} ס״מ</b></div><div><span className="block text-xs text-gray-500">גובה</span><b>{dimensions.height} ס״מ</b></div></div>
         </section>
         <section className="bg-white px-5 md:px-10 py-10 md:py-14 lg:max-h-[calc(100vh-64px)] lg:overflow-y-auto">
