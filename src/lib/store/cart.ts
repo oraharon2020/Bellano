@@ -23,15 +23,6 @@ export interface AdminFieldsData {
   glassPrice?: number;
 }
 
-export interface StudioFieldsData {
-  productId: number;
-  variationId: number;
-  dimensions: { width?: number; depth?: number; height?: number };
-  selections: Record<string, string | string[]>;
-  labels: Record<string, string[]>;
-  price: number;
-}
-
 export interface CartItem {
   id: string;
   databaseId: number;
@@ -50,7 +41,6 @@ export interface CartItem {
   };
   adminFields?: AdminFieldsData;
   formulaFields?: FormulaFieldsData; // Custom dimensions + formula-calculated price
-  studioFields?: StudioFieldsData; // Bellano Studio configuration, re-validated server-side
   bundleDiscount?: number; // Discount percentage if part of a bundle
   originalPrice?: string; // Original price before bundle discount
 }
@@ -94,7 +84,7 @@ const getItemKey = (id: string, variationId?: number, formulaKey?: string) => {
   return formulaKey ? `${base}-${formulaKey}` : base;
 };
 
-const cartItemKey = (item: Pick<CartItem, 'id' | 'variation' | 'formulaFields' | 'studioFields'>) =>
+const cartItemKey = (item: Pick<CartItem, 'id' | 'variation' | 'formulaFields'>) =>
   getItemKey(item.id, item.variation?.id, getFormulaKey(item.formulaFields));
 
 export const useCartStore = create<CartStore>()(

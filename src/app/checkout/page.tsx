@@ -262,14 +262,6 @@ export default function CheckoutPage() {
               price: item.formulaFields.price,
               labels: item.formulaFields.labels,
             } : undefined,
-            studio: item.studioFields ? {
-              product_id: item.studioFields.productId,
-              variation_id: item.studioFields.variationId,
-              dimensions: item.studioFields.dimensions,
-              selections: item.studioFields.selections,
-              labels: item.studioFields.labels,
-              price: item.studioFields.price,
-            } : undefined,
             // Include bundle discount info for price override
             bundle_discount: item.bundleDiscount,
             price: item.price, // Send the actual price (already discounted if bundle)

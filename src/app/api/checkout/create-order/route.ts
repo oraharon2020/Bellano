@@ -37,15 +37,6 @@ interface FormulaOrderData {
   labels?: { width?: string; depth?: string; height?: string }; // Custom dim labels
 }
 
-interface StudioOrderData {
-  product_id: number;
-  variation_id: number;
-  dimensions: { width?: number; depth?: number; height?: number };
-  selections: Record<string, string | string[]>;
-  labels: Record<string, string[]>;
-  price: number;
-}
-
 interface OrderItem {
   product_id: number;
   variation_id?: number;
@@ -53,7 +44,6 @@ interface OrderItem {
   variation_attributes?: VariationAttribute[];
   admin_fields?: AdminFields;
   formula?: FormulaOrderData; // Formula pricing (custom dimensions)
-  studio?: StudioOrderData; // Bellano Studio configuration (always server-validated)
   bundle_discount?: number; // Bundle discount percentage
   price?: string; // Actual price (may include bundle discount)
   original_price?: string; // Original price before bundle discount
@@ -139,32 +129,6 @@ async function fetchFormulaLabels(productId: number): Promise<Record<string, str
   } catch {
     return defaults;
   }
-}
-
-async function validateStudio(item: OrderItem) {
-  if (!item.studio) return null;
-  if (item.studio.product_id !== item.product_id || item.studio.variation_id !== item.variation_id) {
-    throw new Error('פרטי ה-Studio אינם תואמים למוצר שנבחר');
-  }
-  const res = await fetch(`${WC_URL}/wp-json/bellano/v1/studio/calculate`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Mozilla/5.0 BellanoStudioCheckout/1.0',
-    },
-    body: JSON.stringify({
-      product_id: item.product_id,
-      variation_id: item.variation_id,
-      dimensions: item.studio.dimensions,
-      selections: item.studio.selections,
-    }),
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error('לא הצלחנו לאמת את מחיר ה-Studio. רעננו ונסו שוב.');
-  const data = await res.json();
-  const price = Number(data?.price);
-  if (!Number.isFinite(price) || price <= 0) throw new Error('מחיר Studio אינו תקין');
-  return { ...data, price };
 }
 
 // Helper to determine traffic source label
@@ -365,28 +329,6 @@ export async function POST(request: NextRequest) {
           );
           lineItem.meta_data.push({ key: 'אימות מחיר מידות', value: 'נכשל - יש לוודא מחיר ידנית' });
         }
-      }
-
-      // Bellano Studio runs last and validates the complete configuration —
-      // formula dimensions plus all priced component options — on WordPress.
-      if (item.studio) {
-        const studio = await validateStudio(item);
-        const unitPrice = studio.price;
-        lineItem.price = unitPrice;
-        lineItem.subtotal = (unitPrice * item.quantity).toString();
-        lineItem.total = (unitPrice * item.quantity).toString();
-        lineItem.meta_data.push({ key: 'Bellano Studio', value: 'עיצוב בהתאמה אישית' });
-        for (const labels of Object.values(item.studio.labels || {})) {
-          for (const label of labels) lineItem.meta_data.push({ key: 'בחירת Studio', value: label });
-        }
-        lineItem.meta_data.push({ key: 'מחיר בסיס לפי מידות', value: `₪${Number(studio.formula_price || 0).toLocaleString()}` });
-        if (studio.options_price > 0) {
-          lineItem.meta_data.push({ key: 'תוספות Studio', value: `₪${Number(studio.options_price).toLocaleString()}` });
-        }
-        lineItem.meta_data.push({ key: '_bellano_studio_config', value: JSON.stringify({
-          dimensions: item.studio.dimensions,
-          selections: item.studio.selections,
-        }) });
       }
 
       return lineItem;
