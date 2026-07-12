@@ -10,12 +10,12 @@ import { useWishlistStore } from '@/lib/store/wishlist';
 import { CartSidebar } from './CartSidebar';
 import { SearchModal } from '@/components/search/SearchModal';
 import { siteConfig } from '@/config/site';
-import type { NavItem } from '@/lib/wordpress/nav';
+import type { NavItem, InfoLink } from '@/lib/wordpress/nav';
 
 const { navigation } = siteConfig;
 const navLink = (item: NavItem) => (item.slug ? `/category/${item.slug}` : (item.href || '/'));
 
-export function Header({ navItems }: { navItems?: NavItem[] }) {
+export function Header({ navItems, infoItems }: { navItems?: NavItem[]; infoItems?: InfoLink[] }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getItemCount, toggleCart, isHydrated } = useCartStore();
@@ -23,6 +23,7 @@ export function Header({ navItems }: { navItems?: NavItem[] }) {
   const itemCount = isHydrated ? getItemCount() : 0;
   const wishlistCount = wishlistStore.isHydrated ? wishlistStore.getItemCount() : 0;
   const mainNav: NavItem[] = (navItems && navItems.length) ? navItems : (navigation.main as unknown as NavItem[]);
+  const infoNav: InfoLink[] = (infoItems && infoItems.length) ? infoItems : (navigation.info as unknown as InfoLink[]);
 
   return (
     <>
@@ -240,7 +241,7 @@ export function Header({ navItems }: { navItems?: NavItem[] }) {
               <div className="p-4">
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">מידע</p>
                 <nav className="space-y-1">
-                  {navigation.info.map((link) => (
+                  {infoNav.map((link) => (
                     <Link
                       key={link.href}
                       href={link.href}

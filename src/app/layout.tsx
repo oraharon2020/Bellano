@@ -92,7 +92,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const navItems = await getNavMenu();
+  const nav = await getNavMenu();
   return (
     <html lang={siteConfig.language} dir={siteConfig.direction}>
       <head>
@@ -169,7 +169,7 @@ export default async function RootLayout({
         </noscript>
         
         <AdminBar />
-        <Header navItems={navItems} />
+        <Header navItems={nav.main} infoItems={nav.info} />
         <main className="min-h-screen">{children}</main>
         <Footer />
         <FloatingButtons />
