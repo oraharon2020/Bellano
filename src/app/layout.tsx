@@ -8,6 +8,7 @@ import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { AdminBar } from "@/components/layout/AdminBar";
 import { OrganizationJsonLd, WebsiteJsonLd, LocalBusinessJsonLd } from "@/components/seo";
 import { siteConfig } from "@/config/site";
+import { getNavMenu } from "@/lib/wordpress/nav";
 import PromoPopup from "@/components/PromoPopup";
 import { AdminLoginModal } from "@/components/layout/AdminLoginModal";
 import { AdminSessionGuard } from "@/components/layout/AdminSessionGuard";
@@ -86,11 +87,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const navItems = await getNavMenu();
   return (
     <html lang={siteConfig.language} dir={siteConfig.direction}>
       <head>
@@ -167,7 +169,7 @@ export default function RootLayout({
         </noscript>
         
         <AdminBar />
-        <Header />
+        <Header navItems={navItems} />
         <main className="min-h-screen">{children}</main>
         <Footer />
         <FloatingButtons />

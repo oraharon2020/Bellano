@@ -10,16 +10,19 @@ import { useWishlistStore } from '@/lib/store/wishlist';
 import { CartSidebar } from './CartSidebar';
 import { SearchModal } from '@/components/search/SearchModal';
 import { siteConfig } from '@/config/site';
+import type { NavItem } from '@/lib/wordpress/nav';
 
 const { navigation } = siteConfig;
+const navLink = (item: NavItem) => (item.slug ? `/category/${item.slug}` : (item.href || '/'));
 
-export function Header() {
+export function Header({ navItems }: { navItems?: NavItem[] }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { getItemCount, toggleCart, isHydrated } = useCartStore();
   const wishlistStore = useWishlistStore();
   const itemCount = isHydrated ? getItemCount() : 0;
   const wishlistCount = wishlistStore.isHydrated ? wishlistStore.getItemCount() : 0;
+  const mainNav: NavItem[] = (navItems && navItems.length) ? navItems : (navigation.main as unknown as NavItem[]);
 
   return (
     <>
@@ -55,9 +58,9 @@ export function Header() {
 
             {/* Desktop Navigation */}
             <nav className="hidden lg:flex items-center gap-1">
-              {navigation.main.map((item) => (
+              {mainNav.map((item) => (
                 <div key={item.name} className="relative group">
-                  {'children' in item && item.children ? (
+                  {item.children && item.children.length ? (
                     // Dropdown menu
                     <>
                       <button className="flex items-center gap-1 px-3 py-2 text-sm hover:text-primary transition-colors whitespace-nowrap">
@@ -81,9 +84,9 @@ export function Header() {
                   ) : (
                     // Direct link (like Sale)
                     <Link
-                      href={'slug' in item && item.slug ? `/category/${item.slug}` : ('href' in item ? item.href : '/')}
+                      href={navLink(item)}
                       className={`px-3 py-2 text-sm transition-colors whitespace-nowrap ${
-                        'highlight' in item && item.highlight 
+                        item.highlight
                           ? 'text-red-600 font-semibold hover:text-red-700' 
                           : 'hover:text-primary'
                       }`}
@@ -188,8 +191,8 @@ export function Header() {
             {/* Menu Content */}
             <div className="flex-1 overflow-auto">
               {/* Main Navigation with Sections */}
-              {navigation.main.map((section) => (
-                'children' in section && section.children ? (
+              {mainNav.map((section) => (
+                section.children && section.children.length ? (
                   <div key={section.name} className="border-b">
                     <div className="p-4">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">{section.name}</p>
@@ -211,9 +214,9 @@ export function Header() {
                 ) : (
                   <Link
                     key={section.name}
-                    href={'slug' in section && section.slug ? `/category/${section.slug}` : ('href' in section ? section.href : '/')}
+                    href={navLink(section)}
                     className={`flex items-center justify-between py-3 px-4 border-b transition-colors ${
-                      'highlight' in section && section.highlight ? 'bg-red-50 text-red-600 font-semibold' : 'hover:bg-gray-50'
+                      section.highlight ? 'bg-red-50 text-red-600 font-semibold' : 'hover:bg-gray-50'
                     }`}
                     onClick={() => setMobileMenuOpen(false)}
                   >
