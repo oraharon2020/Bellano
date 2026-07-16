@@ -595,13 +595,31 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     }, quantity);
   };
 
-  // Formula-priced items have no "regular price" to compare against
-  const hasDiscount = !formulaData && (selectedVariation?.on_sale || product.onSale) && currentRegularPrice;
-  const discountPercentage = hasDiscount && currentRegularPrice
+  // Discount display. For formula products the base price is the variation's
+  // active (sale) price, so the "before" price is the same formula total with
+  // the regular base — current formula price + (regular − sale) of the variation
+  // (extras are identical; only the base term differs).
+  const varRegular = selectedVariation ? parseFloat((selectedVariation.regular_price || '0').replace(/[^\d.]/g, '')) : 0;
+  const varSale = selectedVariation ? parseFloat((selectedVariation.sale_price || selectedVariation.price || '0').replace(/[^\d.]/g, '')) : 0;
+  const variationOnSale = !!selectedVariation?.on_sale && varRegular > varSale && varSale > 0;
+
+  const formulaBeforePrice = (formulaData && variationOnSale)
+    ? formulaData.price + (varRegular - varSale)
+    : null;
+
+  const hasDiscount = formulaData
+    ? formulaBeforePrice !== null
+    : ((selectedVariation?.on_sale || product.onSale) && !!currentRegularPrice);
+
+  const beforePriceDisplay = formulaData
+    ? (formulaBeforePrice !== null ? `${formulaBeforePrice} ₪` : '')
+    : currentRegularPrice;
+
+  const discountPercentage = hasDiscount && beforePriceDisplay
     ? Math.round(
-        ((parseFloat(currentRegularPrice.replace(/[^\d.]/g, '')) -
+        ((parseFloat(beforePriceDisplay.replace(/[^\d.]/g, '')) -
           parseFloat(currentPrice.replace(/[^\d.]/g, ''))) /
-          parseFloat(currentRegularPrice.replace(/[^\d.]/g, ''))) *
+          parseFloat(beforePriceDisplay.replace(/[^\d.]/g, ''))) *
           100
       )
     : 0;
@@ -788,8 +806,8 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
             <div className="mb-3 md:mb-4">
               <div className="flex items-baseline gap-2">
                 <span className="text-xl md:text-2xl font-semibold">{currentPrice}</span>
-                {hasDiscount && currentRegularPrice && (
-                  <span className="text-sm text-gray-400 line-through">{currentRegularPrice}</span>
+                {hasDiscount && beforePriceDisplay && (
+                  <span className="text-sm text-gray-400 line-through">{beforePriceDisplay}</span>
                 )}
               </div>
               
