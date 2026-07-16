@@ -208,7 +208,7 @@ interface ProductPageClientProps {
     availabilityType?: 'in_stock' | 'custom_order';
     assemblyIncluded?: boolean;
     tambourColor?: { enabled: boolean; price: number } | null;
-    glassOption?: { enabled: boolean; price: number; label: string } | null;
+    glassOption?: { enabled: boolean; price: number; label: string; product_id?: number } | null;
     image?: { sourceUrl: string; altText?: string };
     galleryImages?: { sourceUrl: string; altText?: string }[];
     attributes?: {
@@ -495,7 +495,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
       : formulaBase !== null
       ? formulaBase
       : parseFloat(currentPrice.replace(/[^\d.]/g, '')) || 0;
-    const finalPriceValue = basePrice + tambourPriceAdd + glassPriceAdd;
+    // Glass is charged as a SEPARATE cart/order line (see adminFields below),
+    // so it is NOT folded into the product line price here.
+    const finalPriceValue = basePrice + tambourPriceAdd;
     const finalPrice = `${finalPriceValue} ₪`;
     const priceValue = finalPriceValue;
     
@@ -564,11 +566,12 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         tambourColor: tambourColor.trim(),
         tambourPrice: tambourPriceAdd,
       } : {}),
-      // Glass option data
+      // Glass option data — becomes a separate line item at checkout
       ...(glassSelected && product.glassOption?.enabled ? {
         glassOption: true,
         glassLabel: product.glassOption.label,
         glassPrice: glassPriceAdd,
+        glassProductId: product.glassOption.product_id,
       } : {}),
     };
     

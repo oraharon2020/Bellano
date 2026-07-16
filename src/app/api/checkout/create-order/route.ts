@@ -24,6 +24,8 @@ interface AdminFields {
   glass_option?: boolean;
   glass_label?: string;
   glass_price?: number;
+  glass_product_id?: number;
+  glass_for?: string;
 }
 
 interface VariationAttribute {
@@ -259,13 +261,8 @@ export async function POST(request: NextRequest) {
             value: item.admin_fields.tambour_color + (item.admin_fields.tambour_price ? ` (+${item.admin_fields.tambour_price}₪)` : '')
           });
         }
-        // Glass option - add to order meta
-        if (item.admin_fields.glass_option) {
-          lineItem.meta_data.push({ 
-            key: item.admin_fields.glass_label || 'תוספת זכוכית', 
-            value: item.admin_fields.glass_price ? `+${item.admin_fields.glass_price}₪` : 'כן'
-          });
-        }
+        // Glass option is emitted as a SEPARATE product line below (so the
+        // production team clearly sees it and which product it belongs to).
         if (item.admin_fields.final_price) {
           // Use the final price from admin fields
           const finalPrice = parseFloat(item.admin_fields.final_price.replace(/[^\d.]/g, ''));
@@ -333,6 +330,26 @@ export async function POST(request: NextRequest) {
 
       return lineItem;
     }));
+
+    // Glass add-on: a SEPARATE real product line per parent product, priced
+    // per unit × quantity, named so production sees exactly which product it is
+    // for. Decoupled from the parent line so it can never be “swallowed”.
+    for (const item of items) {
+      const af = item.admin_fields;
+      const gp = Number(af?.glass_price || 0);
+      if (af?.glass_option && af?.glass_product_id && gp > 0) {
+        const label = af.glass_label || 'תוספת זכוכית';
+        lineItems.push({
+          product_id: af.glass_product_id,
+          quantity: item.quantity,
+          name: label + (af.glass_for ? ' — ' + af.glass_for : ''),
+          price: gp,
+          subtotal: String(gp * item.quantity),
+          total: String(gp * item.quantity),
+          meta_data: af.glass_for ? [{ key: 'עבור מוצר', value: af.glass_for }] : [],
+        });
+      }
+    }
 
     // Capture Meta CAPI signals (used server-side by the payment webhook for a
     // de-duplicated Purchase event). Stored as order meta.

@@ -21,6 +21,7 @@ export interface AdminFieldsData {
   glassOption?: boolean;
   glassLabel?: string;
   glassPrice?: number;
+  glassProductId?: number;
 }
 
 export interface CartItem {
@@ -161,7 +162,8 @@ export const useCartStore = create<CartStore>()(
       getTotal: () => {
         return get().items.reduce((total, item) => {
           const price = parseFloat(item.price.replace(/[^\d.]/g, '')) || 0;
-          return total + price * item.quantity;
+          const glass = item.adminFields?.glassOption ? (item.adminFields.glassPrice || 0) : 0;
+          return total + (price + glass) * item.quantity;
         }, 0);
       },
 

@@ -95,7 +95,7 @@ export interface WooProduct {
   bellano_availability?: 'in_stock' | 'custom_order'; // Custom field from Bellano plugin
   bellano_assembly?: boolean; // Custom field - product comes assembled (default: true)
   bellano_tambour?: { enabled: boolean; price: number } | null; // Custom field - Tambour color option
-  bellano_glass?: { enabled: boolean; price: number; label: string } | null; // Custom field - Glass option
+  bellano_glass?: { enabled: boolean; price: number; label: string; product_id?: number } | null; // Custom field - Glass option
   bellano_related?: {
     enabled: boolean;
     discount: number;

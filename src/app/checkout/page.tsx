@@ -285,6 +285,8 @@ export default function CheckoutPage() {
               glass_option: item.adminFields.glassOption,
               glass_label: item.adminFields.glassLabel,
               glass_price: item.adminFields.glassPrice,
+              glass_product_id: item.adminFields.glassProductId,
+              glass_for: item.name,
             } : undefined,
           })),
           shipping_method: selectedShipping,
