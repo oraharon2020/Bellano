@@ -293,20 +293,44 @@ export async function POST(request: NextRequest) {
         }
       }
       
-      // Formula pricing (custom dimensions) - recalculate server-side, never
-      // trust the client price. Runs last so the validated price always wins.
+      // Formula pricing (custom dimensions).
+      // Regular order: recalculate the price server-side, never trust the client.
+      // Sales-rep order: the admin has already set a manual final price above
+      // (admin_fields.final_price), and for a formula product that price is the
+      // formula dimension price MINUS the rep's discount. In that case we must
+      // KEEP the rep's price and NOT overwrite it here — overwriting wiped the
+      // discount, so the order total came back higher than the discounted cart
+      // total and tripped the "price changed" guard at checkout.
       if (item.formula?.dimensions && item.variation_id) {
-        const serverPrice = await validateFormulaPrice(
-          item.product_id,
-          item.variation_id,
-          item.formula.dimensions
-        );
-        const unitPrice = serverPrice ?? item.formula.price;
+        // Unit price recorded on the line: the rep's final price when present,
+        // otherwise the server-validated formula price.
+        let unitPrice: number;
 
-        lineItem.price = unitPrice;
-        lineItem.subtotal = (unitPrice * item.quantity).toString();
-        lineItem.total = (unitPrice * item.quantity).toString();
+        if (item.admin_fields?.final_price) {
+          // Keep the price the admin block already set on the line item above.
+          unitPrice = parseFloat(item.admin_fields.final_price.replace(/[^\d.]/g, ''));
+        } else {
+          const serverPrice = await validateFormulaPrice(
+            item.product_id,
+            item.variation_id,
+            item.formula.dimensions
+          );
+          unitPrice = serverPrice ?? item.formula.price;
 
+          lineItem.price = unitPrice;
+          lineItem.subtotal = (unitPrice * item.quantity).toString();
+          lineItem.total = (unitPrice * item.quantity).toString();
+
+          if (serverPrice === null) {
+            console.error(
+              `Formula price validation failed for product ${item.product_id} variation ${item.variation_id} - using client price ${item.formula.price}`
+            );
+            lineItem.meta_data.push({ key: 'אימות מחיר מידות', value: 'נכשל - יש לוודא מחיר ידנית' });
+          }
+        }
+
+        // Dimension meta is emitted for BOTH paths so production always sees the
+        // custom dimensions on the order.
         // Prefer labels sent with the order (what the customer actually saw);
         // fall back to fetching them from the product config.
         const dimLabels = (item.formula.labels && Object.keys(item.formula.labels).length)
@@ -319,13 +343,6 @@ export async function POST(request: NextRequest) {
           lineItem.meta_data.push({ key: `_nalla_formula_${dim}`, value: String(value) });
         }
         lineItem.meta_data.push({ key: '_nalla_formula_price', value: String(unitPrice) });
-
-        if (serverPrice === null) {
-          console.error(
-            `Formula price validation failed for product ${item.product_id} variation ${item.variation_id} - using client price ${item.formula.price}`
-          );
-          lineItem.meta_data.push({ key: 'אימות מחיר מידות', value: 'נכשל - יש לוודא מחיר ידנית' });
-        }
       }
 
       return lineItem;
