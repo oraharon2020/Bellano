@@ -1057,8 +1057,9 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               />
             </div>
 
-            {/* Info badges */}
-            <div className="flex flex-wrap items-center gap-4 md:gap-6 text-xs text-gray-500 py-3 md:py-4 border-t border-gray-100">
+            {/* Info badges — centred on mobile so they sit with the reservist
+                badge below them; aligned to the column start on desktop. */}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 md:gap-6 text-xs text-gray-500 py-3 md:py-4 border-t border-gray-100">
               <div className="flex items-center gap-1.5">
                 <Truck className="w-4 h-4" />
                 <span>משלוח חינם</span>
@@ -1071,6 +1072,28 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 <CreditCard className="w-4 h-4" />
                 <span>עד 12 תשלומים</span>
               </div>
+            </div>
+
+            {/*
+              Reservist-business badge. Deliberately NOT in the header or footer
+              the way Nalla carries it — here it sits at the decision point,
+              directly under the buy button and the practical trust row, where a
+              "who am I buying from" signal can still change the answer.
+              Priority is left off on purpose: it is below the fold on most
+              screens and must not compete with the product image for bandwidth.
+            */}
+            <div className="pb-4 md:pb-5">
+              <Image
+                src="/images/miluimnik-badge.webp"
+                alt="עסק של מילואימניק לפניך — אם קונים, אז מעסק במילואים"
+                width={728}
+                height={90}
+                sizes="(max-width: 768px) 100vw, 420px"
+                /* Centred on mobile, where it is the only thing on its line;
+                   aligned to the column start on desktop so it lines up with
+                   the trust row above it rather than floating. */
+                className="w-full max-w-[420px] h-auto rounded mx-auto md:mx-0"
+              />
             </div>
 
             {/* Complete The Look - Bundle Section */}

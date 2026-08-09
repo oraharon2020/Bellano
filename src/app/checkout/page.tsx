@@ -1195,6 +1195,23 @@ export default function CheckoutPage() {
                     </>
                   )}
                 </div>
+
+                {/*
+                  The last thing seen before paying. Centred under the security
+                  line so the two read as one block of reassurance, and capped
+                  narrower than on the product page because this column is
+                  narrow — a full-width strip here would dominate the summary.
+                */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <Image
+                    src="/images/miluimnik-badge.webp"
+                    alt="עסק של מילואימניק לפניך — אם קונים, אז מעסק במילואים"
+                    width={728}
+                    height={90}
+                    sizes="(max-width: 768px) 90vw, 300px"
+                    className="w-full max-w-[300px] h-auto rounded mx-auto"
+                  />
+                </div>
               </div>
             </div>
           </div>
