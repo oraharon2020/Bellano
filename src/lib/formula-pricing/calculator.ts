@@ -116,6 +116,30 @@ function linearExtra(
   return { value: v, extra_cm: extraCm, amount };
 }
 
+/**
+ * Sort tiers by their start and trim away any overlap, so every centimetre is
+ * charged exactly once and the result never depends on the order the rows were
+ * written in. Mirrors normalize_tiers() in the PHP calculator exactly.
+ *
+ * Where tiers overlap, the one that starts earlier keeps the overlap.
+ */
+function normalizeTiers(tiers: FormulaTier[]): FormulaTier[] {
+  const clean = tiers
+    .filter((t) => t && Number(t.to ?? 0) > Number(t.from ?? 0))
+    .map((t) => ({ from: Number(t.from ?? 0), to: Number(t.to ?? 0), per_cm: Number(t.per_cm ?? 0) }))
+    .sort((a, b) => (a.from === b.from ? a.to - b.to : a.from - b.from));
+
+  const out: FormulaTier[] = [];
+  let covered: number | null = null;
+  for (const t of clean) {
+    const from = covered !== null && t.from < covered ? covered : t.from;
+    if (t.to <= from) continue; // fully swallowed by an earlier tier
+    covered = covered === null ? t.to : Math.max(covered, t.to);
+    out.push({ ...t, from });
+  }
+  return out;
+}
+
 function tieredCost(
   start: number,
   value: number,
@@ -124,13 +148,11 @@ function tieredCost(
   basePrice: number
 ): number {
   let cost = 0;
-  for (const tier of tiers) {
-    const from = Number(tier.from ?? 0);
-    const to = Number(tier.to ?? 0);
-    const rate = Number(tier.per_cm ?? 0);
-    const lo = Math.max(start, from);
-    const hi = Math.min(value, to);
+  for (const tier of normalizeTiers(tiers)) {
+    const lo = Math.max(start, Number(tier.from));
+    const hi = Math.min(value, Number(tier.to));
     if (hi > lo) {
+      const rate = Number(tier.per_cm ?? 0);
       cost += rateType === 'percent' ? (hi - lo) * basePrice * (rate / 100) : (hi - lo) * rate;
     }
   }
