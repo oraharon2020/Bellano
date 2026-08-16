@@ -56,24 +56,35 @@ export function calculateFormulaPrice(
     }
 
     const base = Number(wCfg.base_price ?? 0);
-    total += base;
     baseForPct = base;
-    breakdown.base_price = base;
 
     const extraCm = w - Number(wCfg.min ?? w);
     const mode = wCfg.mode ?? 'linear';
     const rateType = wCfg.rate_type ?? 'fixed';
     let wExtra = 0;
+    let anchored = false;
 
     if (mode === 'tiered' && Array.isArray(wCfg.tiers) && wCfg.tiers.length > 0) {
-      wExtra = tieredCost(Number(wCfg.min ?? 0), w, wCfg.tiers, rateType, base);
+      const priced = tieredWidthPrice(Number(wCfg.min ?? 0), w, wCfg.tiers, rateType, base);
+      if (priced.anchored) {
+        // An anchored tier states the price from that width up: the variation
+        // price and every earlier tier stop applying. Mirrors PHP.
+        anchored = true;
+        total += priced.amount;
+        breakdown.base_price = 0;
+      } else {
+        wExtra = priced.amount;
+      }
     } else {
       const rate = Number(wCfg.per_cm ?? 0);
       wExtra = rateType === 'percent' ? extraCm * base * (rate / 100) : extraCm * rate;
     }
 
-    total += wExtra;
-    breakdown.width = { value: w, extra_cm: extraCm, amount: wExtra };
+    if (!anchored) {
+      total += base + wExtra;
+      breakdown.base_price = base;
+    }
+    breakdown.width = { value: w, extra_cm: extraCm, amount: wExtra, anchored };
   }
 
   // ── Depth / Height (linear only) ───────────────────────────
@@ -126,7 +137,15 @@ function linearExtra(
 function normalizeTiers(tiers: FormulaTier[]): FormulaTier[] {
   const clean = tiers
     .filter((t) => t && Number(t.to ?? 0) > Number(t.from ?? 0))
-    .map((t) => ({ from: Number(t.from ?? 0), to: Number(t.to ?? 0), per_cm: Number(t.per_cm ?? 0) }))
+    .map((t) => ({
+      from: Number(t.from ?? 0),
+      to: Number(t.to ?? 0),
+      per_cm: Number(t.per_cm ?? 0),
+      start_price:
+        t.start_price === undefined || t.start_price === null || (t.start_price as unknown) === ''
+          ? null
+          : Number(t.start_price),
+    }))
     .sort((a, b) => (a.from === b.from ? a.to - b.to : a.from - b.from));
 
   const out: FormulaTier[] = [];
@@ -138,6 +157,36 @@ function normalizeTiers(tiers: FormulaTier[]): FormulaTier[] {
     out.push({ ...t, from });
   }
   return out;
+}
+
+/**
+ * Price the width when tiers are in play. A tier may carry `start_price`: from
+ * that width up, that IS the price. Mirrors tiered_width_price() in PHP.
+ */
+function tieredWidthPrice(
+  min: number,
+  value: number,
+  tiers: FormulaTier[],
+  rateType: 'fixed' | 'percent',
+  basePrice: number
+): { anchored: boolean; amount: number } {
+  const norm = normalizeTiers(tiers);
+  let anchor: FormulaTier | null = null;
+  for (const t of norm) {
+    if (t.start_price == null) continue;
+    if (Number(t.from) <= value) anchor = t;
+  }
+  if (!anchor) return { anchored: false, amount: tieredCost(min, value, tiers, rateType, basePrice) };
+  let amount = Number(anchor.start_price);
+  for (const t of norm) {
+    const lo = Math.max(Number(anchor.from), Number(t.from));
+    const hi = Math.min(value, Number(t.to));
+    if (hi > lo) {
+      const rate = Number(t.per_cm ?? 0);
+      amount += rateType === 'percent' ? (hi - lo) * basePrice * (rate / 100) : (hi - lo) * rate;
+    }
+  }
+  return { anchored: true, amount };
 }
 
 function tieredCost(

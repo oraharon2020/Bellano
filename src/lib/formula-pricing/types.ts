@@ -8,6 +8,9 @@
 export type FormulaDimension = 'width' | 'depth' | 'height';
 
 export interface FormulaTier {
+  /** Absolute price from this tier's start — the build changes past the
+   *  threshold, so the price restarts here instead of accumulating. */
+  start_price?: number | null;
   from: number;
   to: number;
   per_cm: number;
@@ -65,7 +68,7 @@ export interface FormulaCalcResult {
   price: number;
   breakdown: {
     base_price?: number;
-    width?: { value: number; extra_cm: number; amount: number };
+    width?: { value: number; extra_cm: number; amount: number; anchored?: boolean };
     depth?: { value: number; extra_cm: number; amount: number };
     height?: { value: number; extra_cm: number; amount: number };
   };
