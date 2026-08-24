@@ -17,6 +17,7 @@ import type { FormulaProductConfig, FormulaFieldsData } from '@/lib/formula-pric
 import { ProductVideo } from '@/components/product/ProductVideo';
 import { ProductHotspots } from '@/components/product/ProductHotspots';
 import { ProductHomePhotos } from '@/components/product/ProductHomePhotos';
+import { EditProductText } from '@/components/product/EditProductText';
 import { ProductLightbox } from '@/components/product/ProductLightbox';
 import { ColorSwatch, findSwatchByName } from '@/lib/woocommerce/api';
 import { siteConfig } from '@/config/site';
@@ -841,6 +842,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
                 />
               </>
             )}
+            <EditProductText productId={product.databaseId} field="short_description" />
 
             {/* Variations */}
             <div className="space-y-4 md:space-y-5 mb-4 md:mb-6">
@@ -1189,20 +1191,23 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
               
               <div className="max-w-3xl">
                 {activeTab === 'description' ? (
-                  <HtmlContent 
-                    html={product.description || ''}
-                    className="prose prose-sm max-w-none
-                      prose-headings:font-bold prose-headings:text-gray-900
-                      prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3
-                      prose-h3:text-base prose-h3:mt-5 prose-h3:mb-2
-                      prose-p:text-gray-600 prose-p:leading-[1.9] prose-p:my-3
-                      prose-li:text-gray-600 prose-li:my-1 prose-li:leading-relaxed
-                      prose-strong:text-gray-900 prose-strong:font-semibold
-                      prose-a:text-primary prose-a:font-medium prose-a:no-underline hover:prose-a:underline
-                      prose-ul:my-3 prose-ol:my-3
-                      [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0
-                      [&_*]:!font-sans"
-                  />
+                  <>
+                    <EditProductText productId={product.databaseId} field="description" />
+                    <HtmlContent
+                      html={product.description || ''}
+                      className="prose prose-sm max-w-none
+                        prose-headings:font-bold prose-headings:text-gray-900
+                        prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-3
+                        prose-h3:text-base prose-h3:mt-5 prose-h3:mb-2
+                        prose-p:text-gray-600 prose-p:leading-[1.9] prose-p:my-3
+                        prose-li:text-gray-600 prose-li:my-1 prose-li:leading-relaxed
+                        prose-strong:text-gray-900 prose-strong:font-semibold
+                        prose-a:text-primary prose-a:font-medium prose-a:no-underline hover:prose-a:underline
+                        prose-ul:my-3 prose-ol:my-3
+                        [&>*:first-child]:!mt-0 [&>*:last-child]:!mb-0
+                        [&_*]:!font-sans"
+                    />
+                  </>
                 ) : (
                   <div className="text-sm">
                     <table className="w-full">
