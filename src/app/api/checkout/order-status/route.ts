@@ -5,6 +5,13 @@ const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
 const WC_SECRET = process.env.WC_CONSUMER_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET;
 
+// Order status changes the moment the payment webhook lands, and the thank-you
+// page polls it to decide whether to report a conversion. A cached response
+// would pin it to "pending" for the whole polling window.
+export const dynamic = 'force-dynamic';
+
+const NO_STORE = { 'Cache-Control': 'no-store, must-revalidate' };
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -121,7 +128,7 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: NO_STORE });
 
   } catch (error) {
     console.error('Error checking order status:', error);

@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { withTrackingParams } from '@/lib/attribution';
 
 export function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
   
   // Base URL for redirects
   const baseUrl = 'https://bellano.co.il';
+
+  // Every redirect keeps the visit's utm / click-id parameters. The clean-URL
+  // redirects below kept only `page`, so an ad pointing at an old WooCommerce
+  // URL arrived without its gclid and was recorded as a direct visit.
+  const redirect = (target: URL, status: number) =>
+    NextResponse.redirect(withTrackingParams(target, searchParams), status);
 
   // Block WordPress admin/login pages - return 410 Gone
   if (pathname.startsWith('/wp-login.php') || pathname.startsWith('/wp-admin')) {
@@ -19,18 +26,18 @@ export function middleware(request: NextRequest) {
 
   // Handle old /shop/ URLs → redirect to categories
   if (pathname === '/shop' || pathname === '/shop/') {
-    return NextResponse.redirect(new URL('/categories', baseUrl), 308);
+    return redirect(new URL('/categories', baseUrl), 308);
   }
 
   // Handle /color-product/ URLs → redirect to categories (no equivalent page)
   if (pathname.startsWith('/color-product/')) {
-    return NextResponse.redirect(new URL('/categories', baseUrl), 308);
+    return redirect(new URL('/categories', baseUrl), 308);
   }
 
   // Handle /product/ URLs with add-to-cart parameter → redirect to clean product URL
   if (pathname.startsWith('/product/') && searchParams.has('add-to-cart')) {
     const cleanUrl = new URL(pathname, baseUrl);
-    return NextResponse.redirect(cleanUrl, 308);
+    return redirect(cleanUrl, 308);
   }
 
   // Handle old WordPress category URLs with query parameters
@@ -48,7 +55,7 @@ export function middleware(request: NextRequest) {
       cleanUrl.searchParams.set('page', searchParams.get('page')!);
     }
     
-    return NextResponse.redirect(cleanUrl, 308); // 308 Permanent Redirect
+    return redirect(cleanUrl, 308); // 308 Permanent Redirect
   }
 
   // Handle URLs with orderby/filter parameters on category pages
@@ -68,7 +75,7 @@ export function middleware(request: NextRequest) {
         cleanUrl.searchParams.set('page', searchParams.get('page')!);
       }
       
-      return NextResponse.redirect(cleanUrl, 308);
+      return redirect(cleanUrl, 308);
     }
     
     const hasOrderby = searchParams.has('orderby');
@@ -88,7 +95,7 @@ export function middleware(request: NextRequest) {
         cleanUrl.searchParams.set('page', searchParams.get('page')!);
       }
       
-      return NextResponse.redirect(cleanUrl, 308);
+      return redirect(cleanUrl, 308);
     }
   }
 

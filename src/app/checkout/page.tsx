@@ -6,7 +6,10 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles } from 'lucide-react';
 import { useCartStore, getFormulaKey } from '@/lib/store/cart';
-import { getStoredUtmParams, getTrafficSourceLabel } from '@/hooks/useUtmTracking';
+import { useAdminStore } from '@/lib/store/admin';
+import { getStoredAttribution } from '@/hooks/useUtmTracking';
+import RepSourcePicker, { REP_SOURCE_ANCHOR } from '@/components/checkout/RepSourcePicker';
+import { REP_SOURCE_MISSING_MESSAGE, type RepSource } from '@/lib/rep-source';
 
 interface ShippingMethod {
   id: string;
@@ -39,6 +42,7 @@ export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem } = useCartStore();
+  const { isAdmin, adminToken } = useAdminStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +59,12 @@ export default function CheckoutPage() {
   
   // Terms agreement
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+
+  // Sales-rep mode only: "איך הלקוח הגיע אלינו?" — required before the order
+  // can be placed (create-order refuses a verified rep's order without it).
+  const [repSource, setRepSource] = useState<RepSource | ''>('');
+  const [repSourceNote, setRepSourceNote] = useState('');
+  const repSourceMissing = isAdmin && repSource === '';
   
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
@@ -230,6 +240,10 @@ export default function CheckoutPage() {
       setError('הסל ריק');
       return;
     }
+    if (repSourceMissing) {
+      setError(REP_SOURCE_MISSING_MESSAGE);
+      return;
+    }
 
     // Debug: log cart data
     console.log('Cart items:', items);
@@ -247,7 +261,11 @@ export default function CheckoutPage() {
       // Step 1: Create order in WooCommerce
       const orderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Marks the order as entered by a sales rep (see order_entry below).
+          ...(isAdmin && adminToken ? { 'x-admin-token': adminToken } : {}),
+        },
         body: JSON.stringify({
           customer: customerData,
           items: items.map(item => ({
@@ -293,8 +311,17 @@ export default function CheckoutPage() {
           payment_method: paymentMethod,
           // Include coupon if applied
           coupon_code: appliedCoupon?.code || null,
-          // Include UTM tracking data
-          utm_data: getStoredUtmParams(),
+          // Where the CUSTOMER came from. In sales-rep mode the browser is the
+          // rep's, and whatever brought the rep to the site months ago says
+          // nothing about the customer in front of them — so a rep's order
+          // sends no touches, and the server drops any that arrive with one.
+          order_entry: isAdmin ? 'rep' : 'site',
+          attribution: isAdmin ? null : getStoredAttribution(),
+          // What the customer told the rep. Never sent from a customer's session.
+          ...(isAdmin ? {
+            rep_source: repSource,
+            ...(repSource === 'other' && repSourceNote.trim() ? { rep_source_note: repSourceNote.trim() } : {}),
+          } : {}),
         }),
       });
 
@@ -402,8 +429,13 @@ export default function CheckoutPage() {
         const data = await response.json();
         
         if (data.status === 'processing' || data.status === 'completed') {
+          // Paid: go to the thank-you page, never the in-page success step. That
+          // page is where the purchase is reported (Pixel, GA4, Ads, Vercel).
+          // The iframe normally gets there first via meshulam-callback; this
+          // poll only stopped winning the race because the edge cached
+          // order-status for 5 minutes, and order-status is no-store now.
           clearCart();
-          setStep('success');
+          router.push(`/checkout/success?order_id=${orderId}`);
         } else if (data.status === 'failed' || data.status === 'cancelled') {
           setError('התשלום נכשל. נא לנסות שוב.');
           setStep('details');
@@ -415,7 +447,7 @@ export default function CheckoutPage() {
 
     const interval = setInterval(checkOrderStatus, 3000);
     return () => clearInterval(interval);
-  }, [step, orderId, clearCart]);
+  }, [step, orderId, clearCart, router]);
 
   if (!isHydrated) {
     return (
@@ -547,6 +579,18 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Customer Details */}
             <div className="lg:col-span-2 space-y-6">
+              {isAdmin && (
+                <RepSourcePicker
+                  value={repSource}
+                  note={repSourceNote}
+                  onChange={(value) => {
+                    setRepSource(value);
+                    if (error === REP_SOURCE_MISSING_MESSAGE) setError(null);
+                  }}
+                  onNoteChange={setRepSourceNote}
+                />
+              )}
+
               {/* Contact Info */}
               <div className="bg-white rounded-lg shadow-sm p-6">
                 <h2 className="text-lg font-bold mb-4">פרטי התקשרות</h2>
@@ -1164,7 +1208,8 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={isLoading || !agreedToTerms}
+                  disabled={isLoading || !agreedToTerms || repSourceMissing}
+                  aria-describedby={repSourceMissing ? 'rep-source-hint' : undefined}
                   className="w-full mt-4 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
@@ -1184,6 +1229,15 @@ export default function CheckoutPage() {
                     </>
                   )}
                 </button>
+
+                {repSourceMissing && (
+                  <p id="rep-source-hint" className="mt-2 text-sm text-center text-amber-700">
+                    כדי להמשיך,{' '}
+                    <a href={`#${REP_SOURCE_ANCHOR}`} className="font-medium underline hover:no-underline">
+                      סמנו איך הלקוח הגיע אלינו
+                    </a>
+                  </p>
+                )}
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
                   {paymentMethod === 'phone_order' ? (

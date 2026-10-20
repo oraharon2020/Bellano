@@ -134,7 +134,11 @@ export const siteConfig = {
     ga4: 'G-RKEWQ79QSF',
     googleTagManager: 'GT-WBL97X64',
     googleAds: 'AW-16598610854',
-    googleAdsConversionLabel: '8F3sCJ7tmrwZEKbn6uo9', // Purchase conversion
+    googleAdsConversionLabel: '8F3sCJ7tmrwZEKbn6uo9', // Purchase conversion — paid orders ONLY
+    // Phone orders are unpaid leads, so they must NOT land on the Purchase
+    // action. Create a separate "Lead" conversion action in Google Ads and put
+    // its label here; while this is empty no conversion is sent for them.
+    googleAdsPhoneLeadLabel: '',
     googleAdsAddToCartLabel: 'KtOHCIW4mdQbEKbn6uo9', // Add to cart conversion
     googleVerification: 'MFPhXQELpvk-2gH-jHTP0R4LTOxhJxrH-DVa8l6Hqis',
     facebookPixel: '421335350861171',

@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { CheckCircle, Loader2, ArrowRight, Package, Truck, Phone, Mail, ShoppingBag } from 'lucide-react';
 import { siteConfig, getWhatsAppLink } from '@/config/site';
 import { analytics } from '@/lib/analytics';
+import { useAdminStore } from '@/lib/store/admin';
 
 interface OrderItem {
   name: string;
@@ -37,9 +38,18 @@ function SuccessContent() {
   const orderId = searchParams.get('order_id');
   const orderType = searchParams.get('type'); // 'phone_order' for phone orders
   const isPhoneOrder = orderType === 'phone_order';
+  // A sales rep's order is not an ad conversion. The rep's browser carries the
+  // rep's own Google and Facebook cookies, so firing here would credit the
+  // rep's old click with the customer's sale.
+  const { isAdmin } = useAdminStore();
   const [orderStatus, setOrderStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [orderData, setOrderData] = useState<OrderData | null>(null);
   const [trackingFired, setTrackingFired] = useState(false);
+  // True only when the order-status API confirmed a paid/on-hold order with
+  // items. The polling below gives up after 8 tries and shows the page anyway;
+  // in that case we must NOT report a conversion to Google — the payment
+  // webhook does it server-side once the payment really lands.
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   // Fire tracking events
   useEffect(() => {
@@ -62,7 +72,7 @@ function SuccessContent() {
       }));
 
       // Facebook Pixel - Purchase or Lead Event
-      if (typeof window !== 'undefined' && (window as any).fbq) {
+      if (!isAdmin && typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', eventType, {
           value: totalValue,
           currency: 'ILS',
@@ -78,7 +88,7 @@ function SuccessContent() {
       // Google Enhanced Conversions — supply first-party data so Google can
       // match the conversion even when cookies are blocked. gtag hashes it
       // client-side; we send plaintext email/phone (E.164) + name.
-      if (typeof window !== 'undefined' && (window as any).gtag && orderData.billing?.email) {
+      if (!isAdmin && typeof window !== 'undefined' && (window as any).gtag && orderData.billing?.email) {
         const rawPhone = (orderData.billing.phone || '').replace(/\D/g, '');
         const phoneE164 = rawPhone
           ? rawPhone.startsWith('0')
@@ -97,20 +107,36 @@ function SuccessContent() {
         });
       }
 
-      // Google Ads - Conversion (for both - phone orders are still valuable leads)
-      if (typeof window !== 'undefined' && (window as any).gtag) {
-        const conversionLabel = siteConfig.analytics.googleAdsConversionLabel;
+      // Google Ads - Conversion.
+      // Purchase action = paid orders only. Phone orders are unpaid leads and
+      // go to their own Lead action; while its label is unset nothing is sent,
+      // so they can never inflate the Purchase count.
+      // transaction_id is the WooCommerce order id — the same key the payment
+      // webhook uploads server-side, which is what lets Google de-duplicate the
+      // two. Both paths must point at the SAME conversion action for that to
+      // work (see GOOGLE_ADS_CONVERSION_ACTION_ID).
+      const adsLabel = isPhoneOrder
+        ? siteConfig.analytics.googleAdsPhoneLeadLabel
+        : siteConfig.analytics.googleAdsConversionLabel;
+      if (isAdmin) {
+        console.log('Google Ads conversion skipped: sales-rep order');
+      } else if (typeof window !== 'undefined' && (window as any).gtag && adsLabel && paymentConfirmed) {
         (window as any).gtag('event', 'conversion', {
-          send_to: `${siteConfig.analytics.googleAds}/${conversionLabel}`,
+          send_to: `${siteConfig.analytics.googleAds}/${adsLabel}`,
           value: totalValue,
           currency: 'ILS',
           transaction_id: orderData.id,
         });
         console.log('Google Ads conversion fired:', totalValue, isPhoneOrder ? '(lead)' : '(purchase)');
+      } else if (!paymentConfirmed) {
+        console.log('Google Ads conversion skipped: order not confirmed');
       }
 
-      // Google Analytics 4 - Purchase or generate_lead
-      if (typeof window !== 'undefined' && (window as any).gtag) {
+      // Google Analytics 4 - Purchase or generate_lead.
+      // Gated on the same confirmation as the Ads conversion, so GA4 revenue
+      // and the Ads conversion count stay in agreement (and an imported GA4
+      // purchase can't smuggle an unconfirmed order back into Ads).
+      if (!isAdmin && typeof window !== 'undefined' && (window as any).gtag && paymentConfirmed) {
         (window as any).gtag('event', isPhoneOrder ? 'generate_lead' : 'purchase', {
           transaction_id: orderData.id,
           value: totalValue,
@@ -134,7 +160,7 @@ function SuccessContent() {
         isPhoneOrder,
       });
     }
-  }, [orderStatus, orderData, trackingFired]);
+  }, [orderStatus, orderData, trackingFired, paymentConfirmed, isPhoneOrder, isAdmin]);
 
   useEffect(() => {
     // Clear cart from localStorage
@@ -162,6 +188,7 @@ function SuccessContent() {
           const hasItems = data.order.items && data.order.items.length > 0;
           
           if (isPaid && hasItems) {
+            setPaymentConfirmed(true);
             setOrderStatus('success');
             return;
           }
@@ -171,7 +198,8 @@ function SuccessContent() {
         if (attempt < 8) {
           setTimeout(() => checkOrder(attempt + 1), 1000);
         } else {
-          // Show success anyway after max attempts
+          // Show the page anyway after max attempts, but leave paymentConfirmed
+          // false — the order is not verified, so no conversion is reported.
           setOrderStatus('success');
         }
       } catch (error) {

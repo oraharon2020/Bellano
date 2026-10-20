@@ -84,6 +84,7 @@ export interface GoogleAdsConversionInput {
   conversionDate?: Date;         // defaults to now
   email?: string;                // enhanced-conversions fallback match
   phone?: string;
+  orderEntry?: string;           // the order's `_order_entry` meta
 }
 
 /**
@@ -93,6 +94,12 @@ export interface GoogleAdsConversionInput {
 export async function sendGoogleAdsConversion(
   input: GoogleAdsConversionInput
 ): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
+  // A sales rep's order is never uploaded. Any click id on it would be the
+  // rep's own, months old, and Google would credit that click with a sale the
+  // ad never made. The browser tag skips rep orders for the same reason.
+  if (input.orderEntry === 'rep') {
+    return { ok: false, skipped: true, error: 'sales-rep order' };
+  }
   if (!CUSTOMER_ID || !CONVERSION_ACTION_ID) {
     return { ok: false, skipped: true, error: 'Google Ads env not configured' };
   }

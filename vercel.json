@@ -19,7 +19,16 @@
       ]
     },
     {
-      "source": "/api/(.*)",
+      "source": "/api/checkout/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/api/:path((?!checkout/).*)",
       "headers": [
         {
           "key": "Cache-Control",

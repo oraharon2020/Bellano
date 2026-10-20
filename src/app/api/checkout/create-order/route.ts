@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig } from '@/config/site';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
+import { buildOrderAttribution } from '@/lib/attribution';
+import { verifyAdminToken } from '@/lib/auth/verify-admin';
+import { repSourceOrderMeta } from '@/lib/rep-source';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -69,6 +72,8 @@ interface UtmData {
   utm_term?: string;
   utm_content?: string;
   gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
   fbclid?: string;
   landing_page?: string;
   referrer?: string;
@@ -81,7 +86,16 @@ interface CreateOrderRequest {
   shipping_method: string;
   payment_method?: 'credit_card' | 'phone_order';
   coupon_code?: string | null;
+  /** Set to 'rep' by a browser in sales-rep mode (it also sends x-admin-token). */
+  order_entry?: 'rep' | 'site';
+  /** First/last touch as stored by useUtmTracking; validated and re-classified here. */
+  attribution?: unknown;
+  /** Sent by pages loaded before `attribution` existed. */
   utm_data?: UtmData | null;
+  /** "איך הלקוח הגיע אלינו?" — read only on a verified rep's order, see src/lib/rep-source.ts. */
+  rep_source?: unknown;
+  /** The "אחר" text that goes with `rep_source: 'other'`. */
+  rep_source_note?: unknown;
 }
 
 /**
@@ -133,32 +147,6 @@ async function fetchFormulaLabels(productId: number): Promise<Record<string, str
   }
 }
 
-// Helper to determine traffic source label
-function getTrafficSourceLabel(utm: UtmData | null | undefined): string {
-  if (!utm) return 'ישיר';
-  
-  if (utm.gclid) return 'Google Ads';
-  if (utm.fbclid) return 'Facebook Ads';
-  
-  if (utm.utm_source) {
-    const source = utm.utm_source.toLowerCase();
-    if (source.includes('google')) return 'Google';
-    if (source.includes('facebook') || source.includes('fb')) return 'Facebook';
-    if (source.includes('instagram') || source.includes('ig')) return 'Instagram';
-    if (source.includes('tiktok')) return 'TikTok';
-    if (source.includes('email') || source.includes('newsletter')) return 'Email';
-    return utm.utm_source;
-  }
-  
-  if (utm.referrer) {
-    if (utm.referrer.includes('google')) return 'Google (אורגני)';
-    if (utm.referrer.includes('facebook')) return 'Facebook (אורגני)';
-    return 'הפניה';
-  }
-  
-  return 'ישיר';
-}
-
 export async function POST(request: NextRequest) {
   // Rate limit: max 5 orders per minute per IP
   const ip = getClientIp(request);
@@ -181,6 +169,19 @@ export async function POST(request: NextRequest) {
         { success: false, message: 'WooCommerce credentials not configured' },
         { status: 500 }
       );
+    }
+
+    // A rep must say where the customer came from before the order is placed:
+    // the rep's browser carries no trace of it. Asked only of a rep whose token
+    // WordPress verifies (fails closed) — the header and order_entry are the
+    // browser's own word, so on their own they neither require the answer nor
+    // get one stored. Checked before any line is priced, so a refusal costs
+    // no formula calls.
+    const adminToken = request.headers.get('x-admin-token');
+    const verifiedRep = adminToken ? await verifyAdminToken(adminToken) : null;
+    const repSource = repSourceOrderMeta(body, { isRep: Boolean(verifiedRep) });
+    if (!repSource.ok) {
+      return NextResponse.json({ success: false, message: repSource.message }, { status: repSource.status });
     }
 
     // Determine payment method settings
@@ -368,15 +369,32 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Where the order came from. An order placed from a browser in sales-rep
+    // mode is the rep's entry: none of that browser's touches or click ids may
+    // describe the customer, so it gets channel `rep` and nothing else.
+    // Header OR body flag — a rep whose token lapsed is still a rep.
+    const isRepEntry = Boolean(request.headers.get('x-admin-token')) || body.order_entry === 'rep';
+    const attribution = buildOrderAttribution({
+      entry: isRepEntry ? 'rep' : 'site',
+      attribution: body.attribution,
+      legacyUtm: utm_data,
+      ownHosts: [siteConfig.url, siteConfig.wordpressUrl, siteConfig.vercelUrl],
+    });
+
     // Capture Meta CAPI signals (used server-side by the payment webhook for a
     // de-duplicated Purchase event). Stored as order meta.
-    const fbp = request.cookies.get('_fbp')?.value || '';
-    let fbc = request.cookies.get('_fbc')?.value || '';
-    if (!fbc && utm_data?.fbclid) {
-      fbc = `fb.1.${Date.now()}.${utm_data.fbclid}`;
+    // Not on a rep's order: the cookies, IP and user agent are the rep's, and
+    // sending them would credit the rep's own Facebook click with the sale.
+    const fbp = isRepEntry ? '' : request.cookies.get('_fbp')?.value || '';
+    let fbc = isRepEntry ? '' : request.cookies.get('_fbc')?.value || '';
+    const fbclick = attribution.clicks.fbclid;
+    if (!fbc && fbclick) {
+      // fbc's timestamp is when the click was seen, not when the order was placed.
+      fbc = `fb.1.${Date.parse(fbclick.at) || Date.now()}.${fbclick.id}`;
     }
-    const clientUserAgent = request.headers.get('user-agent') || '';
-    const eventSourceUrl = request.headers.get('referer') || utm_data?.landing_page || '';
+    const clientUserAgent = isRepEntry ? '' : request.headers.get('user-agent') || '';
+    const clientIp = isRepEntry ? '' : ip;
+    const eventSourceUrl = isRepEntry ? '' : request.headers.get('referer') || attribution.attributed?.landing || '';
 
     // Create the order in WooCommerce
     const orderData = {
@@ -423,22 +441,17 @@ export async function POST(request: NextRequest) {
           value: 'yes',
         },
         ...(hasAdminFields ? [{ key: 'bellano_sales_rep_order', value: 'yes' }] : []),
-        // Traffic source tracking
-        {
-          key: 'מקור הגעה',
-          value: getTrafficSourceLabel(utm_data),
-        },
-        ...(utm_data?.utm_source ? [{ key: '_utm_source', value: utm_data.utm_source }] : []),
-        ...(utm_data?.utm_medium ? [{ key: '_utm_medium', value: utm_data.utm_medium }] : []),
-        ...(utm_data?.utm_campaign ? [{ key: '_utm_campaign', value: utm_data.utm_campaign }] : []),
-        ...(utm_data?.gclid ? [{ key: '_gclid', value: utm_data.gclid }] : []),
-        ...(utm_data?.fbclid ? [{ key: '_fbclid', value: utm_data.fbclid }] : []),
-        ...(utm_data?.landing_page ? [{ key: '_landing_page', value: utm_data.landing_page }] : []),
+        // Traffic source: מקור הגעה, the legacy _utm_* / click-id keys (read by
+        // the payment webhook's Google Ads upload), _order_entry, _nalla_channel
+        // and the first/last touch — see src/lib/attribution.ts.
+        ...attribution.meta,
+        // What the rep marked: _nalla_rep_source(_at, _note). Empty unless verified rep.
+        ...repSource.meta,
         // Meta CAPI signals (read by the payment webhook)
         ...(fbp ? [{ key: '_fbp', value: fbp }] : []),
         ...(fbc ? [{ key: '_fbc', value: fbc }] : []),
         ...(clientUserAgent ? [{ key: '_client_user_agent', value: clientUserAgent }] : []),
-        ...(ip ? [{ key: '_client_ip', value: ip }] : []),
+        ...(clientIp ? [{ key: '_client_ip', value: clientIp }] : []),
         ...(eventSourceUrl ? [{ key: '_event_source_url', value: eventSourceUrl }] : []),
       ],
     };

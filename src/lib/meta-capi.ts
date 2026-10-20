@@ -56,15 +56,25 @@ export interface MetaPurchaseInput {
   contentIds?: string[];
   contents?: { id: string; quantity: number; item_price?: number }[];
   numItems?: number;
+  /** The order's `_order_entry` meta. */
+  orderEntry?: string;
 }
 
 /**
  * Fire a server-side Purchase to the Conversions API.
  * Never throws — returns a result object so the caller (webhook) is unaffected.
  */
-export async function sendMetaPurchase(input: MetaPurchaseInput): Promise<{ ok: boolean; error?: string }> {
+export async function sendMetaPurchase(
+  input: MetaPurchaseInput
+): Promise<{ ok: boolean; error?: string; skipped?: boolean }> {
+  // A sales rep's order is not reported as an ad conversion: whatever browser
+  // signals it could carry are the rep's, not the customer's. Same rule the
+  // browser Pixel follows on the thank-you page.
+  if (input.orderEntry === 'rep') {
+    return { ok: false, skipped: true, error: 'sales-rep order' };
+  }
   if (!PIXEL_ID || !ACCESS_TOKEN) {
-    return { ok: false, error: 'META CAPI env not configured' };
+    return { ok: false, skipped: true, error: 'META CAPI env not configured' };
   }
 
   const userData: Record<string, unknown> = {};

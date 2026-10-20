@@ -9,6 +9,11 @@ const WC_SECRET = process.env.WC_CONSUMER_SECRET || process.env.WOOCOMMERCE_CONS
 /**
  * Meshulam Payment Webhook
  * Receives payment notifications from Meshulam and updates WooCommerce orders
+ *
+ * NOTE: Meshulam is NOT pointed here. create-payment sends
+ * notifyUrl=/api/checkout/meshulam-webhook, which is where the live
+ * server-side Google Ads conversion runs. Keep this route as a direct-to-Woo
+ * fallback only; anything added here does not run in production.
  * 
  * Meshulam sends: status=1, data[customFields][cField1]=order_id, data[asmachta]=xxx
  */
@@ -177,8 +182,11 @@ export async function POST(request: NextRequest) {
           }),
           contents: lineItems.map((li) => ({ id: String(li.variation_id || li.product_id), quantity: li.quantity, item_price: Number(li.price) || undefined })),
           numItems: lineItems.reduce((n, li) => n + (li.quantity || 0), 0),
+          orderEntry: getMeta('_order_entry'),
         });
-        if (!capiRes.ok) {
+        if (capiRes.skipped) {
+          console.log(`Meta CAPI Purchase skipped for order ${orderId}: ${capiRes.error}`);
+        } else if (!capiRes.ok) {
           console.error(`Meta CAPI Purchase failed for order ${orderId}:`, capiRes.error);
         } else {
           console.log(`Meta CAPI Purchase sent for order ${orderId}`);
@@ -206,6 +214,7 @@ export async function POST(request: NextRequest) {
           conversionDate: order.date_created_gmt ? new Date(order.date_created_gmt + 'Z') : new Date(),
           email: order.billing?.email,
           phone: order.billing?.phone,
+          orderEntry: getMeta2('_order_entry'),
         });
         if (adsRes.skipped) {
           console.log(`Google Ads conversion skipped for order ${orderId}: ${adsRes.error}`);
