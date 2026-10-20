@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig, getApiEndpoint } from '@/config/site';
+import { describeErrorForLog, summarizeMeshulamPayload } from '@/lib/meshulam-log';
 
 const WP_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url;
@@ -12,8 +13,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || siteConfig.url;
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   
-  // Log all params for debugging
-  console.log('Meshulam callback GET params:', Object.fromEntries(searchParams));
+  // Never the raw params: `json` decodes to the payer's name, phone, e-mail
+  // and card details. See lib/meshulam-log.ts for what is kept.
+  console.log('Meshulam callback GET params:', JSON.stringify(summarizeMeshulamPayload(Object.fromEntries(searchParams))));
   
   // Get order ID from cField1 (our custom field)
   const orderId = searchParams.get('cField1');
@@ -25,9 +27,9 @@ export async function GET(request: NextRequest) {
   if (json) {
     try {
       meshulamData = JSON.parse(Buffer.from(json, 'base64').toString('utf-8'));
-      console.log('Meshulam decoded data:', meshulamData);
+      console.log('Meshulam decoded data:', JSON.stringify(summarizeMeshulamPayload(meshulamData)));
     } catch (e) {
-      console.error('Failed to parse Meshulam JSON:', e);
+      console.error('Failed to parse Meshulam JSON:', describeErrorForLog(e));
     }
   }
   
@@ -150,7 +152,7 @@ export async function POST(request: NextRequest) {
       data[key] = value;
     });
     
-    console.log('Meshulam callback POST data:', data);
+    console.log('Meshulam callback POST data:', JSON.stringify(summarizeMeshulamPayload(data)));
     
     // Forward to WordPress webhook
     try {
@@ -200,7 +202,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ status: 'received' });
     
   } catch (error) {
-    console.error('Meshulam callback POST error:', error);
+    console.error('Meshulam callback POST error:', describeErrorForLog(error));
     return NextResponse.json({ error: 'Failed to process' }, { status: 500 });
   }
 }

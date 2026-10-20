@@ -1,10 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { getApiEndpoint, siteConfig } from '@/config/site';
 import { sendGoogleAdsConversion } from '@/lib/google-ads-conversions';
+import { describeErrorForLog, summarizeMeshulamPayload } from '@/lib/meshulam-log';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
 const WC_SECRET = process.env.WC_CONSUMER_SECRET || process.env.WOOCOMMERCE_CONSUMER_SECRET;
+
+// Node, not Edge: the Google upload signs its JWT with node:crypto.
+export const runtime = 'nodejs';
+// The Google upload runs in after(), which Vercel keeps alive (waitUntil) only
+// up to this limit. Its three calls are capped at 8 s each, so 60 s covers the
+// WordPress forward plus a worst-case upload — and fits every Vercel plan.
+export const maxDuration = 60;
 
 /**
  * Server-side Google Ads conversion for a paid order.
@@ -28,9 +36,11 @@ async function reportGoogleAdsConversion(orderId: string): Promise<void> {
 
   try {
     const auth = Buffer.from(`${WC_KEY}:${WC_SECRET}`).toString('base64');
+    // Same 8 s ceiling as the Google calls.
     const res = await fetch(`${WC_URL}/wp-json/wc/v3/orders/${orderId}`, {
       headers: { Authorization: `Basic ${auth}` },
       cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     });
     if (!res.ok) {
       console.error(`Google Ads conversion: could not load order ${orderId} (${res.status})`);
@@ -57,12 +67,14 @@ async function reportGoogleAdsConversion(orderId: string): Promise<void> {
     if (adsRes.skipped) {
       console.log(`Google Ads conversion skipped for order ${orderId}: ${adsRes.error}`);
     } else if (!adsRes.ok) {
-      console.error(`Google Ads conversion failed for order ${orderId}:`, adsRes.error);
+      console.error(`Google Ads conversion failed for order ${orderId}: ${adsRes.error}`);
     } else {
-      console.log(`Google Ads conversion sent for order ${orderId}`);
+      const req = adsRes.requestId ? ` (request ${adsRes.requestId})` : '';
+      const warn = adsRes.warnings ? ` — warnings: ${adsRes.warnings}` : '';
+      console.log(`Google Ads conversion sent for order ${orderId}${req}${warn}`);
     }
   } catch (e) {
-    console.error(`Google Ads conversion threw for order ${orderId}:`, e);
+    console.error(`Google Ads conversion threw for order ${orderId}: ${describeErrorForLog(e)}`);
   }
 }
 
@@ -93,7 +105,9 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    console.log('Meshulam webhook received:', data);
+    // Never the whole payload: it carries the payer's name, phone, e-mail and
+    // card details. See lib/meshulam-log.ts for what is kept.
+    console.log('Meshulam webhook received:', JSON.stringify(summarizeMeshulamPayload(data)));
     
     // Extract order info
     const status = data['status'] || data['data[status]'];
@@ -101,8 +115,6 @@ export async function POST(request: NextRequest) {
     const asmachta = data['asmachta'] || data['data[asmachta]'];
     const transactionId = data['transactionId'] || data['data[transactionId]'];
     const transactionToken = data['transactionToken'] || data['data[transactionToken]'];
-    
-    console.log('Parsed webhook:', { status, orderId, asmachta, transactionId });
     
     if (!orderId) {
       console.error('No order ID in webhook');
@@ -130,22 +142,26 @@ export async function POST(request: NextRequest) {
       });
       
       const wpResult = await wpResponse.text();
-      console.log('WordPress webhook response:', wpResult);
+      console.log(`WordPress webhook response (${wpResponse.status}):`, wpResult.slice(0, 300));
       
     } catch (wpError) {
-      console.error('Failed to forward to WordPress:', wpError);
+      console.error('Failed to forward to WordPress:', describeErrorForLog(wpError));
       // Continue anyway - don't fail the webhook
     }
     
-    // Paid orders only. Awaited so it finishes before the function is frozen.
+    // Paid orders only, and after the response: Meshulam gets its answer as
+    // soon as WordPress has the payment, whatever Google is doing. after()
+    // runs the callback once the response is sent, and on Vercel holds the
+    // function open (waitUntil) until it settles — so it is not frozen
+    // mid-upload. reportGoogleAdsConversion never throws and logs its result.
     if (status === '1' || status === 1) {
-      await reportGoogleAdsConversion(String(orderId));
+      after(() => reportGoogleAdsConversion(String(orderId)));
     }
     
     return NextResponse.json({ status: 'ok', orderId });
     
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook error:', describeErrorForLog(error));
     return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
   }
 }
@@ -159,7 +175,7 @@ export async function GET(request: NextRequest) {
     data[key] = value;
   });
   
-  console.log('Meshulam webhook GET:', data);
+  console.log('Meshulam webhook GET:', JSON.stringify(summarizeMeshulamPayload(data)));
   
   // Forward to POST handler logic
   const orderId = data['cField1'];
@@ -181,11 +197,11 @@ export async function GET(request: NextRequest) {
         }),
       });
     } catch (e) {
-      console.error('WordPress forward error:', e);
+      console.error('WordPress forward error:', describeErrorForLog(e));
     }
     
     if (status === 'success' || status === '1') {
-      await reportGoogleAdsConversion(String(orderId));
+      after(() => reportGoogleAdsConversion(String(orderId)));
     }
   }
   

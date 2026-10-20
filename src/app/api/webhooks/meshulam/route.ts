@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendMetaPurchase } from '@/lib/meta-capi';
 import { sendGoogleAdsConversion } from '@/lib/google-ads-conversions';
+import { describeErrorForLog, summarizeMeshulamPayload } from '@/lib/meshulam-log';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || 'https://admin.bellano.co.il';
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -49,7 +50,9 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    console.log('Meshulam Webhook received:', JSON.stringify(data, null, 2));
+    // Never the whole payload: it carries the payer's name, phone, e-mail and
+    // card details. See lib/meshulam-log.ts for what is kept.
+    console.log('Meshulam Webhook received:', JSON.stringify(summarizeMeshulamPayload(data)));
     
     // Extract order info
     const status = parseInt(data.status as string) || 0;
@@ -219,12 +222,12 @@ export async function POST(request: NextRequest) {
         if (adsRes.skipped) {
           console.log(`Google Ads conversion skipped for order ${orderId}: ${adsRes.error}`);
         } else if (!adsRes.ok) {
-          console.error(`Google Ads conversion failed for order ${orderId}:`, adsRes.error);
+          console.error(`Google Ads conversion failed for order ${orderId}: ${adsRes.error}`);
         } else {
-          console.log(`Google Ads conversion sent for order ${orderId}`);
+          console.log(`Google Ads conversion sent for order ${orderId}${adsRes.requestId ? ` (request ${adsRes.requestId})` : ''}`);
         }
       } catch (e) {
-        console.error(`Google Ads conversion threw for order ${orderId}:`, e);
+        console.error(`Google Ads conversion threw for order ${orderId}: ${describeErrorForLog(e)}`);
       }
 
       console.log(`Meshulam Webhook: Order ${orderId} marked as processing, asmachta: ${transactionId}, time: ${Date.now() - startTime}ms`);
@@ -265,7 +268,7 @@ export async function POST(request: NextRequest) {
     }
     
   } catch (error) {
-    console.error('Meshulam Webhook error:', error);
+    console.error('Meshulam Webhook error:', describeErrorForLog(error));
     return NextResponse.json({ status: 'error', message: 'Internal error' }, { status: 500 });
   }
 }
