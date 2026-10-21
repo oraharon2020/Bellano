@@ -284,6 +284,31 @@ test('whatever arrives over the wire is reduced to our own shape', () => {
   assert.equal(directLast.last, undefined, 'last is never a direct touch');
 });
 
+test('an ad click keeps the campaign it came from, by id, onto the order', () => {
+  // Bellano, 22/10/2026: the product feed gives every campaign utm_campaign=pmax_category; the id is what tells them apart.
+  const t = touch('/product/sofa?gclid=GCLID1&gad_source=1&gad_campaignid=24054060925&utm_source=google&utm_medium=cpc&utm_campaign=pmax_category&utm_id=24054060925', 'https://www.google.com/');
+  assert.equal(t.gad_campaignid, '24054060925');
+  assert.equal(t.utm_id, '24054060925');
+  const s = recordTouch({}, t, { sessionStart: true });
+  const meta = Object.fromEntries(buildOrderAttribution({ entry: 'site', attribution: JSON.parse(JSON.stringify(s)), ownHosts: OWN, now: NOW }).meta.map((m) => [m.key, m.value]));
+  assert.equal(meta._utm_campaign, 'pmax_category');
+  assert.equal(meta._gad_campaignid, '24054060925');
+  assert.equal(meta._utm_id, '24054060925');
+  assert.equal(JSON.parse(meta._nalla_attr_last).campaignId, '24054060925');
+  // Google's id alone still says Google Ads.
+  assert.equal(classifyTouch(touch('/?gad_campaignid=123', '')).channel, 'google_ads');
+  // Over the wire: a Google id that is not digits, or a utm_id that is not a short token, is dropped.
+  const w = sanitizeAttribution({ last: { at: NOW.toISOString(), landing: '/', gclid: 'G', gad_campaignid: '12a', utm_id: 'x'.repeat(41) } }, OWN, NOW);
+  assert.equal(w.last.gad_campaignid, undefined);
+  assert.equal(w.last.utm_id, undefined);
+  const ok = sanitizeAttribution({ last: { at: NOW.toISOString(), landing: '/', gclid: 'G', gad_campaignid: '987', utm_id: 'abc-1' } }, OWN, NOW);
+  assert.equal(ok.last.gad_campaignid, '987');
+  assert.equal(ok.last.utm_id, 'abc-1');
+  // A rep's order still carries nothing of the browser's.
+  const rep = buildOrderAttribution({ entry: 'rep', attribution: s, ownHosts: OWN, now: NOW });
+  assert.equal(rep.meta.some((m) => m.key === '_gad_campaignid' || m.key === '_utm_id'), false);
+});
+
 test('summaries list fields in a fixed order', () => {
   const s = summarizeTouch(touch('/product/sofa?utm_source=facebook&utm_medium=paid&utm_campaign=c&fbclid=IwAR', 'https://l.facebook.com/'));
   assert.deepEqual(Object.keys(s), ['channel', 'source', 'medium', 'campaign', 'click', 'ref', 'landing', 'at']);

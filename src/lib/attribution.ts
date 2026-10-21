@@ -136,6 +136,13 @@ export interface Touch {
   ttclid?: string;
   fbclid?: string;
   gad_source?: string;
+  /**
+   * The campaign the ad click came from, by id: Google's own `gad_campaignid` (auto-tagging puts it beside the gclid),
+   * and `utm_id`, which the shop's Google Ads adds to every click (Final URL suffix `utm_id={campaignid}`, 22/10/2026).
+   * utm_campaign cannot say it: on Bellano the product feed gives every campaign the same one.
+   */
+  gad_campaignid?: string;
+  utm_id?: string;
   /** '1' when the URL carried srsltid; the value itself is noise. */
   srsltid?: string;
 }
@@ -247,6 +254,13 @@ function cleanClickId(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const id = value.trim();
   return /^[A-Za-z0-9._~-]{1,255}$/.test(id) ? id : undefined;
+}
+
+/** A campaign id: digits for Google's, a short token for any other platform's utm_id. */
+function cleanCampaignId(value: unknown, digitsOnly = false): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const id = value.trim();
+  return (digitsOnly ? /^\d{1,20}$/ : /^[A-Za-z0-9_-]{1,40}$/).test(id) ? id : undefined;
 }
 
 function cleanPath(value: unknown): string | undefined {
@@ -371,7 +385,7 @@ export function classifyTouch(touch: Touch | null | undefined): Classification {
   if (isEmail(source, medium, host)) return result('email');
 
   if (source) {
-    if (isGoogleSource(source)) return result(paid || touch.gad_source ? 'google_ads' : 'google_organic');
+    if (isGoogleSource(source)) return result(paid || touch.gad_source || touch.gad_campaignid ? 'google_ads' : 'google_organic');
     if (isBingSource(source)) return result('bing');
     if (isMetaSource(source)) {
       if (paid) return result('facebook_ads');
@@ -388,7 +402,7 @@ export function classifyTouch(touch: Touch | null | undefined): Classification {
     return result(hostIn(host, INSTAGRAM_HOSTS) ? 'instagram_organic' : 'facebook_organic');
   }
 
-  if (touch.gad_source) return result('google_ads');
+  if (touch.gad_source || touch.gad_campaignid) return result('google_ads');
 
   if (host) {
     if (hostIn(host, GOOGLE_AD_HOSTS)) return result('google_ads');
@@ -438,6 +452,10 @@ export function buildTouch({ href, referrer, now = new Date(), ownHosts = [] }: 
 
   const gad = cleanText(params.get('gad_source'), 20);
   if (gad) touch.gad_source = gad;
+  const gadCampaign = cleanCampaignId(params.get('gad_campaignid'), true);
+  if (gadCampaign) touch.gad_campaignid = gadCampaign;
+  const utmId = cleanCampaignId(params.get('utm_id'));
+  if (utmId) touch.utm_id = utmId;
   if (params.has('srsltid')) touch.srsltid = '1';
 
   return touch;
@@ -669,6 +687,10 @@ function sanitizeTouch(raw: unknown, ownHosts: readonly string[]): Touch | undef
 
   const gad = cleanText(r.gad_source, 20);
   if (gad) touch.gad_source = gad;
+  const gadCampaign = cleanCampaignId(r.gad_campaignid, true);
+  if (gadCampaign) touch.gad_campaignid = gadCampaign;
+  const utmId = cleanCampaignId(r.utm_id);
+  if (utmId) touch.utm_id = utmId;
   if (r.srsltid) touch.srsltid = '1';
 
   return touch;
@@ -724,6 +746,7 @@ export function summarizeTouch(touch: Touch): TouchSummary {
     ...(touch.utm_source ? { source: touch.utm_source } : {}),
     ...(touch.utm_medium ? { medium: touch.utm_medium } : {}),
     ...(touch.utm_campaign ? { campaign: touch.utm_campaign } : {}),
+    ...(touch.gad_campaignid || touch.utm_id ? { campaignId: touch.gad_campaignid ?? touch.utm_id } : {}),
     ...(click ? { click } : {}),
     ...(touch.ref ? { ref: touch.ref } : {}),
     landing: touch.landing,
@@ -832,6 +855,8 @@ export function buildOrderAttribution({
       ...row('_utm_source', attributed?.utm_source),
       ...row('_utm_medium', attributed?.utm_medium),
       ...row('_utm_campaign', attributed?.utm_campaign),
+      ...row('_utm_id', attributed?.utm_id),
+      ...row('_gad_campaignid', attributed?.gad_campaignid),
       ...row('_gclid', clicks.gclid?.id),
       ...row('_gbraid', clicks.gbraid?.id),
       ...row('_wbraid', clicks.wbraid?.id),
