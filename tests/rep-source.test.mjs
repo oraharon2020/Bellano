@@ -19,13 +19,14 @@ const NOW = new Date('2026-10-20T10:00:00.000Z');
 const NOW_UNIX = String(Math.floor(NOW.getTime() / 1000));
 const read = (meta) => Object.fromEntries(meta.map((r) => [r.key, r.value]));
 
-test('exactly the six values, in the order and with the words the checkout shows', () => {
-  assert.deepEqual([...REP_SOURCE_VALUES], ['google', 'meta', 'referral', 'returning', 'showroom', 'other']);
+test('exactly the seven values, in the order and with the words the checkout shows', () => {
+  assert.deepEqual([...REP_SOURCE_VALUES], ['google', 'meta', 'ai', 'referral', 'returning', 'showroom', 'other']);
   assert.deepEqual(
     REP_SOURCE_OPTIONS.map((o) => [o.value, o.label]),
     [
       ['google', 'גוגל'],
       ['meta', 'פייסבוק / אינסטגרם'],
+      ['ai', 'ChatGPT / בינה מלאכותית'],
       ['referral', 'המלצה מחבר או מכר'],
       ['returning', 'לקוח חוזר'],
       ['showroom', 'אולם התצוגה'],
@@ -42,7 +43,7 @@ test('the meta keys are the contract the server analytics reads on both shops', 
   });
 });
 
-test('each of the six is accepted as is', () => {
+test('each of the seven is accepted as is', () => {
   for (const v of REP_SOURCE_VALUES) {
     assert.equal(isRepSource(v), true, v);
     const r = validateRepSource(v);
@@ -60,7 +61,7 @@ test('missing is refused with the "missing" message', () => {
 
 test('junk is refused with the "unknown" message — no case folding, no padding, no near-misses', () => {
   const junk = ['Google', 'GOOGLE', ' google', 'google ', 'facebook', 'instagram', 'google_ads', 'said:google',
-    'rep', 'direct', 'unknown', 'אחר', 'גוגל', '0', 0, 1, true, false, {}, [], ['google'], { value: 'google' }, NaN];
+    'rep', 'direct', 'unknown', 'אחר', 'גוגל', 'AI', 'chatgpt', 'ChatGPT', ' ai', '0', 0, 1, true, false, {}, [], ['google'], { value: 'google' }, NaN];
   for (const v of junk) {
     assert.equal(isRepSource(v), false, JSON.stringify(v));
     assert.deepEqual(validateRepSource(v), { ok: false, message: REP_SOURCE_INVALID_MESSAGE }, JSON.stringify(v));
@@ -102,6 +103,7 @@ test('"אחר" note: anything that is not text is no note', () => {
 test('the note is kept only with "other"', () => {
   assert.deepEqual(validateRepSource('other', '  שלט בכביש  '), { ok: true, source: 'other', note: 'שלט בכביש' });
   assert.deepEqual(validateRepSource('google', 'שלט בכביש'), { ok: true, source: 'google', note: '' });
+  assert.deepEqual(validateRepSource('ai', 'צ׳ט gpt'), { ok: true, source: 'ai', note: '' });
 });
 
 test('a verified rep order: source + time, and the note only when "אחר" has one', () => {
@@ -111,6 +113,9 @@ test('a verified rep order: source + time, and the note only when "אחר" has o
     { key: '_nalla_rep_source', value: 'showroom' },
     { key: '_nalla_rep_source_at', value: NOW_UNIX },
   ]);
+
+  const ai = repSourceOrderMeta({ rep_source: 'ai' }, { isRep: true, now: NOW });
+  assert.deepEqual(read(ai.meta), { _nalla_rep_source: 'ai', _nalla_rep_source_at: NOW_UNIX });
 
   const other = repSourceOrderMeta({ rep_source: 'other', rep_source_note: ' ראה מודעה באוטובוס ' }, { isRep: true, now: NOW });
   assert.deepEqual(read(other.meta), {

@@ -24,7 +24,7 @@
  * tests/rep-source.test.mjs can run it under plain `node --test`.
  */
 
-export const REP_SOURCE_VALUES = ['google', 'meta', 'referral', 'returning', 'showroom', 'other'] as const;
+export const REP_SOURCE_VALUES = ['google', 'meta', 'ai', 'referral', 'returning', 'showroom', 'other'] as const;
 
 export type RepSource = (typeof REP_SOURCE_VALUES)[number];
 
@@ -32,6 +32,7 @@ export type RepSource = (typeof REP_SOURCE_VALUES)[number];
 export const REP_SOURCE_OPTIONS: readonly { value: RepSource; label: string }[] = [
   { value: 'google', label: 'גוגל' },
   { value: 'meta', label: 'פייסבוק / אינסטגרם' },
+  { value: 'ai', label: 'ChatGPT / בינה מלאכותית' },
   { value: 'referral', label: 'המלצה מחבר או מכר' },
   { value: 'returning', label: 'לקוח חוזר' },
   { value: 'showroom', label: 'אולם התצוגה' },

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User, X, Loader2 } from 'lucide-react';
 import { useAdminStore } from '@/lib/store/admin';
 import { getApiEndpoint } from '@/config/site';
+import { enterStaffMode } from '@/lib/staff-mode';
 
 type Mode = 'sms' | 'password';
 type SmsStep = 'phone' | 'code';
@@ -105,6 +106,7 @@ export function AdminLoginModal() {
       if (ok && data?.success) {
         setAdmin(true, data.userName, data.token, data.upgrades || []);
         closeLoginModal();
+        enterStaffMode();
       } else {
         setLoginError(data?.message || 'הקוד שגוי או שפג תוקפו.');
       }
@@ -133,6 +135,7 @@ export function AdminLoginModal() {
         setAdmin(true, data.userName, data.token, data.upgrades || []);
         closeLoginModal();
         setLoginData({ username: '', password: '' });
+        enterStaffMode();
       } else {
         setLoginError(data.message || 'שגיאה בהתחברות');
       }

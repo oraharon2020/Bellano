@@ -44,7 +44,8 @@ export default function RepSourcePicker({ value, note, onChange, onNoteChange }:
         className="grid grid-cols-2 sm:grid-cols-3 gap-2"
       >
         {REP_SOURCE_OPTIONS.map((option) => (
-          <label key={option.value} className="block">
+          // The catch-all gets a row of its own, under the named answers.
+          <label key={option.value} className={option.value === 'other' ? 'block col-span-2 sm:col-span-3' : 'block'}>
             <input
               type="radio"
               name="rep_source"

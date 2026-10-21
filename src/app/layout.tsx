@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Rubik, Inter } from "next/font/google";
 import Script from "next/script";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 import { Header, Footer, FloatingButtons } from "@/components/layout";
 import { AdminBar } from "@/components/layout/AdminBar";
@@ -13,6 +11,10 @@ import PromoPopup from "@/components/PromoPopup";
 import { AdminLoginModal } from "@/components/layout/AdminLoginModal";
 import { AdminSessionGuard } from "@/components/layout/AdminSessionGuard";
 import { UtmTracker } from "@/components/UtmTracker";
+import { AnalyticsWrapper } from "@/components/layout/AnalyticsWrapper";
+import { STAFF_PAGE_JS, staffModeScript } from "@/lib/staff-mode";
+
+const gtagSrc = `https://www.googletagmanager.com/gtag/js?id=${siteConfig.analytics.ga4}`;
 
 const rubik = Rubik({
   variable: "--font-rubik",
@@ -96,6 +98,17 @@ export default async function RootLayout({
   return (
     <html lang={siteConfig.language} dir={siteConfig.direction}>
       <head>
+        {/* Runs as <head> is parsed, before any tracker loads: is this a sales rep's page? See src/lib/staff-mode.ts. */}
+        <script
+          id="staff-mode"
+          dangerouslySetInnerHTML={{
+            __html: staffModeScript({
+              analyticsIds: [siteConfig.analytics.ga4],
+              preloadScripts: [gtagSrc],
+            }),
+          }}
+        />
+
         {/* Favicon */}
         <link rel="icon" href={siteConfig.favicon.ico32} sizes="32x32" />
         <link rel="icon" href={siteConfig.favicon.ico192} sizes="192x192" />
@@ -122,30 +135,32 @@ export default async function RootLayout({
         <LocalBusinessJsonLd />
       </head>
       <body className={`${rubik.variable} ${inter.variable} font-sans antialiased`}>
-        {/* GA4 & Google Ads - gtag.js - loads after page becomes interactive */}
-        <Script
-          src={`https://www.googletagmanager.com/gtag/js?id=${siteConfig.analytics.ga4}`}
-          strategy="afterInteractive"
-        />
+        {/* GA4 & Google Ads - gtag.js - loads after page becomes interactive.
+            The library is added by this script rather than by <Script src>, which
+            would print a preload of it into every page, a rep's included. */}
         <Script id="gtag-init" strategy="afterInteractive">
           {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', '${siteConfig.analytics.ga4}', {
-              'linker': {
-                'domains': ['bellano.co.il', 'admin.bellano.co.il']
-              }
-            });
-            gtag('config', '${siteConfig.analytics.googleAds}', {
-              'allow_enhanced_conversions': true
-            });
+            if (!${STAFF_PAGE_JS}) {
+              document.body.appendChild(Object.assign(document.createElement('script'), { src: '${gtagSrc}' }));
+              window.dataLayer = window.dataLayer || [];
+              window.gtag = function gtag(){dataLayer.push(arguments);};
+              gtag('js', new Date());
+              gtag('config', '${siteConfig.analytics.ga4}', {
+                'linker': {
+                  'domains': ['bellano.co.il', 'admin.bellano.co.il']
+                }
+              });
+              gtag('config', '${siteConfig.analytics.googleAds}', {
+                'allow_enhanced_conversions': true
+              });
+            }
           `}
         </Script>
         
         {/* Meta Pixel (Facebook) - loads after page becomes interactive */}
         <Script id="meta-pixel" strategy="afterInteractive">
           {`
+            if (!${STAFF_PAGE_JS}) {
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -156,6 +171,7 @@ export default async function RootLayout({
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '${siteConfig.analytics.facebookPixel}');
             fbq('track', 'PageView');
+            }
           `}
         </Script>
         <noscript>
@@ -177,8 +193,7 @@ export default async function RootLayout({
         <AdminLoginModal />
         <AdminSessionGuard />
         <UtmTracker />
-        <Analytics />
-        <SpeedInsights />
+        <AnalyticsWrapper />
       </body>
     </html>
   );

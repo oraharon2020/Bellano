@@ -2,6 +2,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { ADMIN_STORE_KEY } from '@/lib/staff-mode';
 
 interface AdminStore {
   isAdmin: boolean;
@@ -45,7 +46,7 @@ export const useAdminStore = create<AdminStore>()(
         set({ currentProductId: id }),
     }),
     {
-      name: 'bellano-admin',
+      name: ADMIN_STORE_KEY,
       partialize: (state) => ({
         isAdmin: state.isAdmin,
         adminName: state.adminName,
