@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Send, X, Maximize2, Minimize2, Phone } from 'lucide-react';
+import { useWhatsAppLead } from '@/lib/whatsapp-lead';
 
 interface ProductInfo {
   name: string;
@@ -39,6 +40,7 @@ interface ProductAIChatProps {
 }
 
 export default function ProductAIChat({ product }: ProductAIChatProps) {
+  const whatsappLead = useWhatsAppLead();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -311,7 +313,8 @@ export default function ProductAIChat({ product }: ProductAIChatProps) {
           {/* Contact buttons */}
           <div className="flex gap-2 mt-2 pt-2 border-t border-slate-100/50">
             <a
-              href="https://wa.me/97235566696"
+              href={whatsappLead.href}
+              onClick={whatsappLead.onClick}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md text-xs font-medium transition-colors"

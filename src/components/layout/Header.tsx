@@ -11,6 +11,7 @@ import { CartSidebar } from './CartSidebar';
 import { SearchModal } from '@/components/search/SearchModal';
 import { siteConfig } from '@/config/site';
 import type { NavItem, InfoLink } from '@/lib/wordpress/nav';
+import { useWhatsAppLead } from '@/lib/whatsapp-lead';
 
 const { navigation } = siteConfig;
 const navLink = (item: NavItem) => (item.slug ? `/category/${item.slug}` : (item.href || '/'));
@@ -18,6 +19,7 @@ const navLink = (item: NavItem) => (item.slug ? `/category/${item.slug}` : (item
 export function Header({ navItems, infoItems }: { navItems?: NavItem[]; infoItems?: InfoLink[] }) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const whatsappLead = useWhatsAppLead();
   const { getItemCount, toggleCart, isHydrated } = useCartStore();
   const wishlistStore = useWishlistStore();
   const itemCount = isHydrated ? getItemCount() : 0;
@@ -266,7 +268,8 @@ export function Header({ navItems, infoItems }: { navItems?: NavItem[]; infoItem
                 03-5566696
               </a>
               <a 
-                href="https://wa.me/97235566696"
+                href={whatsappLead.href}
+                onClick={whatsappLead.onClick}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-lg font-medium hover:bg-white transition-colors"

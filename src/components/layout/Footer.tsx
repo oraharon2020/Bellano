@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Phone, Mail, Clock, Instagram, Facebook, LogIn, LogOut, User } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { useAdminStore } from '@/lib/store/admin';
+import { useWhatsAppLead } from '@/lib/whatsapp-lead';
 
 const categories = [
   { name: 'מזנונים לסלון', slug: 'living-room-sideboards' },
@@ -25,6 +26,7 @@ const links = [
 
 export function Footer() {
   const { isAdmin, adminName, openLoginModal, logout } = useAdminStore();
+  const whatsappLead = useWhatsAppLead();
   
   return (
     <footer className="bg-gray-100 mt-16">
@@ -42,7 +44,7 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href={`https://wa.me/${siteConfig.whatsapp}`} className="hover:text-black text-gray-600">
+                <a href={whatsappLead.href} onClick={whatsappLead.onClick} className="hover:text-black text-gray-600">
                   💬 וואטסאפ
                 </a>
               </li>

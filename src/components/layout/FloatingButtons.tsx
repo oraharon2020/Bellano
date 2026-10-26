@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { Phone, MessageCircle, X, Accessibility, MessageSquare } from 'lucide-react';
 import { analytics } from '@/lib/analytics';
+import { useWhatsAppLead } from '@/lib/whatsapp-lead';
 
 export function FloatingButtons() {
+  const whatsappLead = useWhatsAppLead();
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
 
@@ -84,10 +86,13 @@ export function FloatingButtons() {
             
             {/* WhatsApp */}
             <a
-              href="https://wa.me/97235566696"
+              href={whatsappLead.href}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={() => analytics.clickWhatsapp('floating_button')}
+              onClick={(e) => {
+                whatsappLead.onClick(e);
+                analytics.clickWhatsapp('floating_button');
+              }}
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group"
             >
               <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">

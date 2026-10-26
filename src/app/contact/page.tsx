@@ -3,6 +3,7 @@ import { Phone, Mail, MessageCircle, Clock } from 'lucide-react';
 import { siteConfig } from '@/config/site';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import ContactForm from '@/components/contact/ContactForm';
+import { WhatsAppLeadLink } from '@/components/layout/WhatsAppLeadLink';
 
 const SITE_URL = siteConfig.url;
 
@@ -46,8 +47,7 @@ export default function ContactPage() {
               <span className="font-medium">{siteConfig.phone}</span>
             </a>
 
-            <a 
-              href={`https://wa.me/${siteConfig.whatsapp}`}
+            <WhatsAppLeadLink
               target="_blank"
               rel="noopener noreferrer"
               className="flex flex-col items-center p-6 border border-gray-200 rounded-lg hover:border-green-500 transition-colors group"
@@ -57,7 +57,7 @@ export default function ContactPage() {
               </div>
               <span className="text-sm text-gray-500 mb-1">וואטסאפ</span>
               <span className="font-medium">{siteConfig.phone}</span>
-            </a>
+            </WhatsAppLeadLink>
 
             <a 
               href={`mailto:${siteConfig.email}`}
