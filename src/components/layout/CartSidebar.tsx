@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles, ChevronDown } from 'lucide-react';
-import { useCartStore, getFormulaKey } from '@/lib/store/cart';
+import { useCartStore, cartLineKey } from '@/lib/store/cart';
 
 interface AppliedCoupon {
   code: string;
@@ -154,7 +154,7 @@ export function CartSidebar() {
             <div className="flex-1 overflow-auto p-3 sm:p-4 space-y-3">
               {items.map((item) => (
                 <div
-                  key={item.id + (item.variation?.id || '') + (getFormulaKey(item.formulaFields) || '')}
+                  key={cartLineKey(item)}
                   className="flex gap-3 p-3 bg-gray-50 rounded-lg"
                 >
                   {/* Product Image */}
@@ -178,7 +178,7 @@ export function CartSidebar() {
                     <div className="flex justify-between items-start gap-2">
                       <h4 className="font-medium text-sm leading-tight line-clamp-2">{item.name}</h4>
                       <button
-                        onClick={() => removeItem(item.id, item.variation?.id, getFormulaKey(item.formulaFields))}
+                        onClick={() => removeItem(cartLineKey(item))}
                         className="p-1.5 hover:bg-gray-200 rounded transition-colors flex-shrink-0 active:scale-95"
                         aria-label={`הסר ${item.name} מהעגלה`}
                       >
@@ -284,7 +284,7 @@ export function CartSidebar() {
                       {/* Quantity Controls */}
                       <div className="flex items-center border border-gray-300 rounded-md" role="group" aria-label="כמות">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1, item.variation?.id, getFormulaKey(item.formulaFields))}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity - 1)}
                           className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 transition-colors active:bg-gray-200"
                           aria-label="הפחת כמות"
                         >
@@ -292,7 +292,7 @@ export function CartSidebar() {
                         </button>
                         <span className="w-8 text-center text-sm font-medium" aria-live="polite">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1, item.variation?.id, getFormulaKey(item.formulaFields))}
+                          onClick={() => updateQuantity(cartLineKey(item), item.quantity + 1)}
                           className="w-11 h-11 flex items-center justify-center hover:bg-gray-100 transition-colors active:bg-gray-200"
                           aria-label="הוסף כמות"
                         >

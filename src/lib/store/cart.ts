@@ -52,9 +52,10 @@ interface CartStore {
   isHydrated: boolean;
   isCheckingOut: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
-  updateItem: (id: string, item: Partial<CartItem>, variationId?: number, formulaKey?: string) => void;
-  removeItem: (id: string, variationId?: number, formulaKey?: string) => void;
-  updateQuantity: (id: string, quantity: number, variationId?: number, formulaKey?: string) => void;
+  /** Lines are addressed by cartLineKey(item). */
+  updateItem: (lineKey: string, item: Partial<CartItem>) => void;
+  removeItem: (lineKey: string) => void;
+  updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
   toggleCart: () => void;
   openCart: () => void;
@@ -66,27 +67,43 @@ interface CartStore {
   setHydrated: () => void;
 }
 
+/** JSON with sorted keys and empty values left out, so equal choices always give equal text. */
+const stableJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== false)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableJson(v)}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+};
+
 /**
- * Stable key fragment for formula dimensions (e.g. "w240-d35-h30") so the
- * same variation with different custom dimensions stays a separate cart line.
+ * A cart line's identity. Adding to the cart raises the quantity of an existing
+ * line only when everything about the new piece is the same: product, variation,
+ * the chosen attribute values, formula dimensions, every option and rep field
+ * (including the rep's custom width/depth/height), and price.
+ *
+ * The variation id is not enough. Many variations leave a size attribute on
+ * "any" (depth 35 or 40 at one price, say), so a different size lands on the
+ * same variation id. Keyed on the id alone, the second piece was folded into the
+ * first line as quantity 2 and its size was lost — the order went out with the
+ * first size twice (united, found 2026-10-28).
  */
-export const getFormulaKey = (formulaFields?: FormulaFieldsData): string | undefined => {
-  if (!formulaFields?.dimensions) return undefined;
-  const parts: string[] = [];
-  (['width', 'depth', 'height'] as const).forEach((dim) => {
-    const value = formulaFields.dimensions[dim];
-    if (value != null) parts.push(`${dim[0]}${value}`);
+export const cartLineKey = (
+  item: Pick<CartItem, 'id' | 'price' | 'variation' | 'adminFields' | 'formulaFields'>
+): string =>
+  stableJson({
+    id: item.id,
+    variation: item.variation?.id,
+    attributes: (item.variation?.attributes || [])
+      .map((a) => `${a.name}=${a.value}`)
+      .sort(),
+    price: parseFloat((item.price || '0').replace(/[^\d.]/g, '')) || 0,
+    dimensions: item.formulaFields?.dimensions,
+    options: item.adminFields,
   });
-  return parts.length > 0 ? parts.join('-') : undefined;
-};
-
-const getItemKey = (id: string, variationId?: number, formulaKey?: string) => {
-  const base = variationId ? `${id}-${variationId}` : id;
-  return formulaKey ? `${base}-${formulaKey}` : base;
-};
-
-const cartItemKey = (item: Pick<CartItem, 'id' | 'variation' | 'formulaFields'>) =>
-  getItemKey(item.id, item.variation?.id, getFormulaKey(item.formulaFields));
 
 export const useCartStore = create<CartStore>()(
   persist(
@@ -100,15 +117,13 @@ export const useCartStore = create<CartStore>()(
 
       addItem: (item, quantity = 1) => {
         const items = get().items;
-        const itemKey = cartItemKey(item);
-        const existingItem = items.find((i) => cartItemKey(i) === itemKey);
+        const lineKey = cartLineKey(item);
+        const existingItem = items.find((i) => cartLineKey(i) === lineKey);
 
         if (existingItem) {
           set({
             items: items.map((i) =>
-              cartItemKey(i) === itemKey
-                ? { ...i, quantity: i.quantity + quantity }
-                : i
+              i === existingItem ? { ...i, quantity: i.quantity + quantity } : i
             ),
           });
         } else {
@@ -117,38 +132,29 @@ export const useCartStore = create<CartStore>()(
         get().openCart();
       },
 
-      removeItem: (id, variationId, formulaKey) => {
-        const itemKey = getItemKey(id, variationId, formulaKey);
+      removeItem: (lineKey) => {
         set({
-          items: get().items.filter((i) =>
-            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) !== itemKey
-          )
+          items: get().items.filter((i) => cartLineKey(i) !== lineKey),
         });
       },
 
-      updateItem: (id, updates, variationId, formulaKey) => {
-        const itemKey = getItemKey(id, variationId, formulaKey);
+      updateItem: (lineKey, updates) => {
         set({
           items: get().items.map((i) =>
-            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
-              ? { ...i, ...updates }
-              : i
+            cartLineKey(i) === lineKey ? { ...i, ...updates } : i
           ),
         });
         get().openCart();
       },
 
-      updateQuantity: (id, quantity, variationId, formulaKey) => {
+      updateQuantity: (lineKey, quantity) => {
         if (quantity < 1) {
-          get().removeItem(id, variationId, formulaKey);
+          get().removeItem(lineKey);
           return;
         }
-        const itemKey = getItemKey(id, variationId, formulaKey);
         set({
           items: get().items.map((i) =>
-            getItemKey(i.id, i.variation?.id, getFormulaKey(i.formulaFields)) === itemKey
-              ? { ...i, quantity }
-              : i
+            cartLineKey(i) === lineKey ? { ...i, quantity } : i
           ),
         });
       },

@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles } from 'lucide-react';
-import { useCartStore, getFormulaKey } from '@/lib/store/cart';
+import { useCartStore, cartLineKey } from '@/lib/store/cart';
 import { useAdminStore } from '@/lib/store/admin';
 import { getStoredAttribution } from '@/hooks/useUtmTracking';
 import RepSourcePicker, { REP_SOURCE_ANCHOR } from '@/components/checkout/RepSourcePicker';
@@ -954,7 +954,7 @@ export default function CheckoutPage() {
                 {/* Cart Items */}
                 <div className="space-y-4 mb-4 max-h-96 overflow-auto">
                   {items.map((item) => (
-                    <div key={item.id + (item.variation?.id || '')} className="border rounded-lg p-3">
+                    <div key={cartLineKey(item)} className="border rounded-lg p-3">
                       <div className="flex gap-3">
                         <div className="relative w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
                           {item.image?.sourceUrl ? (
@@ -975,7 +975,7 @@ export default function CheckoutPage() {
                             <h4 className="text-sm font-medium line-clamp-2">{item.name}</h4>
                             <button
                               type="button"
-                              onClick={() => removeItem(item.id, item.variation?.id, getFormulaKey(item.formulaFields))}
+                              onClick={() => removeItem(cartLineKey(item))}
                               className="text-gray-400 hover:text-red-500 transition-colors p-1"
                               title="הסר מוצר"
                             >
@@ -1069,7 +1069,7 @@ export default function CheckoutPage() {
                             <div className="flex items-center gap-2 border rounded">
                               <button
                                 type="button"
-                                onClick={() => updateQuantity(item.id, item.quantity - 1, item.variation?.id)}
+                                onClick={() => updateQuantity(cartLineKey(item), item.quantity - 1)}
                                 className="p-1 hover:bg-gray-100 transition-colors"
                               >
                                 <Minus className="w-3 h-3" />
@@ -1077,7 +1077,7 @@ export default function CheckoutPage() {
                               <span className="text-sm w-6 text-center">{item.quantity}</span>
                               <button
                                 type="button"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1, item.variation?.id)}
+                                onClick={() => updateQuantity(cartLineKey(item), item.quantity + 1)}
                                 className="p-1 hover:bg-gray-100 transition-colors"
                               >
                                 <Plus className="w-3 h-3" />
