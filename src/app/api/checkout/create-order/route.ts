@@ -4,6 +4,7 @@ import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 import { buildOrderAttribution } from '@/lib/attribution';
 import { verifyAdminToken } from '@/lib/auth/verify-admin';
 import { repSourceOrderMeta } from '@/lib/rep-source';
+import { splitLineAttributes } from '@/lib/line-sizes';
 
 const WC_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.wordpressUrl;
 const WC_KEY = process.env.WC_CONSUMER_KEY || process.env.WOOCOMMERCE_CONSUMER_KEY;
@@ -245,7 +246,18 @@ export async function POST(request: NextRequest) {
       // Add variation attributes as meta_data for display in emails
       // Use special format that WooCommerce will display in emails
       if (item.variation_attributes && item.variation_attributes.length > 0) {
-        item.variation_attributes.forEach((attr) => {
+        // A size measured by hand (the rep's, or a formula's) replaces the chosen one: one size per line
+        // (lib/line-sizes.ts). The replaced choice is kept out of sight, for the record.
+        const measured = {
+          width: item.admin_fields?.width || String(item.formula?.dimensions?.width ?? ''),
+          depth: item.admin_fields?.depth || String(item.formula?.dimensions?.depth ?? ''),
+          height: item.admin_fields?.height || String(item.formula?.dimensions?.height ?? ''),
+        };
+        const { keep, replaced } = splitLineAttributes(item.variation_attributes, measured);
+        if (replaced.length) {
+          lineItem.meta_data.push({ key: '_nalla_size_replaced', value: replaced.map((a) => `${a.name}: ${a.value}`).join(' · ') });
+        }
+        keep.forEach((attr) => {
           // Use bellano_attr_ prefix (without underscore at start - WooCommerce hides underscore-prefixed meta)
           lineItem.meta_data.push({ 
             key: `bellano_attr_${attr.name.replace(/\s+/g, '_')}`,

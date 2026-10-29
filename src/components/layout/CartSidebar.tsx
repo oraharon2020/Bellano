@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles, ChevronDown } from 'lucide-react';
 import { useCartStore, cartLineKey, repPriceNotes } from '@/lib/store/cart';
+import { splitLineAttributes } from '@/lib/line-sizes';
 
 interface AppliedCoupon {
   code: string;
@@ -188,7 +189,7 @@ export function CartSidebar() {
                     
                     {item.variation && (
                       <p className="text-xs text-gray-500 mt-1">
-                        {item.variation.attributes.map((attr) => attr.value).join(' • ')}
+                        {splitLineAttributes(item.variation.attributes, { width: item.adminFields?.width || String(item.formulaFields?.dimensions?.width ?? ''), depth: item.adminFields?.depth || String(item.formulaFields?.dimensions?.depth ?? ''), height: item.adminFields?.height || String(item.formulaFields?.dimensions?.height ?? '') }).keep.map((attr) => attr.value).join(' • ')}
                       </p>
                     )}
 

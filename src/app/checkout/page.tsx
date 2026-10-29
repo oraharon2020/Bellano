@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles, FileText } from 'lucide-react';
 import { useCartStore, cartLineKey, repPriceNotes } from '@/lib/store/cart';
+import { splitLineAttributes } from '@/lib/line-sizes';
 import { useAdminStore } from '@/lib/store/admin';
 import { getStoredAttribution } from '@/hooks/useUtmTracking';
 import RepSourcePicker, { REP_SOURCE_ANCHOR } from '@/components/checkout/RepSourcePicker';
@@ -1076,7 +1077,7 @@ export default function CheckoutPage() {
                           </div>
                           {item.variation && (
                             <p className="text-xs text-gray-500">
-                              {item.variation.attributes.map((attr) => attr.value).join(' • ')}
+                              {splitLineAttributes(item.variation.attributes, { width: item.adminFields?.width || String(item.formulaFields?.dimensions?.width ?? ''), depth: item.adminFields?.depth || String(item.formulaFields?.dimensions?.depth ?? ''), height: item.adminFields?.height || String(item.formulaFields?.dimensions?.height ?? '') }).keep.map((attr) => attr.value).join(' • ')}
                             </p>
                           )}
 
