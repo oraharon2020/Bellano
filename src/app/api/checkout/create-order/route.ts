@@ -84,7 +84,8 @@ interface CreateOrderRequest {
   customer: CustomerData;
   items: OrderItem[];
   shipping_method: string;
-  payment_method?: 'credit_card' | 'phone_order';
+  /** 'quote' — a rep's quote (his word 29/10): saved as an order in the "הצעת מחיר" status, never charged. */
+  payment_method?: 'credit_card' | 'phone_order' | 'quote';
   coupon_code?: string | null;
   /** Set to 'rep' by a browser in sales-rep mode (it also sends x-admin-token). */
   order_entry?: 'rep' | 'site';
@@ -147,6 +148,36 @@ async function fetchFormulaLabels(productId: number): Promise<Record<string, str
   }
 }
 
+/**
+ * A link to the quote page for this order, signed for the rep whose storefront token this is (the theme's
+ * order-quote-send.php checks the token with the plugin and signs a key for this order and this person, 48 hours).
+ * null when WordPress cannot be reached or refuses — never thrown: the order is already saved.
+ */
+async function quoteLinkFor(adminToken: string, orderId: number): Promise<string | null> {
+  try {
+    const res = await fetch(`${WC_URL}/wp-json/nalla/v1/quote/rep-link`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Browser-like UA so the WAF does not block this server-to-server call, as verify-admin.ts does.
+        'User-Agent':
+          'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      },
+      body: JSON.stringify({ token: adminToken, order: orderId }),
+      cache: 'no-store',
+    });
+    const body = (await res.json().catch(() => null)) as { ok?: boolean; url?: string; message?: string } | null;
+    if (!res.ok || !body?.ok || typeof body.url !== 'string' || !body.url.startsWith(WC_URL)) {
+      console.error('Quote link refused', res.status, body?.message);
+      return null;
+    }
+    return body.url;
+  } catch (error) {
+    console.error('Quote link failed:', error);
+    return null;
+  }
+}
+
 export async function POST(request: NextRequest) {
   // Rate limit: max 5 orders per minute per IP
   const ip = getClientIp(request);
@@ -186,6 +217,11 @@ export async function POST(request: NextRequest) {
 
     // Determine payment method settings
     const isPhoneOrder = payment_method === 'phone_order';
+    // A quote is a rep's tool only: the order is saved in the quote status and the rep gets the quote page.
+    const isQuote = payment_method === 'quote';
+    if (isQuote && !verifiedRep) {
+      return NextResponse.json({ success: false, message: 'הצעת מחיר זמינה לנציגים מחוברים בלבד. התחברו מחדש ונסו שוב.' }, { status: 403 });
+    }
     
     // Check if any items have admin fields (sales rep order)
     const hasAdminFields = items.some(item => item.admin_fields);
@@ -398,14 +434,16 @@ export async function POST(request: NextRequest) {
 
     // Create the order in WooCommerce
     const orderData = {
-      payment_method: isPhoneOrder ? 'cod' : 'meshulam',
-      payment_method_title: isPhoneOrder ? 'תשלום דרך נציג' : 'כרטיס אשראי',
+      payment_method: isPhoneOrder || isQuote ? 'cod' : 'meshulam',
+      payment_method_title: isQuote ? 'הצעת מחיר' : isPhoneOrder ? 'תשלום דרך נציג' : 'כרטיס אשראי',
       set_paid: false,
-      status: isPhoneOrder ? 'on-hold' : 'pending',
+      // 'bid' is the shops' "הצעת מחיר" status: off every sales count, the dashboard's open quotes.
+      status: isQuote ? 'bid' : isPhoneOrder ? 'on-hold' : 'pending',
       billing: {
         first_name: customer.firstName,
         last_name: customer.lastName,
-        email: customer.email,
+        // A quote may go out before the customer's e-mail is known; WooCommerce refuses an empty one.
+        ...(customer.email?.trim() ? { email: customer.email.trim() } : {}),
         phone: customer.phone,
         address_1: customer.address,
         city: customer.city,
@@ -480,9 +518,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // The quote page with its popup (download, WhatsApp, e-mail), opened by the rep's key. Without it the order
+    // still stands; the checkout says to open the quote from the order screen.
+    const quoteUrl = isQuote && adminToken ? await quoteLinkFor(adminToken, data.id) : null;
+
     return NextResponse.json({
       success: true,
       order_id: data.id,
+      ...(isQuote ? { quote_url: quoteUrl } : {}),
       order_key: data.order_key,
       total: parseFloat(data.total),
       currency: data.currency,

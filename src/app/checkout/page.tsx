@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles } from 'lucide-react';
+import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles, FileText } from 'lucide-react';
 import { useCartStore, cartLineKey } from '@/lib/store/cart';
 import { useAdminStore } from '@/lib/store/admin';
 import { getStoredAttribution } from '@/hooks/useUtmTracking';
@@ -36,7 +36,7 @@ interface AppliedCoupon {
   individual_use?: boolean;
 }
 
-type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order';
+type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order' | 'quote';
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
@@ -65,6 +65,16 @@ export default function CheckoutPage() {
   const [repSource, setRepSource] = useState<RepSource | ''>('');
   const [repSourceNote, setRepSourceNote] = useState('');
   const repSourceMissing = isAdmin && repSource === '';
+  /*
+   * "הצעת מחיר" — reps only (his word 29/10): the cart is saved as an order in the quote status, and the rep lands on
+   * the quote page with its PDF, WhatsApp and e-mail. A quote is not a purchase, so the site's terms are not asked.
+   */
+  const isQuote = paymentMethod === 'quote';
+  const termsOk = agreedToTerms || isQuote;
+  const [quoteUrl, setQuoteUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isAdmin && paymentMethod === 'quote') setPaymentMethod('credit_card');
+  }, [isAdmin, paymentMethod]);
   
   const [customerData, setCustomerData] = useState<CustomerData>({
     firstName: '',
@@ -212,7 +222,9 @@ export default function CheckoutPage() {
       setError('נא להזין שם משפחה');
       return false;
     }
-    if (!customerData.email.trim() || !customerData.email.includes('@')) {
+    // A quote needs a name and a phone; an e-mail only when one is given, and no address yet.
+    const quote = paymentMethod === 'quote';
+    if ((!quote || customerData.email.trim()) && (!customerData.email.trim() || !customerData.email.includes('@'))) {
       setError('נא להזין כתובת אימייל תקינה');
       return false;
     }
@@ -220,11 +232,11 @@ export default function CheckoutPage() {
       setError('נא להזין מספר טלפון תקין');
       return false;
     }
-    if (!customerData.address.trim()) {
+    if (!quote && !customerData.address.trim()) {
       setError('נא להזין כתובת');
       return false;
     }
-    if (!customerData.city.trim()) {
+    if (!quote && !customerData.city.trim()) {
       setError('נא להזין עיר');
       return false;
     }
@@ -334,6 +346,17 @@ export default function CheckoutPage() {
 
       setOrderId(orderData.order_id);
       console.log('Order created:', orderData.order_id);
+
+      // A quote: straight to its page (no payment, no purchase measured). Without the link the order still stands,
+      // and the success step says where to open it.
+      if (paymentMethod === 'quote') {
+        clearCart();
+        setQuoteUrl(orderData.quote_url || null);
+        setStep('success');
+        setIsLoading(false);
+        if (orderData.quote_url) window.location.href = orderData.quote_url;
+        return;
+      }
 
       // If phone order - redirect to success page with phone_order flag
       if (paymentMethod === 'phone_order') {
@@ -458,6 +481,43 @@ export default function CheckoutPage() {
   }
 
   // Success Step
+  if (step === 'success' && isQuote) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-16">
+          <div className="max-w-md mx-auto text-center">
+            <div className="w-20 h-20 bg-teal-50 rounded-full flex items-center justify-center mx-auto mb-6">
+              <FileText className="w-10 h-10 text-teal-700" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2">הצעת המחיר נשמרה</h2>
+            {orderId && (
+              <p className="text-gray-600 mb-6">הזמנה <strong>{orderId}</strong> · בסטטוס הצעת מחיר</p>
+            )}
+            {quoteUrl ? (
+              <>
+                <p className="text-sm text-gray-500 mb-4">פותח את ההצעה להורדה ולשליחה…</p>
+                <a
+                  href={quoteUrl}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+                >
+                  <FileText className="w-4 h-4" />
+                  פתיחת הצעת המחיר
+                </a>
+              </>
+            ) : (
+              <p className="bg-amber-50 text-amber-800 p-4 rounded-lg mb-6 text-sm">
+                דף ההצעה לא נפתח מכאן. אפשר לפתוח אותה ממסך ההזמנה במערכת — כפתור „הצעת מחיר”.
+              </p>
+            )}
+            <div className="mt-6">
+              <Link href="/" className="text-sm text-gray-600 underline hover:no-underline">חזרה לחנות</Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 'success') {
     const isPhoneOrder = paymentMethod === 'phone_order';
     
@@ -625,7 +685,7 @@ export default function CheckoutPage() {
                       value={customerData.email}
                       onChange={(e) => setCustomerData({ ...customerData, email: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                      required
+                      required={!isQuote}
                     />
                   </div>
                   <div>
@@ -653,7 +713,7 @@ export default function CheckoutPage() {
                       value={customerData.address}
                       onChange={(e) => setCustomerData({ ...customerData, address: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                      required
+                      required={!isQuote}
                     />
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -664,7 +724,7 @@ export default function CheckoutPage() {
                         value={customerData.city}
                         onChange={(e) => setCustomerData({ ...customerData, city: e.target.value })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent"
-                        required
+                        required={!isQuote}
                       />
                     </div>
                     <div>
@@ -873,6 +933,37 @@ export default function CheckoutPage() {
                   {paymentMethod === 'phone_order' && (
                     <div className="bg-blue-50 text-blue-700 text-sm p-3 rounded-lg">
                       📞 נציג שלנו יצור איתך קשר בהקדם להשלמת התשלום
+                    </div>
+                  )}
+
+                  {/* Quote — reps only: saved as an order in the quote status, with its PDF to send */}
+                  {isAdmin && (
+                    <label
+                      className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                        paymentMethod === 'quote'
+                          ? 'border-black bg-gray-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="payment_method"
+                          value="quote"
+                          checked={paymentMethod === 'quote'}
+                          onChange={() => setPaymentMethod('quote')}
+                          className="w-4 h-4"
+                        />
+                        <FileText className="w-5 h-5 text-gray-500" />
+                        <span>הצעת מחיר</span>
+                      </div>
+                      <span className="text-xs text-gray-500">נציגים בלבד</span>
+                    </label>
+                  )}
+
+                  {isAdmin && paymentMethod === 'quote' && (
+                    <div className="bg-teal-50 text-teal-800 text-sm p-3 rounded-lg">
+                      ההזמנה תישמר בסטטוס „הצעת מחיר”, בלי תשלום. מיד אחר כך תיפתח ההצעה כ־PDF — עם כל מה שבסל, ההערות והשרטוטים — להורדה, לוואטסאפ או למייל.
                     </div>
                   )}
                 </div>
@@ -1191,7 +1282,7 @@ export default function CheckoutPage() {
                       checked={agreedToTerms}
                       onChange={(e) => setAgreedToTerms(e.target.checked)}
                       className="mt-1 w-4 h-4 rounded border-gray-300 text-black focus:ring-black cursor-pointer"
-                      required
+                      required={!isQuote}
                     />
                     <span className="text-sm text-gray-600 group-hover:text-gray-800">
                       קראתי ואני מסכים/ה ל
@@ -1208,7 +1299,7 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={isLoading || !agreedToTerms || repSourceMissing}
+                  disabled={isLoading || !termsOk || repSourceMissing}
                   aria-describedby={repSourceMissing ? 'rep-source-hint' : undefined}
                   className="w-full mt-4 py-4 bg-black text-white rounded-lg font-medium hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
@@ -1216,6 +1307,11 @@ export default function CheckoutPage() {
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
                       מעבד...
+                    </>
+                  ) : isQuote ? (
+                    <>
+                      <FileText className="w-5 h-5" />
+                      יצירת הצעת מחיר
                     </>
                   ) : paymentMethod === 'phone_order' ? (
                     <>
@@ -1240,7 +1336,9 @@ export default function CheckoutPage() {
                 )}
 
                 <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
-                  {paymentMethod === 'phone_order' ? (
+                  {isQuote ? (
+                    <span>ללא תשלום · נשמר בסטטוס הצעת מחיר</span>
+                  ) : paymentMethod === 'phone_order' ? (
                     <span>נציג יצור קשר להשלמת התשלום</span>
                   ) : (
                     <>
