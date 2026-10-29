@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { siteConfig, getApiEndpoint } from '@/config/site';
+import { orderForPayment, PAYABLE_STATUSES } from '@/lib/order-for-payment';
 import { checkRateLimit, getClientIp } from '@/lib/rate-limiter';
 
 // Fallback page codes (will be overridden by WordPress settings)
@@ -82,6 +83,20 @@ export async function POST(request: NextRequest) {
     const body: CreatePaymentRequest = await request.json();
     const { order_id, amount, customer, payments, items, payment_type = 'credit_card' } = body;
 
+    // The sum is the order's own total in WooCommerce, never the browser's number (found 29/10: a changed amount
+    // opened a payment page for it). An order already paid is not charged again.
+    const order = await orderForPayment(Number(order_id));
+    if (!order) {
+      return NextResponse.json({ success: false, message: 'לא הצלחנו לאמת את ההזמנה. נסו שוב בעוד רגע.' }, { status: 502 });
+    }
+    if (!PAYABLE_STATUSES.includes(order.status) || order.total <= 0) {
+      return NextResponse.json({ success: false, message: 'ההזמנה הזו כבר שולמה או אינה ממתינה לתשלום.' }, { status: 409 });
+    }
+    if (Math.abs(Number(amount) - order.total) > 1) {
+      console.warn('create-payment: amount differs from the order total — charging the order total', { order_id, amount, total: order.total });
+    }
+    const amountToCharge = order.total;
+
     // Get config from WordPress (or use fallback)
     const config = await getMeshulamConfig();
     
@@ -111,7 +126,7 @@ export async function POST(request: NextRequest) {
     const proxyData = {
       sandbox: isSandbox,
       pageCode,
-      sum: amount,
+      sum: amountToCharge,
       fullName: `${customer.firstName} ${customer.lastName}`,
       phone: customer.phone,
       email: customer.email,
@@ -123,12 +138,13 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
       // Notify goes to Next.js too, which forwards to WordPress
       notifyUrl: `${CALLBACK_URL}/api/checkout/meshulam-webhook`,
-      items: items.map(item => ({
-        sku: item.sku,
-        price: item.price,
-        name: item.name,
-        quantity: item.quantity,
-      })),
+      // One line for the order's own total — the payment page checks that its lines add up to the sum.
+      items: [{
+        sku: `order-${order_id}`,
+        price: amountToCharge,
+        name: String(items?.[0]?.name || `הזמנה #${order_id}`).slice(0, 100),
+        quantity: 1,
+      }],
     };
 
     console.log('Calling WordPress proxy:', proxyUrl);

@@ -212,6 +212,12 @@ export async function POST(request: NextRequest) {
     // no formula calls.
     const adminToken = request.headers.get('x-admin-token');
     const verifiedRep = adminToken ? await verifyAdminToken(adminToken) : null;
+    // A rep's browser whose token WordPress no longer accepts: say so, rather than place the order as a customer's.
+    // A customer's order is priced by the shop (the theme's order-price-guard.php), so the rep's own price would be
+    // raised and the rep left wondering why (29/10).
+    if (adminToken && !verifiedRep) {
+      return NextResponse.json({ success: false, message: 'ההתחברות כנציג פגה. התחברו מחדש ונסו שוב.' }, { status: 401 });
+    }
     const repSource = repSourceOrderMeta(body, { isRep: Boolean(verifiedRep) });
     if (!repSource.ok) {
       return NextResponse.json({ success: false, message: repSource.message }, { status: repSource.status });
