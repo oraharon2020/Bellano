@@ -29,6 +29,7 @@ interface AdminFields {
   glass_price?: number;
   glass_product_id?: number;
   glass_for?: string;
+  upgrades?: { name: string; price: number; qty: number }[];
 }
 
 interface VariationAttribute {
@@ -273,8 +274,19 @@ export async function POST(request: NextRequest) {
         if (item.admin_fields.additional_fee_reason) {
           lineItem.meta_data.push({ key: 'סיבת תוספת', value: item.admin_fields.additional_fee_reason });
         }
-        if (item.admin_fields.discount_type) {
+        // The type only with a value: the panel starts on "percent", and an order full of "סוג הנחה: אחוזים" with no
+        // discount reads as if one was given.
+        if (item.admin_fields.discount_type && item.admin_fields.discount_value) {
           lineItem.meta_data.push({ key: 'סוג הנחה', value: item.admin_fields.discount_type === 'percent' ? 'אחוזים' : 'סכום קבוע' });
+        }
+        // The rep's upgrades are in the price already; the line says what they are, so the installer, the workshop
+        // and the quote know (they were lost until 29/10: a higher price, and no word of what it bought).
+        const upgrades = (item.admin_fields.upgrades || []).filter((u) => u && u.name && Number(u.qty) > 0);
+        if (upgrades.length) {
+          lineItem.meta_data.push({
+            key: 'שדרוגים',
+            value: upgrades.map((u) => `${String(u.name).slice(0, 80)}${Number(u.qty) > 1 ? ` ×${Number(u.qty)}` : ''} (+${Number(u.price) * Number(u.qty)}₪)`).join(', '),
+          });
         }
         if (item.admin_fields.discount_value) {
           lineItem.meta_data.push({ key: 'ערך הנחה', value: item.admin_fields.discount_value });

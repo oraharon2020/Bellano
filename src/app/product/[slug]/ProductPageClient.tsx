@@ -559,6 +559,7 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
         freeComments: adminFieldsData.freeComments,
         uploadedFile: adminFieldsData.uploadedFile,
         uploadedFileName: adminFieldsData.uploadedFileName,
+        ...(adminFieldsData.upgrades?.length ? { upgrades: adminFieldsData.upgrades } : {}),
       } : {}),
       originalPrice: currentPrice,
       finalPrice: finalPrice,

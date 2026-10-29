@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles, FileText } from 'lucide-react';
-import { useCartStore, cartLineKey } from '@/lib/store/cart';
+import { useCartStore, cartLineKey, repPriceNotes } from '@/lib/store/cart';
 import { useAdminStore } from '@/lib/store/admin';
 import { getStoredAttribution } from '@/hooks/useUtmTracking';
 import RepSourcePicker, { REP_SOURCE_ANCHOR } from '@/components/checkout/RepSourcePicker';
@@ -317,6 +317,7 @@ export default function CheckoutPage() {
               glass_price: item.adminFields.glassPrice,
               glass_product_id: item.adminFields.glassProductId,
               glass_for: item.name,
+              upgrades: item.adminFields.upgrades,
             } : undefined,
           })),
           shipping_method: selectedShipping,
@@ -1128,7 +1129,8 @@ export default function CheckoutPage() {
                             item.adminFields.depth || 
                             item.adminFields.height || 
                             item.adminFields.freeComments || 
-                            item.adminFields.uploadedFile
+                            item.adminFields.uploadedFile ||
+                            repPriceNotes(item.adminFields).length > 0
                           ) && (
                             <div className="text-xs text-blue-600 mt-1 space-y-0.5 bg-blue-50 p-2 rounded">
                               {/* Dimensions */}
@@ -1141,6 +1143,9 @@ export default function CheckoutPage() {
                                   ].filter(Boolean).join(' / ')}
                                 </p>
                               )}
+                              {repPriceNotes(item.adminFields).map((note) => (
+                                <p key={note} className="text-blue-700">{note}</p>
+                              ))}
                               {item.adminFields.freeComments && <p>📝 {item.adminFields.freeComments}</p>}
                               {item.adminFields.uploadedFileName && (
                                 <a 

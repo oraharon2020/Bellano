@@ -22,6 +22,30 @@ export interface AdminFieldsData {
   glassLabel?: string;
   glassPrice?: number;
   glassProductId?: number;
+  /** The rep's upgrades from the admin panel (WordPress's upgrade list): already in the price, named here. */
+  upgrades?: { name: string; price: number; qty: number }[];
+}
+
+/**
+ * What a rep changed on a line's price, in words, for the cart and the checkout: upgrades, a surcharge and its
+ * reason, a discount or a set price, and the price before. Empty for a customer's line. The order line carries the
+ * same (create-order).
+ */
+export function repPriceNotes(af?: AdminFieldsData): string[] {
+  if (!af) return [];
+  const num = (v?: string) => parseFloat(String(v || '').replace(/[^\d.]/g, '')) || 0;
+  const money = (n: number) => `${Math.round(n).toLocaleString('he-IL')}₪`;
+  const out: string[] = [];
+  for (const u of af.upgrades || []) {
+    out.push(`⬆️ ${u.name}${u.qty > 1 ? ` ×${u.qty}` : ''} (+${money(u.price * u.qty)})`);
+  }
+  const fee = num(af.additionalFee);
+  if (fee > 0) out.push(`➕ תוספת ${money(fee)}${af.additionalFeeReason?.trim() ? ` · ${af.additionalFeeReason.trim()}` : ''}`);
+  const disc = num(af.discountValue);
+  if (disc > 0) out.push(af.discountType === 'fixed' ? `🏷️ מחיר שנקבע: ${money(disc)}` : `🏷️ הנחה ${disc}%`);
+  const before = num(af.originalPrice);
+  if (out.length && before > 0) out.push(`מחיר לפני השינויים: ${money(before)}`);
+  return out;
 }
 
 export interface CartItem {

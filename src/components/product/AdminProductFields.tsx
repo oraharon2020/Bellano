@@ -28,6 +28,8 @@ interface AdminFieldsData {
   freeComments: string;
   uploadedFile: string;
   uploadedFileName: string;
+  /** The upgrades ticked here, by name — the price already holds them; the order must say what they are. */
+  upgrades?: { name: string; price: number; qty: number }[];
 }
 
 interface Upgrade {
@@ -168,9 +170,14 @@ export function AdminProductFields({
   // (this component renders nothing for non-admins but its effects still run).
   useEffect(() => {
     if (!isAdmin) return;
-    onPriceChange?.(totalPrice, formData);
-    onDataChange?.(formData);
-  }, [isAdmin, totalPrice, formData, onPriceChange, onDataChange]);
+    const chosen = Object.entries(selectedUpgrades)
+      .map(([index, qty]) => ({ upgrade: upgrades[parseInt(index)], qty }))
+      .filter((u) => u.upgrade && u.qty > 0)
+      .map((u) => ({ name: u.upgrade.name, price: u.upgrade.price, qty: u.qty }));
+    const data = chosen.length ? { ...formData, upgrades: chosen } : formData;
+    onPriceChange?.(totalPrice, data);
+    onDataChange?.(data);
+  }, [isAdmin, totalPrice, formData, selectedUpgrades, upgrades, onPriceChange, onDataChange]);
 
   const handleInputChange = (field: keyof AdminFieldsData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));

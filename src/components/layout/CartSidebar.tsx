@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Minus, Plus, Trash2, ShoppingBag, X, FileText, Ruler, Tag, Loader2, Sparkles, ChevronDown } from 'lucide-react';
-import { useCartStore, cartLineKey } from '@/lib/store/cart';
+import { useCartStore, cartLineKey, repPriceNotes } from '@/lib/store/cart';
 
 interface AppliedCoupon {
   code: string;
@@ -245,7 +245,8 @@ export function CartSidebar() {
                       item.adminFields.depth || 
                       item.adminFields.height || 
                       item.adminFields.freeComments || 
-                      item.adminFields.uploadedFile
+                      item.adminFields.uploadedFile ||
+                      repPriceNotes(item.adminFields).length > 0
                     ) && (
                       <div className="mt-2 text-xs space-y-1 bg-blue-50 p-2 rounded">
                         {/* Dimensions */}
@@ -261,6 +262,10 @@ export function CartSidebar() {
                             </span>
                           </div>
                         )}
+                        {/* What the rep changed on the price */}
+                        {repPriceNotes(item.adminFields).map((note) => (
+                          <p key={note} className="text-blue-700">{note}</p>
+                        ))}
                         {/* Comments */}
                         {item.adminFields.freeComments && (
                           <p className="text-blue-600">📝 {item.adminFields.freeComments}</p>
