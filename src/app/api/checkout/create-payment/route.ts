@@ -138,8 +138,9 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${SITE_URL}/checkout?cancelled=true`,
       // Notify goes to Next.js too, which forwards to WordPress
       notifyUrl: `${CALLBACK_URL}/api/checkout/meshulam-webhook`,
-      // One line for the order's own total — the payment page checks that its lines add up to the sum.
-      items: [{
+      // The invoice's items: the order's own lines, which add up to the sum the payment page checks them against.
+      // When they can't be made to (see invoiceLines), one line for the order's total.
+      items: order.lines ?? [{
         sku: `order-${order_id}`,
         price: amountToCharge,
         name: String(items?.[0]?.name || `הזמנה #${order_id}`).slice(0, 100),
