@@ -64,9 +64,13 @@ const cleanName = (s: unknown, fallback: string) =>
 
 /**
  * Products (after coupons — WooCommerce's line `total`), fees and shipping, as the invoice should list them.
- * A line whose unit price would not come out in whole agorot goes as one line "name × qty". Tax is off on both shops,
- * so these add up to the order total; when they don't (or a line is negative, which the payment page may refuse),
- * null — and the caller falls back to one line for the total, which is always right.
+ * Tax is off on both shops, so these add up to the order total; when they don't (or a line is negative, which the
+ * payment page may refuse), null — and the caller falls back to one line for the total, which is always right.
+ *
+ * Every line goes with quantity 1 and its whole amount ("name × 2" for two pieces). The payment page refused every
+ * line sent as a unit price with a quantity above one — "סכום הכללי של העסקה אינו זהה לסכום המוצרים" — so from
+ * 30/10 to 02/11/2026 no customer could pay for two of the same piece on either shop (Bellano 66777, 66799; the reps
+ * took 66767, 66797 and Nalla's 81361 by phone).
  */
 export function invoiceLines(order: WooOrder, total: number): InvoiceLine[] | null {
   const raw: { sku: string; name: string; amount: number; qty: number }[] = [];
@@ -95,12 +99,12 @@ export function invoiceLines(order: WooOrder, total: number): InvoiceLine[] | nu
   const lines: InvoiceLine[] = [];
   for (const r of kept) {
     if (cents(r.amount) === 0) continue; // a free line adds nothing to the charge
-    const unit = cents(r.amount / r.qty) / 100;
-    lines.push(
-      cents(unit * r.qty) === cents(r.amount)
-        ? { sku: r.sku, name: r.name, price: unit, quantity: r.qty }
-        : { sku: r.sku, name: cleanName(`${r.name} × ${r.qty}`, r.name), price: cents(r.amount) / 100, quantity: 1 },
-    );
+    lines.push({
+      sku: r.sku,
+      name: r.qty > 1 ? cleanName(`${r.name} × ${r.qty}`, r.name) : r.name,
+      price: cents(r.amount) / 100,
+      quantity: 1,
+    });
   }
   if (!lines.length) return null;
   const sum = lines.reduce((s, l) => s + cents(l.price) * l.quantity, 0);
