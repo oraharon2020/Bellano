@@ -16,21 +16,23 @@ export const promoPopupConfig = {
   // Popup content
   content: {
     // Small badge at top
-    badge: 'סאמר סייל',
+    badge: 'מבצע חורף',
 
     // Hebrew headline
-    headline: 'מבצע קיץ בבלאנו ☀️',
+    headline: 'נכנסים לחורף ❄️',
 
     // English text
-    englishText: 'SUMMER SALE',
+    englishText: 'WINTER SALE',
 
-    // Discount display
+    // Discount display — WINTER15 is limited in WooCommerce to the dresser (147) and
+    // bedside-tables (151) categories and is individual-use, so keep this text in step
+    // with the coupon if either changes.
     discountNumber: '15',
     discountText: 'הנחה על קומודות ושידות צד מיטה',
 
     // Coupon section
     couponLabel: 'קוד קופון',
-    couponCode: 'SUMMER15',
+    couponCode: 'WINTER15',
     copyButtonText: 'העתק',
     copiedText: 'הועתק!',
 
@@ -39,6 +41,6 @@ export const promoPopupConfig = {
     ctaLink: '/categories',
 
     // Footer note
-    footerNote: 'קיץ מושלם מתחיל בבית 🏡',
+    footerNote: 'חורף חם מתחיל בבית 🏡',
   },
 };
