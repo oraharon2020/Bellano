@@ -43,6 +43,10 @@ export async function POST(request: NextRequest) {
   // otherwise stay hidden until the fetch revalidate window elapses).
   revalidateTag('swatches', { expire: 0 });
 
+  // And the menu: WordPress's menu builder posts here on save, and the fetch
+  // itself now keeps for an hour (lib/wordpress/nav.ts).
+  revalidateTag('nav-menu', { expire: 0 });
+
   return NextResponse.json({
     success: true,
     path,

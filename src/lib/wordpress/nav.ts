@@ -30,8 +30,11 @@ export async function getNavMenu(): Promise<NavMenu> {
     info: siteConfig.navigation.info as unknown as InfoLink[],
   };
   try {
+    // An hour. The root layout reads this, so at 60 s it pulled EVERY page on the site down to a rebuild a
+    // minute — the product pages' 1800 s included — most of its $46 a month in ISR writes (Vercel bill, 15/11/2026).
+    // Saving the menu in WordPress still shows at once: the menu builder calls /api/cache, which expires the tag.
     const res = await fetch(getApiEndpoint('nav-menu'), {
-      next: { revalidate: 60, tags: ['nav-menu'] },
+      next: { revalidate: 3600, tags: ['nav-menu'] },
     });
     if (res.ok) {
       const data = await res.json();
