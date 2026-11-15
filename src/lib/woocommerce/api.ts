@@ -6,6 +6,13 @@ const WOOCOMMERCE_URL = process.env.NEXT_PUBLIC_WORDPRESS_URL || siteConfig.word
 const CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || '';
 const CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || '';
 
+// The keys go in an Authorization header, never in the URL. Next.js prints the URL of a response too big for
+// its data cache ("Failed to set Next.js data cache for <url>, items over 2MB…" — the 100 most popular products
+// are 5.6 MB), and with the keys in the query string that put them in the build and runtime logs (found
+// 15/11/2026). WooCommerce accepts the same keys as HTTP Basic auth over HTTPS.
+const WOO_AUTH_HEADER: Record<string, string> =
+  CONSUMER_KEY && CONSUMER_SECRET ? { Authorization: `Basic ${btoa(`${CONSUMER_KEY}:${CONSUMER_SECRET}`)}` } : {};
+
 // Cache durations
 const CACHE_DURATION = {
   PRODUCTS: 300,      // 5 minutes for product listings
@@ -18,17 +25,12 @@ const CACHE_DURATION = {
 // Base fetch function with authentication
 async function wooFetch<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3/${endpoint}`);
-  
-  // Add authentication
-  if (CONSUMER_KEY && CONSUMER_SECRET) {
-    url.searchParams.append('consumer_key', CONSUMER_KEY);
-    url.searchParams.append('consumer_secret', CONSUMER_SECRET);
-  }
 
   const response = await fetch(url.toString(), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...WOO_AUTH_HEADER,
       ...options.headers,
     },
     next: { 
@@ -47,16 +49,12 @@ async function wooFetch<T>(endpoint: string, options: RequestInit = {}): Promise
 /** Fetch with pagination headers (X-WP-Total, X-WP-TotalPages) */
 async function wooFetchWithTotal<T>(endpoint: string, options: RequestInit = {}): Promise<{ data: T; total: number; totalPages: number }> {
   const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3/${endpoint}`);
-  
-  if (CONSUMER_KEY && CONSUMER_SECRET) {
-    url.searchParams.append('consumer_key', CONSUMER_KEY);
-    url.searchParams.append('consumer_secret', CONSUMER_SECRET);
-  }
 
   const response = await fetch(url.toString(), {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...WOO_AUTH_HEADER,
       ...options.headers,
     },
     next: { 
@@ -368,13 +366,9 @@ export async function getProductById(id: number): Promise<WooProduct> {
 export async function getProductVariations(productId: number): Promise<WooVariation[]> {
   const url = new URL(`${WOOCOMMERCE_URL}/wp-json/wc/v3/products/${productId}/variations`);
   url.searchParams.append('per_page', '100');
-  
-  if (CONSUMER_KEY && CONSUMER_SECRET) {
-    url.searchParams.append('consumer_key', CONSUMER_KEY);
-    url.searchParams.append('consumer_secret', CONSUMER_SECRET);
-  }
 
   const response = await fetch(url.toString(), {
+    headers: WOO_AUTH_HEADER,
     next: { revalidate: CACHE_DURATION.VARIATIONS },
   });
 

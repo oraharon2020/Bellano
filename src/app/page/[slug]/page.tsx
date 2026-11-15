@@ -2,6 +2,7 @@ import { getPageBySlug } from '@/lib/woocommerce/pages';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { siteConfig } from '@/config/site';
+import { metaDescription } from '@/lib/meta-description';
 
 const SITE_URL = siteConfig.url;
 
@@ -40,11 +41,12 @@ export async function generateMetadata({ params }: PageProps) {
   
   // Decode HTML entities in title
   const title = page.title.rendered.replace(/&#8211;/g, '-').replace(/&amp;/g, '&');
-  const description = page.content.rendered.replace(/<[^>]*>/g, '').trim().slice(0, 160) || `${title} - בלאנו רהיטי מעצבים`;
+  const description = metaDescription(page.content.rendered) || `${title} - בלאנו רהיטי מעצבים`;
   const publicUrl = publicUrlMap[slug] || `/page/${slug}`;
   
   return {
-    title: `${title} | בלאנו - רהיטי מעצבים`,
+    // The root layout's title template adds " | בלאנו - רהיטי מעצבים"; written here too, it showed twice.
+    title,
     description,
     alternates: {
       canonical: `${SITE_URL}${publicUrl}`,

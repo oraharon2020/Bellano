@@ -42,7 +42,15 @@ export const revalidate = 300;
 export async function generateMetadata({ params }: CategoryPageProps) {
   const { slug } = await params;
   const canonicalUrl = `${SITE_URL}/category/${slug}`;
-  
+
+  // A slug that is no category is a 404 — thrown here for the crawlers Next renders metadata for before the page,
+  // and in the page body for everyone else (/category/no-such-cat answered 200 until 15/11/2026). Only on a real miss:
+  // a fetch that failed is not a 404. Outside the try/catch below, which would swallow it.
+  const exists = await getCategoryBySlug(slug).then((category) => Boolean(category), () => true);
+  if (!exists) {
+    notFound();
+  }
+
   try {
     // Get Yoast SEO data straight from the product_cat taxonomy
     const yoastData = await getYoastCategorySEO(slug);

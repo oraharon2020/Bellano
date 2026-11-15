@@ -1,5 +1,7 @@
 // JSON-LD Structured Data Components for SEO
 import { siteConfig } from '@/config/site';
+import { delivery } from '@/config/delivery';
+import { metaDescription } from '@/lib/meta-description';
 
 interface OrganizationJsonLdProps {
   name?: string;
@@ -87,6 +89,8 @@ interface ProductJsonLdProps {
   brand?: string;
   rating?: number;
   reviewCount?: number;
+  /** Sold from stock, so it can be returned. Made-to-order pieces cannot, and the schema then states no return policy at all. */
+  returnable?: boolean;
 }
 
 export function ProductJsonLd({
@@ -101,12 +105,13 @@ export function ProductJsonLd({
   brand = siteConfig.name,
   rating,
   reviewCount,
+  returnable = false,
 }: ProductJsonLdProps) {
   const jsonLd: any = {
     '@context': 'https://schema.org',
     '@type': 'Product',
     name,
-    description: description?.replace(/<[^>]*>/g, '').slice(0, 500),
+    description: metaDescription(description, 500),
     image,
     url,
     brand: {
@@ -119,10 +124,52 @@ export function ProductJsonLd({
       priceCurrency: currency,
       availability: `https://schema.org/${availability}`,
       url,
+      itemCondition: 'https://schema.org/NewCondition',
       seller: {
         '@type': 'Organization',
         name: siteConfig.name,
       },
+      // Free delivery anywhere in Israel, in the range the product page's FAQ promises (terms 6.1).
+      shippingDetails: {
+        '@type': 'OfferShippingDetails',
+        shippingRate: {
+          '@type': 'MonetaryAmount',
+          value: 0,
+          currency: 'ILS',
+        },
+        shippingDestination: {
+          '@type': 'DefinedRegion',
+          addressCountry: 'IL',
+        },
+        deliveryTime: {
+          '@type': 'ShippingDeliveryTime',
+          handlingTime: {
+            '@type': 'QuantitativeValue',
+            // The promise is order-to-doorstep; the days on the road come off the top.
+            minValue: delivery.days.min,
+            maxValue: delivery.days.max - 3,
+            unitCode: 'DAY',
+          },
+          transitTime: {
+            '@type': 'QuantitativeValue',
+            minValue: 0,
+            maxValue: 3,
+            unitCode: 'DAY',
+          },
+        },
+      },
+      // Terms 5.1–5.2: a piece from stock can be returned under the Consumer Protection Law, unused and
+      // in its packaging, the return haulage at the customer's cost; a made-to-order piece is outside it.
+      ...(returnable && {
+        hasMerchantReturnPolicy: {
+          '@type': 'MerchantReturnPolicy',
+          applicableCountry: 'IL',
+          returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+          merchantReturnDays: 14,
+          returnMethod: 'https://schema.org/ReturnByMail',
+          returnFees: 'https://schema.org/ReturnFeesCustomerResponsibility',
+        },
+      }),
     },
   };
 

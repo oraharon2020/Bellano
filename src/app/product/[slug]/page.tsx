@@ -4,6 +4,8 @@ import { getFormulaConfig } from '@/lib/formula-pricing';
 import { notFound } from 'next/navigation';
 import { ProductJsonLd, BreadcrumbJsonLd, FAQJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
+import { delivery } from '@/config/delivery';
+import { metaDescription } from '@/lib/meta-description';
 
 const SITE_URL = siteConfig.url;
 
@@ -34,7 +36,7 @@ interface ProductPageProps {
 const defaultFaqs = [
   {
     question: 'זמני אספקה',
-    answer: 'זמני האספקה נעים בין 12-26 ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.'
+    answer: `זמני האספקה נעים בין ${delivery.days.min}-${delivery.days.max} ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.`
   },
   {
     question: 'אחריות המוצרים',
@@ -100,7 +102,11 @@ export async function generateMetadata({ params }: ProductPageProps) {
   const { product: wooProduct, seo } = data;
     const product = transformProduct(wooProduct);
     
-    const fallbackDescription = product.description?.replace(/<[^>]*>/g, '').slice(0, 160) || 
+    // The short description first: it is the product's own sales paragraph (238 of 241 products have one),
+    // where the long description usually opens with the spec list.
+    const fallbackDescription =
+      metaDescription(product.shortDescription) ||
+      metaDescription(product.description) ||
       `${product.name} - רהיט מעוצב באיכות גבוהה. משלוח חינם עד הבית!`;
     const fallbackImage = product.image?.sourceUrl;
     
@@ -209,6 +215,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           price={product.price}
           sku={product.sku || String(product.databaseId)}
           availability={wooProduct.stock_status === 'instock' ? 'InStock' : 'OutOfStock'}
+          returnable={product.availabilityType === 'in_stock'}
         />
         <BreadcrumbJsonLd
           items={[

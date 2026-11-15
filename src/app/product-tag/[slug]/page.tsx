@@ -2,6 +2,7 @@ import { CategoryProductGrid } from '@/components/products/CategoryProductGrid';
 import { getProductsByTagSlugPaginated, getTagBySlug, getTags } from '@/lib/woocommerce';
 import { BreadcrumbJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
+import { notFound } from 'next/navigation';
 
 const SITE_URL = siteConfig.url;
 
@@ -29,7 +30,15 @@ export const revalidate = 300;
 
 export async function generateMetadata({ params }: TagPageProps) {
   const { slug } = await params;
-  
+
+  // A slug that is no tag is a 404 — thrown here for the crawlers Next renders metadata for before the page,
+  // and in the page body for everyone else (/product-tag/no-such-tag answered 200 until 15/11/2026). Only on a real miss:
+  // a fetch that failed is not a 404. Outside the try/catch below, which would swallow it.
+  const exists = await getTagBySlug(slug).then((tag) => Boolean(tag), () => true);
+  if (!exists) {
+    notFound();
+  }
+
   try {
     const tag = await getTagBySlug(slug);
     const name = tag?.name || slug;
@@ -68,18 +77,26 @@ export default async function TagPage({ params }: TagPageProps) {
   let tag = null;
   let products: any[] = [];
   let total = 0;
+  let fetchFailed = false;
 
   try {
     const [tagData, productsData] = await Promise.all([
       getTagBySlug(slug),
       getProductsByTagSlugPaginated(slug, { per_page: PER_PAGE, page: 1 }),
     ]);
-    
+
     tag = tagData;
     products = productsData.products;
     total = productsData.total;
   } catch (error) {
     console.error('Error fetching tag data:', error);
+    fetchFailed = true;
+  }
+
+  // Here too, not only in generateMetadata: an ordinary browser gets the metadata streamed after the page,
+  // so the status comes from this render. Never on a failed fetch.
+  if (!fetchFailed && !tag) {
+    notFound();
   }
 
   const tagName = tag?.name || slug;

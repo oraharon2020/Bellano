@@ -5,7 +5,8 @@ import { BreadcrumbJsonLd } from '@/components/seo';
 const SITE_URL = siteConfig.url;
 
 export const metadata = {
-  title: 'אודותינו | בלאנו - רהיטי מעצבים',
+  // The root layout's title template adds " | בלאנו - רהיטי מעצבים".
+  title: 'אודותינו',
   description: 'הכירו את בלאנו - רהיטי מעצבים. אנחנו מייצרים רהיטים איכותיים בישראל עם תשומת לב לכל פרט',
   alternates: {
     canonical: `${siteConfig.url}/about`,
