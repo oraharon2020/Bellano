@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { delivery } from '@/config/delivery';
 
 /**
  * Full-bleed typographic statement — pure black, oversized light headline with a
@@ -91,7 +92,7 @@ const FAQS = [
   {
     question: 'תוך כמה זמן אקבל את הרהיט?',
     answer:
-      'זמני האספקה נעים בין 12-26 ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.',
+      `זמני האספקה נעים בין ${delivery.days.min}-${delivery.days.max} ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.`,
   },
   {
     question: 'האם המשלוח באמת חינם?',

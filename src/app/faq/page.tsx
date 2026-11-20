@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Phone, MessageCircle } from 'lucide-react';
 import { FAQJsonLd, BreadcrumbJsonLd } from '@/components/seo';
 import { siteConfig } from '@/config/site';
+import { delivery } from '@/config/delivery';
 import FaqAccordion from '@/components/faq/FaqAccordion';
 
 const SITE_URL = siteConfig.url;
@@ -9,7 +10,7 @@ const SITE_URL = siteConfig.url;
 const faqs = [
   {
     question: 'מהו זמן האספקה של הרהיטים?',
-    answer: 'זמן האספקה הוא בין 14 ל-21 ימי עסקים מרגע אישור ההזמנה. במידה ונדרש זמן ייצור נוסף, נעדכן אתכם מראש.',
+    answer: `זמן האספקה הוא בין ${delivery.days.min} ל-${delivery.days.max} ימי עסקים מרגע אישור ההזמנה. במידה ונדרש זמן ייצור נוסף, נעדכן אתכם מראש.`,
   },
   {
     question: 'האם אתם מספקים משלוח חינם?',

@@ -5,6 +5,7 @@ import { WhatsAppSubscribeForm } from '@/components/home/WhatsAppSubscribeForm';
 import { GoogleReviews } from '@/components/home/GoogleReviews';
 import { CategoryQuickNav } from '@/components/home/CategoryQuickNav';
 import { siteConfig, getApiEndpoint, fixMediaUrl } from '@/config/site';
+import { delivery } from '@/config/delivery';
 
 // Helper to get optimized image URL through Next.js
 const getOptimizedImageUrl = (src: string, width: number = 750) => {
@@ -530,7 +531,7 @@ function FAQSection() {
   const faqs = [
     {
       question: 'תוך כמה זמן אקבל את הרהיט?',
-      answer: 'זמני האספקה נעים בין 12-26 ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.',
+      answer: `זמני האספקה נעים בין ${delivery.days.min}-${delivery.days.max} ימי עסקים, בהתאם לסוג המוצר והזמינות במלאי. מוצרים בהתאמה אישית עשויים לדרוש זמן ייצור ארוך יותר. נציג שירות יצור אתכם קשר לתיאום מועד אספקה נוח.`,
     },
     {
       question: 'האם המשלוח באמת חינם?',
