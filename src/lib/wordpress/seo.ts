@@ -131,9 +131,11 @@ export function yoastToMetadata(yoast: YoastSEOData, fallback: {
 export async function getYoastCategorySEO(slug: string): Promise<YoastSEOData | null> {
   try {
     const apiUrl = `${siteConfig.wordpressUrl}/wp-json/wp/v2/product_cat?slug=${encodeURIComponent(slug)}`;
-    
+
+    // 30 minutes, the category page's time; Yoast's fields are saved on the category's edit screen, which pings
+    // the page at once (edited_product_cat → plugin class-cache.php).
     const response = await fetch(apiUrl, {
-      next: { revalidate: 300 }
+      next: { revalidate: 1800 }
     });
     
     if (!response.ok) {

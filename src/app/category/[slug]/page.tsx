@@ -36,8 +36,10 @@ export async function generateStaticParams() {
 // Allow dynamic rendering for pages not generated at build time
 export const dynamicParams = true;
 
-// Revalidate every 5 minutes
-export const revalidate = 300;
+// Rebuild every 30 minutes (was 5: ~2,900 rebuilds a day of 4 WP calls each, nginx 20/11/2026). Edits do not wait
+// for it — saving a product pings its category pages, and saving a category pings its own (plugin bellanonext-v2,
+// class-cache.php). The page takes its LOWEST fetch time, so every fetch below is 30 minutes or more.
+export const revalidate = 1800;
 
 export async function generateMetadata({ params }: CategoryPageProps) {
   const { slug } = await params;
@@ -122,7 +124,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   try {
     const [categoryData, paginatedData, contentData] = await Promise.all([
       getCategoryBySlug(slug),
-      getProductsByCategorySlugPaginated(slug, { per_page: PRODUCTS_PER_PAGE, page: 1 }),
+      getProductsByCategorySlugPaginated(slug, { per_page: PRODUCTS_PER_PAGE, page: 1, revalidate: 1800 }),
       getCategoryContent(slug),
     ]);
     

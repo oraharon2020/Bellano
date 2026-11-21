@@ -45,8 +45,10 @@ export async function getCategoryContent(slug: string): Promise<CategoryContent>
   try {
     const apiUrl = `${siteConfig.wordpressUrl}/wp-json/bellano/v1/category-content/${encodeURIComponent(slug)}`;
 
+    // 30 minutes, the category page's time (it rebuilds at its lowest fetch time). This content is saved on the
+    // category's edit screen, which pings the page at once (edited_product_cat → plugin class-cache.php).
     const response = await fetch(apiUrl, {
-      next: { revalidate: 300 },
+      next: { revalidate: 1800 },
     });
 
     if (!response.ok) {

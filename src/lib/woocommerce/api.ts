@@ -166,9 +166,15 @@ export async function getCategories(params?: {
 
 /**
  * Get single category by slug
+ *
+ * The category record keeps for CATEGORIES, not the 5-minute default it had by omission: the category page rebuilds
+ * at its lowest fetch time, so this fetch alone held every category page to 5 minutes. A category edit pings the page
+ * at once (plugin bellanonext-v2, class-cache.php, on edited_product_cat).
  */
 export async function getCategoryBySlug(slug: string): Promise<WooCategory | null> {
-  const categories = await wooFetch<WooCategory[]>(`products/categories?slug=${slug}`);
+  const categories = await wooFetch<WooCategory[]>(`products/categories?slug=${slug}`, {
+    next: { revalidate: CACHE_DURATION.CATEGORIES },
+  });
   return categories[0] || null;
 }
 
@@ -332,8 +338,12 @@ export interface FullProductData {
  */
 export const getFullProductData = cache(async (slug: string): Promise<FullProductData | null> => {
   try {
+    // 30 minutes, the product page's own time. At 10 minutes this fetch made every product page rebuild every 10
+    // minutes — the page takes its lowest fetch time — and each rebuild also refetches the formula config: ~14k WP
+    // calls a day (nginx, 20/11/2026). An edit does not wait for it: saving a product pings /api/revalidate for
+    // its page, its categories and the homepage (plugin bellanonext-v2, class-cache.php, on woocommerce_update_product).
     const response = await fetch(getApiEndpoint(`product-full/${slug}`), {
-      next: { revalidate: 600 } // 10 minutes cache
+      next: { revalidate: 1800 }
     });
     
     if (!response.ok) {
@@ -476,7 +486,9 @@ export async function getProductsByCategorySlugWithSwatches(
  */
 export async function getProductsByCategorySlugPaginated(
   categorySlug: string,
-  params?: { per_page?: number; page?: number; orderby?: 'date' | 'price' | 'popularity' | 'rating' | 'menu_order'; order?: 'asc' | 'desc' }
+  // revalidate: the category page passes its own 30 minutes (it is pinged on every product save); the "load more"
+  // API route leaves the default, since a ping names the page's path and never reaches the route's fetches.
+  params?: { per_page?: number; page?: number; orderby?: 'date' | 'price' | 'popularity' | 'rating' | 'menu_order'; order?: 'asc' | 'desc'; revalidate?: number }
 ): Promise<{ products: ReturnType<typeof transformProduct>[]; total: number; totalPages: number }> {
   const category = await getCategoryBySlug(categorySlug);
   if (!category) return { products: [], total: 0, totalPages: 0 };
@@ -488,9 +500,11 @@ export async function getProductsByCategorySlugPaginated(
   searchParams.append('category', String(category.id));
   searchParams.append('orderby', params?.orderby || 'menu_order');
   searchParams.append('order', params?.order || 'asc');
-  
+
   const [result, swatches] = await Promise.all([
-    wooFetchWithTotal<WooProduct[]>(`products?${searchParams}`),
+    wooFetchWithTotal<WooProduct[]>(`products?${searchParams}`, {
+      next: { revalidate: params?.revalidate ?? CACHE_DURATION.PRODUCTS },
+    }),
     getColorSwatches(),
   ]);
   
