@@ -78,6 +78,12 @@ interface CartStore {
   addItem: (item: Omit<CartItem, 'quantity'>, quantity?: number) => void;
   /** Lines are addressed by cartLineKey(item). */
   updateItem: (lineKey: string, item: Partial<CartItem>) => void;
+  /**
+   * Put the shop's own prices on lines, as the order recorded them (the checkout, when a total came back higher than
+   * the cart's). A line's price, the set price a tambour line carries with it, and its glass price. The drawer stays
+   * shut.
+   */
+  repriceLines: (prices: { lineKey: string; unit: number; glass?: number }[]) => void;
   removeItem: (lineKey: string) => void;
   updateQuantity: (lineKey: string, quantity: number) => void;
   clearCart: () => void;
@@ -169,6 +175,31 @@ export const useCartStore = create<CartStore>()(
           ),
         });
         get().openCart();
+      },
+
+      repriceLines: (prices) => {
+        const byKey = new Map(prices.map((p) => [p.lineKey, p]));
+        set({
+          items: get().items.map((i) => {
+            const p = byKey.get(cartLineKey(i));
+            if (!p) return i;
+            const price = `${p.unit} ₪`;
+            const af = i.adminFields;
+            return {
+              ...i,
+              price,
+              ...(af
+                ? {
+                    adminFields: {
+                      ...af,
+                      ...(af.finalPrice ? { finalPrice: price } : {}),
+                      ...(af.glassOption && p.glass !== undefined ? { glassPrice: p.glass } : {}),
+                    },
+                  }
+                : {}),
+            };
+          }),
+        });
       },
 
       updateQuantity: (lineKey, quantity) => {

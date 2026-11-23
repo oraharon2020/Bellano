@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Loader2, ShoppingBag, CreditCard, Truck, ShieldCheck, CheckCircle, Phone, Smartphone, Wallet, Trash2, Pencil, Minus, Plus, Tag, Sparkles, FileText } from 'lucide-react';
-import { useCartStore, cartLineKey, repPriceNotes } from '@/lib/store/cart';
+import { useCartStore, cartLineKey, repPriceNotes, type CartItem } from '@/lib/store/cart';
 import { splitLineAttributes } from '@/lib/line-sizes';
 import { useAdminStore } from '@/lib/store/admin';
 import { getStoredAttribution } from '@/hooks/useUtmTracking';
@@ -37,12 +37,30 @@ interface AppliedCoupon {
   individual_use?: boolean;
 }
 
+/** create-order's `prices`: the unit the order recorded for each cart line, in cart order (and its glass line's). */
+interface RecordedLinePrice {
+  unit: number;
+  glass?: number;
+}
+
+/**
+ * An order the shop priced above the cart (its own price for a line sent lower: a cart saved before a price change,
+ * or a rep's price from a session that has ended). The cart now shows the shop's prices; payment goes on this order.
+ */
+interface RepricedOrder {
+  orderId: number;
+  total: number;
+  lines: { name: string; was: number; now: number }[];
+  /** What the order was placed with (lines, coupon, details): it is paid only while these are unchanged. */
+  shape: string;
+}
+
 type PaymentMethod = 'credit_card' | 'bit' | 'apple_pay' | 'google_pay' | 'phone_order' | 'quote';
 
 export default function CheckoutPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem } = useCartStore();
+  const { items, getTotal, clearCart, isHydrated, updateQuantity, removeItem, repriceLines } = useCartStore();
   const { isAdmin, adminToken } = useAdminStore();
   const [step, setStep] = useState<'details' | 'payment' | 'success'>('details');
   const [isLoading, setIsLoading] = useState(false);
@@ -128,7 +146,8 @@ export default function CheckoutPage() {
   // eligible items were removed is dropped (and the discount recomputed on what
   // remains) instead of lingering with a stale discount. Debounced to avoid
   // hammering the endpoint on rapid quantity changes.
-  const cartSignature = items.map(i => `${i.databaseId}-${i.variation?.id || 0}-${i.quantity}`).join(',');
+  // The line's price is in it too, so a line the shop repriced (see `repriced`) re-validates the coupon as well.
+  const cartSignature = items.map(i => `${i.databaseId}-${i.variation?.id || 0}-${i.quantity}-${i.price}`).join(',');
   useEffect(() => {
     if (!appliedCoupon) return;
     if (items.length === 0) { removeCoupon(); return; }
@@ -136,6 +155,18 @@ export default function CheckoutPage() {
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cartSignature]);
+
+  // An order already placed at the shop's prices, waiting for the customer to go on to payment. It holds only while
+  // nothing that would make it a different order has changed (the lines, the coupon, the details) and the payment is
+  // still taken here (not a phone order or a quote); otherwise the next submit places a new order, as before.
+  const [repricedOrder, setRepricedOrder] = useState<RepricedOrder | null>(null);
+  const orderShape = JSON.stringify([
+    items.map(i => `${i.databaseId}-${i.variation?.id || 0}-${i.quantity}`),
+    appliedCoupon?.code || '',
+    customerData,
+  ]);
+  const notPaidHere = paymentMethod === 'phone_order' || paymentMethod === 'quote';
+  const repriced = repricedOrder && !notPaidHere && repricedOrder.shape === orderShape ? repricedOrder : null;
 
   const subtotal = getTotal();
   const discount = appliedCoupon?.discount || 0;
@@ -244,6 +275,126 @@ export default function CheckoutPage() {
     return true;
   };
 
+  /*
+   * A line's admin fields as the order gets them. A rep's own fields (sizes, fees, discounts, notes, files, upgrades)
+   * go only with a signed-in rep's order. A cart line can still carry them from a rep session that has ended (see
+   * ProductPageClient's isRep effect); on a customer's order they would print a rep's sizes and notes, and its price
+   * is the shop's anyway (order-price-guard.php). The options any customer picks (tambour, glass) and the line's price
+   * always go.
+   */
+  const adminFieldsForOrder = (item: CartItem) => {
+    const af = item.adminFields;
+    if (!af) return undefined;
+    const options = {
+      original_price: af.originalPrice,
+      final_price: af.finalPrice,
+      tambour_color: af.tambourColor,
+      tambour_price: af.tambourPrice,
+      glass_option: af.glassOption,
+      glass_label: af.glassLabel,
+      glass_price: af.glassPrice,
+      glass_product_id: af.glassProductId,
+      glass_for: item.name,
+    };
+    if (!isAdmin) return options;
+    return {
+      width: af.width,
+      depth: af.depth,
+      height: af.height,
+      additional_fee: af.additionalFee,
+      additional_fee_reason: af.additionalFeeReason,
+      discount_type: af.discountType,
+      discount_value: af.discountValue,
+      free_comments: af.freeComments,
+      uploaded_file: af.uploadedFile,
+      uploaded_file_name: af.uploadedFileName,
+      ...options,
+      upgrades: af.upgrades,
+    };
+  };
+
+  /**
+   * The shop's prices for the lines it priced differently, put on the cart (create-order's `prices`, in the order the
+   * lines were sent). What changed, for the customer to see; null when the answer cannot be matched to the cart.
+   */
+  const repriceFromOrder = (sent: CartItem[], prices: unknown): RepricedOrder['lines'] | null => {
+    if (!Array.isArray(prices) || prices.length !== sent.length) return null;
+    const num = (v: string) => parseFloat(String(v || '').replace(/[^\d.]/g, '')) || 0;
+    const updates: { lineKey: string; unit: number; glass?: number }[] = [];
+    const lines: RepricedOrder['lines'] = [];
+    for (const [i, item] of sent.entries()) {
+      const p = prices[i] as RecordedLinePrice | null;
+      if (!p || typeof p.unit !== 'number' || !Number.isFinite(p.unit)) return null;
+      const was = num(item.price);
+      const glassWas = item.adminFields?.glassOption ? Number(item.adminFields.glassPrice || 0) : null;
+      const glassNow = glassWas !== null && typeof p.glass === 'number' && Number.isFinite(p.glass) ? p.glass : null;
+      const lineMoved = Math.abs(p.unit - was) >= 1;
+      const glassMoved = glassWas !== null && glassNow !== null && Math.abs(glassNow - glassWas) >= 1;
+      if (!lineMoved && !glassMoved) continue;
+      updates.push({ lineKey: cartLineKey(item), unit: lineMoved ? p.unit : was, ...(glassMoved ? { glass: glassNow! } : {}) });
+      if (lineMoved) lines.push({ name: item.name, was, now: p.unit });
+      if (glassMoved) lines.push({ name: `${item.adminFields?.glassLabel || 'תוספת זכוכית'} · ${item.name}`, was: glassWas!, now: glassNow! });
+    }
+    repriceLines(updates);
+    return lines;
+  };
+
+  /** Step 2: the payment page for an order already placed, for its server-validated total. */
+  const startPayment = async (forOrderId: number, amountToCharge: number) => {
+    setOrderId(forOrderId);
+
+    // Build order description with all products
+    const productNames = items.map(item => {
+      let name = item.name;
+      if (item.variation?.attributes && item.variation.attributes.length > 0) {
+        const attrs = item.variation.attributes
+          .map(attr => `${attr.name}: ${attr.value}`)
+          .join(', ');
+        name += ` (${attrs})`;
+      }
+      if (item.quantity > 1) {
+        name += ` x${item.quantity}`;
+      }
+      return name;
+    }).join(', ');
+
+    // Send single item with total amount to avoid Meshulam sum mismatch issues
+    const finalPaymentItems = [{
+      name: productNames.length > 100 ? productNames.substring(0, 97) + '...' : productNames,
+      price: amountToCharge,
+      quantity: 1,
+      sku: `order-${forOrderId}`,
+    }];
+
+    // For Bit, don't send installments
+    const paymentsToSend = paymentMethod === 'bit' ? 1 : selectedPayments;
+
+    console.log('Creating payment...', { amount: amountToCharge, payments: paymentsToSend });
+
+    const paymentResponse = await fetch('/api/checkout/create-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id: forOrderId,
+        amount: amountToCharge, // Use amount with discount applied
+        customer: customerData,
+        payments: paymentsToSend,
+        items: finalPaymentItems, // Use adjusted items if coupon applied
+        payment_type: paymentMethod, // Send payment type to API
+      }),
+    });
+
+    const paymentData = await paymentResponse.json();
+    console.log('Payment response:', paymentData);
+
+    if (!paymentData.success) {
+      throw new Error(paymentData.message || 'שגיאה ביצירת התשלום');
+    }
+
+    setPaymentUrl(paymentData.payment_url);
+    setStep('payment');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -271,6 +422,13 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
+      // The order is already placed at the shop's prices (see `repriced`): pay it, rather than place another.
+      if (repriced) {
+        await startPayment(repriced.orderId, repriced.total);
+        return;
+      }
+      const sentItems = items;
+
       // Step 1: Create order in WooCommerce
       const orderResponse = await fetch('/api/checkout/create-order', {
         method: 'POST',
@@ -297,29 +455,8 @@ export default function CheckoutPage() {
             bundle_discount: item.bundleDiscount,
             price: item.price, // Send the actual price (already discounted if bundle)
             original_price: item.originalPrice, // Original price before bundle discount
-            // Include admin fields if present
-            admin_fields: item.adminFields ? {
-              width: item.adminFields.width,
-              depth: item.adminFields.depth,
-              height: item.adminFields.height,
-              additional_fee: item.adminFields.additionalFee,
-              additional_fee_reason: item.adminFields.additionalFeeReason,
-              discount_type: item.adminFields.discountType,
-              discount_value: item.adminFields.discountValue,
-              free_comments: item.adminFields.freeComments,
-              uploaded_file: item.adminFields.uploadedFile,
-              uploaded_file_name: item.adminFields.uploadedFileName,
-              original_price: item.adminFields.originalPrice,
-              final_price: item.adminFields.finalPrice,
-              tambour_color: item.adminFields.tambourColor,
-              tambour_price: item.adminFields.tambourPrice,
-              glass_option: item.adminFields.glassOption,
-              glass_label: item.adminFields.glassLabel,
-              glass_price: item.adminFields.glassPrice,
-              glass_product_id: item.adminFields.glassProductId,
-              glass_for: item.name,
-              upgrades: item.adminFields.upgrades,
-            } : undefined,
+            // Include admin fields if present (a rep's own fields only from a signed-in rep, see adminFieldsForOrder)
+            admin_fields: adminFieldsForOrder(item),
           })),
           shipping_method: selectedShipping,
           payment_method: paymentMethod,
@@ -367,75 +504,31 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Step 2: Get Meshulam payment URL
-      // Build order description with all products
-      const productNames = items.map(item => {
-        let name = item.name;
-        if (item.variation?.attributes && item.variation.attributes.length > 0) {
-          const attrs = item.variation.attributes
-            .map(attr => `${attr.name}: ${attr.value}`)
-            .join(', ');
-          name += ` (${attrs})`;
-        }
-        if (item.quantity > 1) {
-          name += ` x${item.quantity}`;
-        }
-        return name;
-      }).join(', ');
-      
       // Amount to charge — ALWAYS the server-validated order total (formula
       // re-validated, coupon + shipping applied server-side), never the client
       // cart total, so the charge always equals the recorded order.
       const clientAmount = appliedCoupon ? finalTotal : subtotal;
       const serverTotal = Number(orderData.total);
-      // If the server price is HIGHER than what the customer saw (stale price or
-      // a changed formula), stop and ask them to refresh instead of charging
-      // more than displayed.
+      // If the shop priced the order HIGHER than the cart showed (a cart saved before a price change, a changed
+      // formula, a rep's price from a session that has ended), nothing is charged yet: the cart takes the shop's
+      // prices, the customer sees what changed, and the next press pays this same order. "Refresh the page" used to be
+      // the answer, and it never fixed a cart saved in the browser: one customer placed 13 orders over 11 days.
       if (Number.isFinite(serverTotal) && serverTotal > clientAmount + 1) {
+        const lines = repriceFromOrder(sentItems, orderData.prices);
+        if (lines) {
+          console.warn('The shop priced the order above the cart — showing its prices', { serverTotal, clientAmount, lines });
+          setRepricedOrder({ orderId: orderData.order_id, total: serverTotal, lines, shape: orderShape });
+          return;
+        }
         console.warn('Server total exceeds displayed price — aborting payment', { serverTotal, clientAmount });
         setError('המחיר עודכן מאז שהוספתם את המוצר לעגלה. רעננו את העמוד כדי לראות את המחיר המעודכן ולבצע את ההזמנה מחדש.');
-        setIsLoading(false);
         return;
       }
       const amountToCharge = (Number.isFinite(serverTotal) && serverTotal > 0) ? serverTotal : clientAmount;
 
       console.log('Amount to charge (server-validated):', amountToCharge, { serverTotal, clientAmount });
-      
-      // Send single item with total amount to avoid Meshulam sum mismatch issues
-      const finalPaymentItems = [{
-        name: productNames.length > 100 ? productNames.substring(0, 97) + '...' : productNames,
-        price: amountToCharge,
-        quantity: 1,
-        sku: `order-${orderData.order_id}`,
-      }];
-      
-      // For Bit, don't send installments
-      const paymentsToSend = paymentMethod === 'bit' ? 1 : selectedPayments;
-      
-      console.log('Creating payment...', { amount: amountToCharge, payments: paymentsToSend });
-      
-      const paymentResponse = await fetch('/api/checkout/create-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          order_id: orderData.order_id,
-          amount: amountToCharge, // Use amount with discount applied
-          customer: customerData,
-          payments: paymentsToSend,
-          items: finalPaymentItems, // Use adjusted items if coupon applied
-          payment_type: paymentMethod, // Send payment type to API
-        }),
-      });
 
-      const paymentData = await paymentResponse.json();
-      console.log('Payment response:', paymentData);
-
-      if (!paymentData.success) {
-        throw new Error(paymentData.message || 'שגיאה ביצירת התשלום');
-      }
-
-      setPaymentUrl(paymentData.payment_url);
-      setStep('payment');
+      await startPayment(orderData.order_id, amountToCharge);
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'שגיאה לא צפויה');
@@ -1276,7 +1369,7 @@ export default function CheckoutPage() {
                   </div>
                   <div className="border-t pt-2 flex justify-between font-bold text-lg">
                     <span>סה״כ לתשלום</span>
-                    <span>{formatPrice(finalTotal)}</span>
+                    <span>{formatPrice(repriced ? repriced.total : finalTotal)}</span>
                   </div>
                 </div>
 
@@ -1303,6 +1396,29 @@ export default function CheckoutPage() {
                   </label>
                 </div>
 
+                {repriced && (
+                  <div
+                    role="status"
+                    data-testid="checkout-repriced"
+                    className="mt-4 p-4 rounded-lg border border-amber-300 bg-amber-50 text-amber-900 text-sm space-y-2"
+                  >
+                    <p className="font-bold">המחיר עודכן לפי המחיר באתר</p>
+                    {repriced.lines.length > 0 && (
+                      <ul className="space-y-1">
+                        {repriced.lines.map((l, i) => (
+                          <li key={i}>
+                            {l.name}: <strong>{formatPrice(l.now)}</strong>{' '}
+                            <span className="text-amber-800/80">(בעגלה היה {formatPrice(l.was)})</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p>
+                      הסכום לתשלום: <strong>{formatPrice(repriced.total)}</strong>. ההזמנה נשמרה, ואפשר להמשיך לתשלום.
+                    </p>
+                  </div>
+                )}
+
                 <button
                   type="submit"
                   disabled={isLoading || !termsOk || repSourceMissing}
@@ -1323,6 +1439,11 @@ export default function CheckoutPage() {
                     <>
                       <Phone className="w-5 h-5" />
                       שליחת הזמנה
+                    </>
+                  ) : repriced ? (
+                    <>
+                      <CreditCard className="w-5 h-5" />
+                      המשך לתשלום · {formatPrice(repriced.total)}
                     </>
                   ) : (
                     <>

@@ -180,6 +180,48 @@ async function quoteLinkFor(adminToken: string, orderId: number): Promise<string
   }
 }
 
+/** The shop's price for one cart line, as recorded on the order: the unit, and its glass line's unit when it has one. */
+interface RecordedLinePrice {
+  unit: number;
+  glass?: number;
+}
+
+/**
+ * The unit price WooCommerce recorded for each cart line (before the coupon: the line's subtotal ÷ quantity), in
+ * cart order. WooCommerce answers the line items in the order they were sent: the cart's lines first, one each, then
+ * a glass line for each cart item in glassOf. Any doubt — a count that differs, a line that is not the product sent,
+ * a price that is not a number — answers null, and the checkout falls back to asking for a refresh.
+ */
+function recordedLinePrices(
+  sent: Array<{ product_id?: number; variation_id?: number }>,
+  cartLines: number,
+  glassOf: number[],
+  got: unknown,
+): RecordedLinePrice[] | null {
+  if (!Array.isArray(got) || got.length !== sent.length || sent.length !== cartLines + glassOf.length) return null;
+  const unitOf = (i: number): number | null => {
+    const line = got[i] as { product_id?: unknown; variation_id?: unknown; quantity?: unknown; subtotal?: unknown };
+    if (Number(line?.product_id) !== Number(sent[i].product_id)) return null;
+    if (Number(line?.variation_id || 0) !== Number(sent[i].variation_id || 0)) return null;
+    const qty = Number(line.quantity);
+    const subtotal = parseFloat(String(line.subtotal ?? ''));
+    if (!(qty > 0) || !Number.isFinite(subtotal)) return null;
+    return Math.round((subtotal / qty) * 100) / 100;
+  };
+  const prices: RecordedLinePrice[] = [];
+  for (let i = 0; i < cartLines; i++) {
+    const unit = unitOf(i);
+    if (unit === null) return null;
+    prices.push({ unit });
+  }
+  for (const [k, itemIndex] of glassOf.entries()) {
+    const unit = unitOf(cartLines + k);
+    if (unit === null) return null;
+    prices[itemIndex].glass = unit;
+  }
+  return prices;
+}
+
 export async function POST(request: NextRequest) {
   // Rate limit: max 5 orders per minute per IP
   const ip = getClientIp(request);
@@ -418,10 +460,13 @@ export async function POST(request: NextRequest) {
     // Glass add-on: a SEPARATE real product line per parent product, priced
     // per unit × quantity, named so production sees exactly which product it is
     // for. Decoupled from the parent line so it can never be “swallowed”.
-    for (const item of items) {
+    // glassOf[k] = the cart item the k-th glass line belongs to (read back in recordedLinePrices).
+    const glassOf: number[] = [];
+    for (const [itemIndex, item] of items.entries()) {
       const af = item.admin_fields;
       const gp = Number(af?.glass_price || 0);
       if (af?.glass_option && af?.glass_product_id && gp > 0) {
+        glassOf.push(itemIndex);
         const label = af.glass_label || 'תוספת זכוכית';
         lineItems.push({
           product_id: af.glass_product_id,
@@ -552,6 +597,13 @@ export async function POST(request: NextRequest) {
     // still stands; the checkout says to open the quote from the order screen.
     const quoteUrl = isQuote && adminToken ? await quoteLinkFor(adminToken, data.id) : null;
 
+    // What the shop recorded for each cart line. A customer's order is priced by the shop (the theme's
+    // order-price-guard.php raises a line sent below the shop's price before WooCommerce answers), so when the total
+    // comes back higher than the cart's, the checkout shows these prices and takes payment on this same order. Until
+    // 23/11/2026 it said "refresh the page", which never fixes a cart saved in the browser: one customer placed 13
+    // orders over 11 days that way.
+    const prices = recordedLinePrices(lineItems, items.length, glassOf, data.line_items);
+
     return NextResponse.json({
       success: true,
       order_id: data.id,
@@ -559,6 +611,7 @@ export async function POST(request: NextRequest) {
       order_key: data.order_key,
       total: parseFloat(data.total),
       currency: data.currency,
+      ...(prices ? { prices } : {}),
     });
 
   } catch (error) {

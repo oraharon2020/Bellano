@@ -488,11 +488,21 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     
     // Price priority: admin override (now formula-aware, see variationPrice
     // passed to AdminProductFields) → formula custom-dimension price → regular.
-    // For non-admins adminPrice stays null (AdminProductFields only emits
-    // onPriceChange for admins), so the formula price is used as expected.
+    /*
+     * The admin override, and the rep's fields, count only for a rep signed in at the moment of adding. In a browser
+     * left in rep mode the rep panel reports its price as the page loads, before AdminSessionGuard finds the session
+     * over and signs out. That price stayed in this page's state and went into the cart of whoever was using the
+     * browser, below the shop's price. The order then raised it (the theme's order-price-guard.php) and the checkout
+     * refused payment, every time, even after the line was removed and added again from the same page. Found
+     * 23/11/2026 while chasing a Bellano customer whose orders kept coming in below the shop's price. A rep who
+     * signs in again gets a fresh price: the panel reports one whenever isAdmin turns on.
+     */
     const formulaBase = activeFormula && formulaData ? formulaData.price : null;
-    const basePrice = adminPrice !== null
-      ? adminPrice
+    const signedInRep = useAdminStore.getState().isAdmin;
+    const repPrice = signedInRep ? adminPrice : null;
+    const repFields = signedInRep ? adminFieldsData : null;
+    const basePrice = repPrice !== null
+      ? repPrice
       : formulaBase !== null
       ? formulaBase
       : parseFloat(currentPrice.replace(/[^\d.]/g, '')) || 0;
@@ -548,18 +558,18 @@ export function ProductPageClient({ product, variations = [], faqs = [], video =
     });
     
     const adminFieldsToSave = {
-      ...(adminFieldsData ? {
-        width: adminFieldsData.width,
-        depth: adminFieldsData.depth,
-        height: adminFieldsData.height,
-        additionalFee: adminFieldsData.additionalFee,
-        additionalFeeReason: adminFieldsData.additionalFeeReason,
-        discountType: adminFieldsData.discountType,
-        discountValue: adminFieldsData.discountValue,
-        freeComments: adminFieldsData.freeComments,
-        uploadedFile: adminFieldsData.uploadedFile,
-        uploadedFileName: adminFieldsData.uploadedFileName,
-        ...(adminFieldsData.upgrades?.length ? { upgrades: adminFieldsData.upgrades } : {}),
+      ...(repFields ? {
+        width: repFields.width,
+        depth: repFields.depth,
+        height: repFields.height,
+        additionalFee: repFields.additionalFee,
+        additionalFeeReason: repFields.additionalFeeReason,
+        discountType: repFields.discountType,
+        discountValue: repFields.discountValue,
+        freeComments: repFields.freeComments,
+        uploadedFile: repFields.uploadedFile,
+        uploadedFileName: repFields.uploadedFileName,
+        ...(repFields.upgrades?.length ? { upgrades: repFields.upgrades } : {}),
       } : {}),
       originalPrice: currentPrice,
       finalPrice: finalPrice,
